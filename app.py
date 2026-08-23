@@ -80,8 +80,10 @@ if uploaded_file is not None:
         elif uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
         else:
+            # --- LEITURA XLSX CORRIGIDA ---
             df_raw = pd.read_excel(uploaded_file, header=None)
             
+            # Encontra a linha com "UNIDADE"
             header_row = None
             for i, row in df_raw.iterrows():
                 row_text = ' '.join([str(cell).upper() for cell in row if pd.notna(cell)])
@@ -93,20 +95,61 @@ if uploaded_file is not None:
                 st.error("❌ Cabeçalho 'UNIDADE' não encontrado.")
                 st.stop()
             
+            # Pega os cabeçalhos
             headers = df_raw.iloc[header_row].fillna('').astype(str).str.strip().tolist()
+            
+            # --- RENOMEIA AS COLUNAS PARA PADRÃO ---
+            # Mapeamento de nomes encontrados no XLSX para nomes padronizados
+            mapeamento = {
+                'UNIDADE': 'UNIDADE',
+                'PAVTO': 'PAVTO.',
+                'PAVTO.': 'PAVTO.',
+                'COLUNA': 'COLUNA',
+                'M²': 'M²',
+                'M2': 'M²',
+                'TIPOLOGIA': 'TIPOLOGIA',
+                'VAGA': 'VAGA',
+                'SOL': 'SOL',
+                '1ª AVALIAÇÃO OÁSIS II': '1ª AVALIAÇÃO OÁSIS II',
+                '1ª AVALIAÇÃO OÁSIS II': '1ª AVALIAÇÃO OÁSIS II',
+                'DESCONTO': 'DESCONTO',
+                'PREÇO': 'PREÇO',
+                'DISPONIBILIDADE': 'DISPONIBILIDADE'
+            }
+            
+            # Renomeia os cabeçalhos
+            headers_renomeados = []
+            for h in headers:
+                # Remove espaços extras e quebras de linha
+                h_limpo = re.sub(r'\s+', ' ', h).strip()
+                # Tenta encontrar no mapeamento
+                encontrado = False
+                for chave, valor in mapeamento.items():
+                    if chave in h_limpo:
+                        headers_renomeados.append(valor)
+                        encontrado = True
+                        break
+                if not encontrado:
+                    headers_renomeados.append(h_limpo)
+            
+            # Pega os dados
             dados = df_raw.iloc[header_row + 1:].reset_index(drop=True)
             
-            colunas_validas = [(i, h) for i, h in enumerate(headers) if h and h != '']
-            
+            # Cria DataFrame com colunas renomeadas
             df = pd.DataFrame()
-            for i, h in colunas_validas:
-                df[h] = dados.iloc[:, i]
+            for i, header in enumerate(headers_renomeados):
+                if i < len(dados.columns):
+                    df[header] = dados.iloc[:, i]
             
+            # Remove colunas com cabeçalho vazio
+            df = df.loc[:, ~df.columns.str.strip().eq('')]
+            
+            # Remove linhas vazias
             df = df.dropna(how='all')
             if 'UNIDADE' in df.columns:
                 df = df[df['UNIDADE'].notna() & (df['UNIDADE'].astype(str).str.strip() != '')]
         
-        # --- CONVERSÃO ---
+        # --- CONVERSÃO DE COLUNAS NUMÉRICAS ---
         colunas_para_converter = ['PREÇO', '1ª AVALIAÇÃO OÁSIS II', 'DESCONTO', 'M²', 'PAVTO.', 'PAVTO']
         for col in colunas_para_converter:
             if col in df.columns:
