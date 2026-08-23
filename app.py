@@ -23,24 +23,56 @@ if uploaded_file is not None:
     try:
         # Lê o arquivo conforme o tipo
         if uploaded_file.name.endswith('.pdf'):
-            # Lê PDF com pdfplumber (NÃO precisa de Java)
             with pdfplumber.open(io.BytesIO(uploaded_file.read())) as pdf:
                 tables = pdf.pages[0].extract_tables()
                 if tables:
-                    df = pd.DataFrame(tables[0][1:], columns=tables[0][0])
+                    table_data = tables[0]
+                    
+                    # Pega o cabeçalho e limpa espaços
+                    columns = [str(col).strip() if col else '' for col in table_data[0]]
+                    
+                    # Cria o DataFrame com os dados
+                    df = pd.DataFrame(table_data[1:], columns=columns)
+                    
+                    # Remove linhas completamente vazias
+                    df = df.dropna(how='all')
+                    
+                    # Tenta encontrar a coluna 'UNIDADE' mesmo com espaços ou caracteres invisíveis
+                    unidade_col = None
+                    for col in df.columns:
+                        if 'UNIDADE' in col.upper().replace(' ', ''):
+                            unidade_col = col
+                            break
+                    
+                    if unidade_col:
+                        # Renomeia a coluna para 'UNIDADE' padronizada
+                        df.rename(columns={unidade_col: 'UNIDADE'}, inplace=True)
+                    else:
+                        st.error("❌ Coluna 'UNIDADE' não encontrada no PDF.")
+                        st.write("Colunas disponíveis:", df.columns.tolist())
+                        st.stop()
+                    
+                    # Padroniza nomes das outras colunas (remove espaços extras)
+                    df.columns = df.columns.str.strip()
+                    
                 else:
-                    st.error("❌ Nenhuma tabela encontrada no PDF")
+                    st.error("❌ Nenhuma tabela encontrada no PDF.")
                     st.stop()
         elif uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
         else:
             df = pd.read_excel(uploaded_file, skiprows=2)
         
-        # Limpeza
+        # Limpeza final
         df = df.dropna(subset=['UNIDADE'])
         
-        # Converte PREÇO para número (limpa R$ e .)
-        df['PREÇO'] = df['PREÇO'].astype(str).str.replace('R$ ', '').str.replace('.', '').str.replace(',', '.').astype(float)
+        # Converte PREÇO para número (limpa R$ e . e ,)
+        if 'PREÇO' in df.columns:
+            df['PREÇO'] = df['PREÇO'].astype(str).str.replace('R$ ', '').str.replace('.', '').str.replace(',', '.').astype(float)
+        
+        # Converte 1ª AVALIAÇÃO para número
+        if '1ª AVALIAÇÃO OÁSIS II' in df.columns:
+            df['1ª AVALIAÇÃO OÁSIS II'] = df['1ª AVALIAÇÃO OÁSIS II'].astype(str).str.replace('R$ ', '').str.replace('.', '').str.replace(',', '.').astype(float)
         
         with st.expander("📊 Visualizar dados da planilha"):
             st.dataframe(df)
@@ -51,53 +83,74 @@ if uploaded_file is not None:
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            tipologias = ['Todas'] + sorted(df['TIPOLOGIA'].unique().tolist())
-            tipo_selecionado = st.selectbox("🏠 Tipologia", tipologias)
+            if 'TIPOLOGIA' in df.columns:
+                tipologias = ['Todas'] + sorted(df['TIPOLOGIA'].unique().tolist())
+                tipo_selecionado = st.selectbox("🏠 Tipologia", tipologias)
+            else:
+                tipo_selecionado = 'Todas'
         
         with col2:
             andar_min = st.number_input("📌 Andar mínimo", min_value=0, value=0)
         
         with col3:
-            preco_max = st.number_input(
-                "💰 Preço máximo (R$)",
-                min_value=100000,
-                value=int(df['PREÇO'].max()),
-                step=50000,
-                format="%d"
-            )
+            if 'PREÇO' in df.columns:
+                preco_max = st.number_input(
+                    "💰 Preço máximo (R$)",
+                    min_value=100000,
+                    value=int(df['PREÇO'].max()),
+                    step=50000,
+                    format="%d"
+                )
+            else:
+                preco_max = 1000000
         
         with col4:
-            disponibilidade = st.selectbox(
-                "🔑 Disponibilidade",
-                ['Todas', 'LIVRE', 'RESERVADA', 'VENDIDA']
-            )
+            if 'DISPONIBILIDADE' in df.columns:
+                disponibilidade = st.selectbox(
+                    "🔑 Disponibilidade",
+                    ['Todas'] + sorted(df['DISPONIBILIDADE'].unique().tolist())
+                )
+            else:
+                disponibilidade = 'Todas'
         
         # APLICA FILTROS
         resultado = df.copy()
         
-        if tipo_selecionado != 'Todas':
+        if tipo_selecionado != 'Todas' and 'TIPOLOGIA' in df.columns:
             resultado = resultado[resultado['TIPOLOGIA'] == tipo_selecionado]
         
-        if andar_min > 0:
+        if andar_min > 0 and 'PAVTO.' in df.columns:
             resultado = resultado[resultado['PAVTO.'] >= andar_min]
         
-        resultado = resultado[resultado['PREÇO'] <= preco_max]
+        if 'PREÇO' in df.columns:
+            resultado = resultado[resultado['PREÇO'] <= preco_max]
         
-        if disponibilidade != 'Todas':
+        if disponibilidade != 'Todas' and 'DISPONIBILIDADE' in df.columns:
             resultado = resultado[resultado['DISPONIBILIDADE'] == disponibilidade]
         
         # CALCULA INDICADORES
         if not resultado.empty:
-            resultado['R$/m²'] = (resultado['PREÇO'] / resultado['M²']).round(2)
-            resultado['% DESCONTO'] = ((resultado['1ª AVALIAÇÃO OÁSIS II'] - resultado['PREÇO']) / resultado['1ª AVALIAÇÃO OÁSIS II'] * 100).round(1)
+            if 'PREÇO' in df.columns and 'M²' in df.columns:
+                resultado['R$/m²'] = (resultado['PREÇO'] / resultado['M²']).round(2)
+            
+            if '1ª AVALIAÇÃO OÁSIS II' in df.columns and 'PREÇO' in df.columns:
+                resultado['% DESCONTO'] = ((resultado['1ª AVALIAÇÃO OÁSIS II'] - resultado['PREÇO']) / resultado['1ª AVALIAÇÃO OÁSIS II'] * 100).round(1)
         
         # EXIBE RESULTADOS
         st.subheader(f"🔍 Resultados: {len(resultado)} imóveis encontrados")
         
         if not resultado.empty:
-            resultado_ordenado = resultado.sort_values('R$/m²')
+            if 'R$/m²' in resultado.columns:
+                resultado_ordenado = resultado.sort_values('R$/m²')
+            else:
+                resultado_ordenado = resultado
             
-            colunas_exibir = ['UNIDADE', 'PAVTO.', 'COLUNA', 'M²', 'TIPOLOGIA', 'VAGA', 'SOL', 'PREÇO', 'R$/m²', '% DESCONTO', 'DISPONIBILIDADE']
+            # Define colunas a exibir (apenas as que existem)
+            colunas_base = ['UNIDADE', 'PAVTO.', 'COLUNA', 'M²', 'TIPOLOGIA', 'VAGA', 'SOL', 'PREÇO']
+            colunas_extras = ['R$/m²', '% DESCONTO', 'DISPONIBILIDADE']
+            
+            colunas_exibir = [c for c in colunas_base + colunas_extras if c in resultado_ordenado.columns]
+            
             st.dataframe(
                 resultado_ordenado[colunas_exibir],
                 use_container_width=True,
@@ -113,26 +166,31 @@ if uploaded_file is not None:
             
             with col_a:
                 st.success(f"*Melhor custo-benefício:* Unidade {melhor['UNIDADE']}")
-                st.write(f"- *Preço:* R$ {melhor['PREÇO']:,.2f}")
-                st.write(f"- *R$/m²:* R$ {melhor['R$/m²']:.2f}")
-                st.write(f"- *Desconto:* {melhor['% DESCONTO']}%")
-                st.write(f"- *Tipologia:* {melhor['TIPOLOGIA']}")
+                if 'PREÇO' in melhor:
+                    st.write(f"- *Preço:* R$ {melhor['PREÇO']:,.2f}")
+                if 'R$/m²' in melhor:
+                    st.write(f"- *R$/m²:* R$ {melhor['R$/m²']:.2f}")
+                if '% DESCONTO' in melhor:
+                    st.write(f"- *Desconto:* {melhor['% DESCONTO']}%")
+                if 'TIPOLOGIA' in melhor:
+                    st.write(f"- *Tipologia:* {melhor['TIPOLOGIA']}")
             
             with col_b:
-                valor = melhor['PREÇO']
-                entrada_percentual = st.slider("Entrada (%)", 20, 50, 30)
-                entrada = valor * (entrada_percentual / 100)
-                financiado = valor - entrada
-                juros = 0.10
-                prazo_meses = 420
-                parcela_media = financiado * (1 + juros/12) / prazo_meses
-                
-                st.info(f"*Simulação - Unidade {melhor['UNIDADE']}*")
-                st.write(f"Valor total: R$ {valor:,.2f}")
-                st.write(f"Entrada ({entrada_percentual}%): R$ {entrada:,.2f}")
-                st.write(f"Financiado: R$ {financiado:,.2f}")
-                st.write(f"Parcela estimada: R$ {parcela_media:,.2f}")
-                st.caption(f"Prazo: {prazo_meses} meses (35 anos), juros: {juros*100}% a.a. (SAC)")
+                if 'PREÇO' in melhor:
+                    valor = melhor['PREÇO']
+                    entrada_percentual = st.slider("Entrada (%)", 20, 50, 30)
+                    entrada = valor * (entrada_percentual / 100)
+                    financiado = valor - entrada
+                    juros = 0.10
+                    prazo_meses = 420
+                    parcela_media = financiado * (1 + juros/12) / prazo_meses
+                    
+                    st.info(f"*Simulação - Unidade {melhor['UNIDADE']}*")
+                    st.write(f"Valor total: R$ {valor:,.2f}")
+                    st.write(f"Entrada ({entrada_percentual}%): R$ {entrada:,.2f}")
+                    st.write(f"Financiado: R$ {financiado:,.2f}")
+                    st.write(f"Parcela estimada: R$ {parcela_media:,.2f}")
+                    st.caption(f"Prazo: {prazo_meses} meses (35 anos), juros: {juros*100}% a.a. (SAC)")
         else:
             st.warning("⚠️ Nenhum imóvel encontrado com os filtros atuais. Tente ajustar.")
     
