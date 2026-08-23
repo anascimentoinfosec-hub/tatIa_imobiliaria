@@ -29,12 +29,17 @@ def converter_para_float(valor):
     except:
         return 0.0
 
-# FUNÇÃO PARA GARANTIR QUE COLUNAS NUMÉRICAS SÃO FLOAT
-def garantir_numerico(df, coluna):
-    """Converte uma coluna para float, tratando erros"""
-    if coluna in df.columns:
-        df[coluna] = df[coluna].apply(converter_para_float)
-    return df
+# FUNÇÃO PARA CONVERTER M²
+def converter_m2(valor):
+    """Converte '59,49' ou '59.49' para float"""
+    if isinstance(valor, (int, float)):
+        return float(valor)
+    if not isinstance(valor, str):
+        return 0.0
+    try:
+        return float(str(valor).replace(',', '.'))
+    except:
+        return 0.0
 
 # SIDEBAR
 with st.sidebar:
@@ -62,12 +67,11 @@ if uploaded_file is not None:
                 if all_tables:
                     table_data = all_tables[0]
                     
-                    # Procura onde está o cabeçalho
                     header_row = None
                     for i, row in enumerate(table_data):
                         if row:
                             row_text = ' '.join([str(cell).upper() for cell in row if cell])
-                            if 'UNIDADE' in row_text or 'PAVTO' in row_text or 'M²' in row_text:
+                            if 'UNIDADE' in row_text or 'PAVTO' in row_text:
                                 header_row = i
                                 break
                     
@@ -79,7 +83,6 @@ if uploaded_file is not None:
                             else:
                                 columns.append('')
                         
-                        # Preenche colunas vazias
                         for i, col in enumerate(columns):
                             if not col or col == '':
                                 columns[i] = f'col_{i}'
@@ -96,25 +99,44 @@ if uploaded_file is not None:
         elif uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
         else:
-            df = pd.read_excel(uploaded_file, skiprows=2)
+            # Para XLS/XLSX, tenta ler sem skiprows primeiro
+            try:
+                df = pd.read_excel(uploaded_file)
+            except:
+                df = pd.read_excel(uploaded_file, skiprows=2)
+        
+        # Se não encontrou UNIDADE, tenta encontrar a linha do cabeçalho
+        if 'UNIDADE' not in df.columns:
+            # Procura a linha que contém UNIDADE
+            for i, row in df.iterrows():
+                if any('UNIDADE' in str(val).upper() for val in row.values if val):
+                    # Usa essa linha como cabeçalho
+                    df.columns = row.values
+                    df = df.iloc[i+1:].reset_index(drop=True)
+                    break
         
         # Limpeza
         df = df.dropna(subset=['UNIDADE'])
         
-        # Converte TODAS as colunas monetárias para float
+        # Converte TODAS as colunas monetárias
         colunas_para_converter = ['PREÇO', '1ª AVALIAÇÃO OÁSIS II', 'DESCONTO']
         for col in colunas_para_converter:
             if col in df.columns:
                 df[col] = df[col].apply(converter_para_float)
         
-        # Converte M² para float
+        # Converte M²
         if 'M²' in df.columns:
-            df['M²'] = df['M²'].astype(str).str.replace(',', '.').str.extract(r'(\d+\.?\d*)').astype(float)
+            df['M²'] = df['M²'].apply(converter_m2)
         
-        # Converte PAVTO para inteiro (se existir)
-        if 'PAVTO.' in df.columns or 'PAVTO' in df.columns:
-            coluna_pavto = 'PAVTO.' if 'PAVTO.' in df.columns else 'PAVTO'
-            df[coluna_pavto] = df[coluna_pavto].astype(str).str.extract(r'(\d+)').astype(float)
+        # Converte PAVTO (tenta vários nomes)
+        coluna_pavto = None
+        for nome in ['PAVTO.', 'PAVTO', 'Pavto.', 'Pavto']:
+            if nome in df.columns:
+                coluna_pavto = nome
+                break
+        
+        if coluna_pavto:
+            df[coluna_pavto] = df[coluna_pavto].apply(converter_m2)
         
         with st.expander("📊 Visualizar dados da planilha"):
             st.dataframe(df)
@@ -162,8 +184,12 @@ if uploaded_file is not None:
             resultado = resultado[resultado['TIPOLOGIA'] == tipo_selecionado]
         
         if andar_min > 0:
-            coluna_pavto = 'PAVTO.' if 'PAVTO.' in df.columns else 'PAVTO'
-            if coluna_pavto in df.columns:
+            coluna_pavto = None
+            for nome in ['PAVTO.', 'PAVTO', 'Pavto.', 'Pavto']:
+                if nome in df.columns:
+                    coluna_pavto = nome
+                    break
+            if coluna_pavto:
                 resultado = resultado[resultado[coluna_pavto] >= andar_min]
         
         if 'PREÇO' in df.columns:
@@ -174,10 +200,10 @@ if uploaded_file is not None:
         
         # CALCULA INDICADORES
         if not resultado.empty:
-            if 'PREÇO' in df.columns and 'M²' in df.columns:
+            if 'PREÇO' in resultado.columns and 'M²' in resultado.columns:
                 resultado['R$/m²'] = (resultado['PREÇO'] / resultado['M²']).round(2)
             
-            if '1ª AVALIAÇÃO OÁSIS II' in df.columns and 'PREÇO' in df.columns:
+            if '1ª AVALIAÇÃO OÁSIS II' in resultado.columns and 'PREÇO' in resultado.columns:
                 resultado['% DESCONTO'] = ((resultado['1ª AVALIAÇÃO OÁSIS II'] - resultado['PREÇO']) / resultado['1ª AVALIAÇÃO OÁSIS II'] * 100).round(1)
         
         # EXIBE RESULTADOS
