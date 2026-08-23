@@ -1,18 +1,19 @@
 import streamlit as st
 import pandas as pd
-import os
+import io
+import tabula
 
 # CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="IA Imobiliária", layout="wide")
 st.title("🏢 IA Imobiliária - Oásis II")
 st.markdown("---")
 
-# SIDEBAR - Configurações
+# SIDEBAR
 with st.sidebar:
     st.header("⚙️ Configurações")
     uploaded_file = st.file_uploader(
         "📤 Envie a planilha da construtora",
-        type=['xlsx', 'xls', 'csv']
+        type=['xlsx', 'xls', 'csv', 'pdf']
     )
     st.markdown("---")
     st.caption("Versão 1.0 - Desenvolvido com IA")
@@ -20,16 +21,18 @@ with st.sidebar:
 # CORPO PRINCIPAL
 if uploaded_file is not None:
     try:
-        # Lê a planilha
-        if uploaded_file.name.endswith('.csv'):
+        # Lê o arquivo conforme o tipo
+        if uploaded_file.name.endswith('.pdf'):
+            # Lê PDF com tabula
+            df = tabula.read_pdf(io.BytesIO(uploaded_file.read()), pages='all')[0]
+        elif uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
         else:
-            df = pd.read_excel(uploaded_file, skiprows=2)  # Pula cabeçalho da planilha
+            df = pd.read_excel(uploaded_file, skiprows=2)
         
-        # Limpeza: remove linhas vazias
+        # Limpeza
         df = df.dropna(subset=['UNIDADE'])
         
-        # Mostra dados brutos (opcional)
         with st.expander("📊 Visualizar dados da planilha"):
             st.dataframe(df)
         
@@ -60,7 +63,7 @@ if uploaded_file is not None:
                 ['Todas', 'LIVRE', 'RESERVADA', 'VENDIDA']
             )
         
-        # APLICA OS FILTROS
+        # APLICA FILTROS
         resultado = df.copy()
         
         if tipo_selecionado != 'Todas':
@@ -83,10 +86,8 @@ if uploaded_file is not None:
         st.subheader(f"🔍 Resultados: {len(resultado)} imóveis encontrados")
         
         if not resultado.empty:
-            # Ordena por melhor custo-benefício
             resultado_ordenado = resultado.sort_values('R$/m²')
             
-            # Mostra a tabela formatada
             colunas_exibir = ['UNIDADE', 'PAVTO.', 'COLUNA', 'M²', 'TIPOLOGIA', 'VAGA', 'SOL', 'PREÇO', 'R$/m²', '% DESCONTO', 'DISPONIBILIDADE']
             st.dataframe(
                 resultado_ordenado[colunas_exibir],
@@ -94,7 +95,6 @@ if uploaded_file is not None:
                 height=400
             )
             
-            # RECOMENDAÇÃO DA IA
             st.markdown("---")
             st.subheader("🤖 Recomendação da IA")
             
@@ -110,15 +110,12 @@ if uploaded_file is not None:
                 st.write(f"- **Tipologia:** {melhor['TIPOLOGIA']}")
             
             with col_b:
-                # SIMULAÇÃO FINANCEIRA (básica)
                 valor = melhor['PREÇO']
                 entrada_percentual = st.slider("Entrada (%)", 20, 50, 30)
                 entrada = valor * (entrada_percentual / 100)
                 financiado = valor - entrada
-                juros = 0.10  # 10% ao ano
-                prazo_meses = 420  # 35 anos
-                
-                # Cálculo aproximado da parcela (SAC)
+                juros = 0.10
+                prazo_meses = 420
                 parcela_media = financiado * (1 + juros/12) / prazo_meses
                 
                 st.info(f"**Simulação - Unidade {melhor['UNIDADE']}**")
@@ -132,17 +129,14 @@ if uploaded_file is not None:
     
     except Exception as e:
         st.error(f"❌ Erro ao ler a planilha: {str(e)}")
-        st.info("Verifique se o arquivo está no formato correto (XLSX ou CSV)")
+        st.info("Verifique se o arquivo está no formato correto (XLSX, CSV ou PDF)")
 
 else:
-    # TELA INICIAL
     st.info("👈 Envie a planilha da construtora no menu lateral para começar")
-    
     st.markdown("""
     ### Como usar:
     1. Clique em **"Browse files"** no menu lateral
-    2. Selecione a planilha XLSX da construtora
-    3. Ajuste os filtros de tipologia, andar e preço
-    4. A IA vai encontrar o melhor imóvel para você
-    5. Veja a simulação de financiamento automática
+    2. Selecione a planilha (XLSX, CSV ou PDF) da construtora
+    3. Ajuste os filtros
+    4. A IA recomenda o melhor imóvel
     """)
