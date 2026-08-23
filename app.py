@@ -9,7 +9,7 @@ st.set_page_config(page_title="ImobFlux IA", layout="wide")
 st.title("🏢 ImobFlux IA")
 st.markdown("---")
 
-# --- FUNÇÃO DE CONVERSÃO CORRIGIDA ---
+# --- FUNÇÃO DE CONVERSÃO ---
 def converter_para_float(valor):
     if valor is None or pd.isna(valor):
         return 0.0
@@ -17,11 +17,8 @@ def converter_para_float(valor):
         return float(valor)
     
     valor_str = str(valor).strip()
-    
-    # Remove R$ e espaços
     valor_str = re.sub(r'R\$\s*', '', valor_str)
     
-    # Trata formato BR (1.234,56 ou 59,49)
     if '.' in valor_str and ',' in valor_str:
         valor_str = valor_str.replace('.', '').replace(',', '.')
     elif ',' in valor_str:
@@ -31,7 +28,6 @@ def converter_para_float(valor):
         else:
             valor_str = valor_str.replace(',', '')
     
-    # Remove tudo que não é número ou ponto
     valor_str = re.sub(r'[^0-9.]', '', valor_str)
     
     try:
@@ -43,7 +39,7 @@ def converter_para_float(valor):
 with st.sidebar:
     st.header("⚙️ Configurações")
     uploaded_file = st.file_uploader(
-        "📤 Envie a planilha",
+        "📤 Envie a planilha da construtora",
         type=['xlsx', 'xls', 'csv', 'pdf']
     )
     st.markdown("---")
@@ -84,10 +80,8 @@ if uploaded_file is not None:
         elif uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
         else:
-            # --- XLSX ---
             df_raw = pd.read_excel(uploaded_file, header=None)
             
-            # Encontra "UNIDADE"
             header_row = None
             for i, row in df_raw.iterrows():
                 row_text = ' '.join([str(cell).upper() for cell in row if pd.notna(cell)])
@@ -102,7 +96,6 @@ if uploaded_file is not None:
             headers = df_raw.iloc[header_row].fillna('').astype(str).str.strip().tolist()
             dados = df_raw.iloc[header_row + 1:].reset_index(drop=True)
             
-            # Remove colunas vazias
             colunas_validas = [(i, h) for i, h in enumerate(headers) if h and h != '']
             
             df = pd.DataFrame()
@@ -118,12 +111,6 @@ if uploaded_file is not None:
         for col in colunas_para_converter:
             if col in df.columns:
                 df[col] = df[col].apply(converter_para_float)
-        
-        # --- DEBUG ---
-        with st.expander("🔍 Debug - Tipos das colunas"):
-            st.write("Tipos de dados:")
-            st.write(df.dtypes)
-            st.dataframe(df.head())
         
         st.markdown("---")
         
@@ -243,8 +230,15 @@ if uploaded_file is not None:
             st.warning("⚠️ Nenhum imóvel encontrado com os filtros atuais.")
     
     except Exception as e:
-        st.error(f"❌ Erro: {str(e)}")
-        st.info("Verifique o formato do arquivo.")
+        st.error(f"❌ Erro ao ler a planilha: {str(e)}")
+        st.info("Verifique o formato do arquivo (XLSX, CSV ou PDF).")
 
 else:
-    st.info("👈 Envie a planilha da construtora para começar")
+    st.info("👈 Envie a planilha da construtora no menu lateral para começar")
+    st.markdown("""
+    ### Como usar:
+    1. Clique em *"Browse files"* no menu lateral
+    2. Selecione a planilha (XLSX, CSV ou PDF) da construtora
+    3. Ajuste os filtros
+    4. A IA recomenda o melhor imóvel
+    """)
