@@ -2,11 +2,32 @@ import streamlit as st
 import pandas as pd
 import io
 import pdfplumber
+import re
 
 # CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="IA Imobiliária", layout="wide")
 st.title("🏢 IA Imobiliária - Oásis II")
 st.markdown("---")
+
+# FUNÇÃO PARA CONVERTER VALORES MONETÁRIOS
+def converter_para_float(valor):
+    """Converte strings como 'R$ 399.440,00' ou 'R 440.000,00' para float"""
+    if isinstance(valor, (int, float)):
+        return float(valor)
+    if not isinstance(valor, str):
+        return 0.0
+    
+    # Remove R$, R, espaços e substitui vírgula por ponto
+    valor_limpo = re.sub(r'[R$]', '', str(valor)).strip()
+    valor_limpo = valor_limpo.replace('.', '').replace(',', '.')
+    
+    # Remove qualquer outro caractere não numérico (exceto ponto)
+    valor_limpo = re.sub(r'[^0-9.]', '', valor_limpo)
+    
+    try:
+        return float(valor_limpo)
+    except:
+        return 0.0
 
 # SIDEBAR
 with st.sidebar:
@@ -34,11 +55,6 @@ if uploaded_file is not None:
                 if all_tables:
                     table_data = all_tables[0]
                     
-                    # DEBUG: Mostra primeiras linhas
-                    st.write("🔍 Debug: Primeiras 5 linhas da tabela bruta:")
-                    for i, row in enumerate(table_data[:5]):
-                        st.write(f"Linha {i}: {row}")
-                    
                     # Procura onde está o cabeçalho
                     header_row = None
                     for i, row in enumerate(table_data):
@@ -56,15 +72,13 @@ if uploaded_file is not None:
                             else:
                                 columns.append('')
                         
-                        # Preenche colunas vazias com nomes genéricos
+                        # Preenche colunas vazias
                         for i, col in enumerate(columns):
                             if not col or col == '':
                                 columns[i] = f'col_{i}'
                         
                         df = pd.DataFrame(table_data[header_row + 1:], columns=columns)
                         df = df.dropna(how='all')
-                        
-                        # Remove linhas que são totalmente vazias ou só espaços
                         df = df[~df.iloc[:, 0].astype(str).str.strip().eq('')]
                     else:
                         st.error("❌ Cabeçalho da tabela não encontrado.")
@@ -80,13 +94,17 @@ if uploaded_file is not None:
         # Limpeza
         df = df.dropna(subset=['UNIDADE'])
         
-        # Converte PREÇO para número
+        # Converte PREÇO usando a função universal
         if 'PREÇO' in df.columns:
-            df['PREÇO'] = df['PREÇO'].astype(str).str.replace('R$ ', '').str.replace('.', '').str.replace(',', '.').astype(float)
+            df['PREÇO'] = df['PREÇO'].apply(converter_para_float)
         
-        # Converte 1ª AVALIAÇÃO para número
+        # Converte 1ª AVALIAÇÃO
         if '1ª AVALIAÇÃO OÁSIS II' in df.columns:
-            df['1ª AVALIAÇÃO OÁSIS II'] = df['1ª AVALIAÇÃO OÁSIS II'].astype(str).str.replace('R$ ', '').str.replace('.', '').str.replace(',', '.').astype(float)
+            df['1ª AVALIAÇÃO OÁSIS II'] = df['1ª AVALIAÇÃO OÁSIS II'].apply(converter_para_float)
+        
+        # Converte DESCONTO (se existir)
+        if 'DESCONTO' in df.columns:
+            df['DESCONTO'] = df['DESCONTO'].apply(converter_para_float)
         
         with st.expander("📊 Visualizar dados da planilha"):
             st.dataframe(df)
