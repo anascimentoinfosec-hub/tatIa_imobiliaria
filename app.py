@@ -80,39 +80,73 @@ if uploaded_file is not None:
         elif uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
         else:
-            # --- LEITURA XLSX (skiprows=2) ---
-            df = pd.read_excel(uploaded_file, skiprows=2)
+            # --- LEITURA XLSX MANUAL (MAIS ROBUSTA) ---
+            df_raw = pd.read_excel(uploaded_file, header=None)
+            
+            # Encontra a linha que contém "UNIDADE"
+            linha_cabecalho = None
+            for i, row in df_raw.iterrows():
+                row_text = ' '.join([str(cell).upper() for cell in row if pd.notna(cell)])
+                if 'UNIDADE' in row_text:
+                    linha_cabecalho = i
+                    break
+            
+            if linha_cabecalho is None:
+                st.error("❌ Cabeçalho 'UNIDADE' não encontrado.")
+                st.stop()
+            
+            # Pega os cabeçalhos (linha do cabeçalho)
+            cabecalho = []
+            for col in df_raw.iloc[linha_cabecalho]:
+                if pd.isna(col):
+                    cabecalho.append('')
+                else:
+                    cabecalho.append(str(col).strip())
+            
+            # Remove colunas com cabeçalho vazio e guarda os índices
+            indices_validos = [i for i, h in enumerate(cabecalho) if h != '']
+            cabecalho_limpo = [cabecalho[i] for i in indices_validos]
+            
+            # Pega os dados (linhas após o cabeçalho)
+            dados = df_raw.iloc[linha_cabecalho + 1:].reset_index(drop=True)
+            
+            # Cria DataFrame com as colunas válidas
+            df = pd.DataFrame()
+            for i, idx in enumerate(indices_validos):
+                df[cabecalho_limpo[i]] = dados.iloc[:, idx]
             
             # Remove linhas completamente vazias
             df = df.dropna(how='all')
             
-            # Remove colunas completamente vazias
-            df = df.dropna(axis=1, how='all')
-            
-            # Filtra linhas com UNIDADE válida
+            # Remove linhas onde UNIDADE está vazia
             if 'UNIDADE' in df.columns:
                 df = df[df['UNIDADE'].notna() & (df['UNIDADE'].astype(str).str.strip() != '')]
             
-            # Se não encontrou UNIDADE, tenta outra abordagem
-            if 'UNIDADE' not in df.columns:
-                # Tenta ler sem skiprows
-                df = pd.read_excel(uploaded_file, header=0)
-                # Procura a linha com UNIDADE
-                for i, row in df.iterrows():
-                    if 'UNIDADE' in str(row.values):
-                        df = pd.read_excel(uploaded_file, skiprows=i)
-                        break
+            # --- ADICIONA EXPANDER DE DEBUG ---
+            with st.expander("🔍 Debug - Dados lidos do XLSX"):
+                st.write("*Colunas encontradas:*")
+                st.write(df.columns.tolist())
+                st.write("*Primeiras 5 linhas:*")
+                st.dataframe(df.head(5))
+                st.write("*Tipos de dados:*")
+                st.write(df.dtypes)
         
         # --- CONVERSÃO DE COLUNAS NUMÉRICAS ---
-        colunas_para_converter = ['PREÇO', '1ª AVALIAÇÃO OÁSIS II', 'DESCONTO', 'M²', 'PAVTO.', 'PAVTO']
-        for col in colunas_para_converter:
+        # Lista de colunas que podem ter valores monetários
+        colunas_monetarias = ['PREÇO', '1ª AVALIAÇÃO OÁSIS II', 'DESCONTO']
+        for col in colunas_monetarias:
             if col in df.columns:
                 df[col] = df[col].apply(converter_para_float)
         
-        # --- DEBUG: Mostra as colunas encontradas ---
-        with st.expander("🔍 Colunas encontradas"):
-            st.write("Colunas:", df.columns.tolist())
-            st.dataframe(df.head(5))
+        # Converte M²
+        if 'M²' in df.columns:
+            df['M²'] = df['M²'].apply(converter_para_float)
+        
+        # Converte PAVTO
+        if 'PAVTO' in df.columns:
+            df['PAVTO'] = df['PAVTO'].apply(converter_para_float)
+        elif 'PAVTO.' in df.columns:
+            df['PAVTO.'] = df['PAVTO.'].apply(converter_para_float)
         
         st.markdown("---")
         
