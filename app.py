@@ -11,27 +11,19 @@ st.markdown("---")
 
 # FUNÇÃO PARA CONVERTER VALORES MONETÁRIOS
 def converter_para_float(valor):
-    """Converte strings como 'R$ 399.440,00' ou 'R 440.000,00' para float"""
     if isinstance(valor, (int, float)):
         return float(valor)
     if not isinstance(valor, str):
         return 0.0
-    
-    # Remove R$, R, espaços e substitui vírgula por ponto
     valor_limpo = re.sub(r'[R$]', '', str(valor)).strip()
     valor_limpo = valor_limpo.replace('.', '').replace(',', '.')
-    
-    # Remove qualquer outro caractere não numérico (exceto ponto)
     valor_limpo = re.sub(r'[^0-9.]', '', valor_limpo)
-    
     try:
         return float(valor_limpo)
     except:
         return 0.0
 
-# FUNÇÃO PARA CONVERTER M²
 def converter_m2(valor):
-    """Converte '59,49' ou '59.49' para float"""
     if isinstance(valor, (int, float)):
         return float(valor)
     if not isinstance(valor, str):
@@ -66,12 +58,11 @@ if uploaded_file is not None:
                 
                 if all_tables:
                     table_data = all_tables[0]
-                    
                     header_row = None
                     for i, row in enumerate(table_data):
                         if row:
                             row_text = ' '.join([str(cell).upper() for cell in row if cell])
-                            if 'UNIDADE' in row_text or 'PAVTO' in row_text:
+                            if 'UNIDADE' in row_text:
                                 header_row = i
                                 break
                     
@@ -82,11 +73,9 @@ if uploaded_file is not None:
                                 columns.append(str(col).strip())
                             else:
                                 columns.append('')
-                        
                         for i, col in enumerate(columns):
                             if not col or col == '':
                                 columns[i] = f'col_{i}'
-                        
                         df = pd.DataFrame(table_data[header_row + 1:], columns=columns)
                         df = df.dropna(how='all')
                         df = df[~df.iloc[:, 0].astype(str).str.strip().eq('')]
@@ -99,26 +88,40 @@ if uploaded_file is not None:
         elif uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
         else:
-            # Para XLS/XLSX, tenta ler sem skiprows primeiro
-            try:
-                df = pd.read_excel(uploaded_file)
-            except:
-                df = pd.read_excel(uploaded_file, skiprows=2)
-        
-        # Se não encontrou UNIDADE, tenta encontrar a linha do cabeçalho
-        if 'UNIDADE' not in df.columns:
-            # Procura a linha que contém UNIDADE
-            for i, row in df.iterrows():
-                if any('UNIDADE' in str(val).upper() for val in row.values if val):
-                    # Usa essa linha como cabeçalho
-                    df.columns = row.values
-                    df = df.iloc[i+1:].reset_index(drop=True)
+            # Para XLS/XLSX - estratégia robusta
+            df_raw = pd.read_excel(uploaded_file, header=None)
+            
+            # Encontra a linha que contém UNIDADE
+            linha_cabecalho = None
+            for i, row in df_raw.iterrows():
+                row_text = ' '.join([str(cell).upper() for cell in row if pd.notna(cell)])
+                if 'UNIDADE' in row_text:
+                    linha_cabecalho = i
                     break
+            
+            if linha_cabecalho is not None:
+                # Pega o cabeçalho
+                cabecalho = df_raw.iloc[linha_cabecalho].fillna('').astype(str).str.strip().tolist()
+                
+                # Remove colunas vazias do cabeçalho e dos dados
+                colunas_validas = [i for i, col in enumerate(cabecalho) if col and col != '']
+                cabecalho_limpo = [cabecalho[i] for i in colunas_validas]
+                
+                # Pega os dados a partir da linha seguinte
+                df = df_raw.iloc[linha_cabecalho + 1:].reset_index(drop=True)
+                df = df.iloc[:, colunas_validas]
+                df.columns = cabecalho_limpo
+                
+                # Remove linhas vazias
+                df = df.dropna(how='all')
+            else:
+                st.error("❌ Cabeçalho 'UNIDADE' não encontrado no XLSX.")
+                st.stop()
         
-        # Limpeza
+        # Limpeza final
         df = df.dropna(subset=['UNIDADE'])
         
-        # Converte TODAS as colunas monetárias
+        # Converte colunas monetárias
         colunas_para_converter = ['PREÇO', '1ª AVALIAÇÃO OÁSIS II', 'DESCONTO']
         for col in colunas_para_converter:
             if col in df.columns:
@@ -128,13 +131,12 @@ if uploaded_file is not None:
         if 'M²' in df.columns:
             df['M²'] = df['M²'].apply(converter_m2)
         
-        # Converte PAVTO (tenta vários nomes)
+        # Converte PAVTO
         coluna_pavto = None
         for nome in ['PAVTO.', 'PAVTO', 'Pavto.', 'Pavto']:
             if nome in df.columns:
                 coluna_pavto = nome
                 break
-        
         if coluna_pavto:
             df[coluna_pavto] = df[coluna_pavto].apply(converter_m2)
         
