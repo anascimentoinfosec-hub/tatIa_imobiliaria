@@ -5,7 +5,7 @@ import tabula
 
 # CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="IA Imobiliária", layout="wide")
-st.title("🏢 IA Imobiliária - Oásis II")
+st.title("🏢 ImobFlux IA")
 st.markdown("---")
 
 # SIDEBAR
