@@ -9,31 +9,52 @@ st.set_page_config(page_title="ImobFlux IA", layout="wide")
 st.title("🏢 ImobFlux IA")
 st.markdown("---")
 
-# FUNÇÃO PARA CONVERTER VALORES MONETÁRIOS
-def converter_para_float(valor):
+# --- FUNÇÕES AUXILIARES DE CONVERSÃO ---
+def converter_moeda_br_para_float(valor):
+    """Converte strings de moeda BR (R$ 1.234,56 ou 1.234,56) para float."""
     if isinstance(valor, (int, float)):
         return float(valor)
-    if not isinstance(valor, str):
+    if pd.isna(valor):
         return 0.0
-    valor_limpo = re.sub(r'[R$]', '', str(valor)).strip()
-    valor_limpo = valor_limpo.replace('.', '').replace(',', '.')
-    valor_limpo = re.sub(r'[^0-9.]', '', valor_limpo)
+    # Converte para string e limpa
+    valor_str = str(valor).strip()
+    # Remove "R$" e espaços
+    valor_str = re.sub(r'R\$\s*', '', valor_str)
+    # Remove pontos de milhar e substitui vírgula por ponto decimal
+    valor_str = valor_str.replace('.', '').replace(',', '.')
+    # Remove qualquer coisa que não seja número ou ponto
+    valor_str = re.sub(r'[^0-9.]', '', valor_str)
     try:
-        return float(valor_limpo)
-    except:
+        return float(valor_str)
+    except ValueError:
         return 0.0
 
-def converter_m2(valor):
+def converter_numero_br_para_float(valor):
+    """Converte strings de número BR (1.234,56 ou 1,234.56) para float."""
     if isinstance(valor, (int, float)):
         return float(valor)
-    if not isinstance(valor, str):
+    if pd.isna(valor):
         return 0.0
+    valor_str = str(valor).strip()
+    # Se tiver vírgula e ponto, tenta identificar o padrão BR
+    if ',' in valor_str and '.' in valor_str:
+        # Ex: 1.234,56 -> 1234.56
+        valor_str = valor_str.replace('.', '').replace(',', '.')
+    elif ',' in valor_str:
+        # Ex: 1,234 -> 1.234 ou 1234? Assumimos que é decimal (1,23 -> 1.23)
+        # Vamos verificar se a vírgula parece ser decimal (ex: 59,49)
+        partes = valor_str.split(',')
+        if len(partes) == 2 and len(partes[1]) in [1, 2]:
+            valor_str = valor_str.replace(',', '.')
+        else:
+            # Se não for decimal, remove a vírgula (ex: 1,234 -> 1234)
+            valor_str = valor_str.replace(',', '')
     try:
-        return float(str(valor).replace(',', '.'))
-    except:
+        return float(valor_str)
+    except ValueError:
         return 0.0
 
-# SIDEBAR
+# --- SIDEBAR ---
 with st.sidebar:
     st.header("⚙️ Configurações")
     uploaded_file = st.file_uploader(
@@ -43,11 +64,12 @@ with st.sidebar:
     st.markdown("---")
     st.caption("Versão 1.0 - Desenvolvido com IA")
 
-# CORPO PRINCIPAL
+# --- CORPO PRINCIPAL ---
 if uploaded_file is not None:
     try:
-        # Lê o arquivo conforme o tipo
+        # --- 1. LEITURA DO ARQUIVO ---
         if uploaded_file.name.endswith('.pdf'):
+            # Leitura de PDF (já estava funcionando)
             with pdfplumber.open(io.BytesIO(uploaded_file.read())) as pdf:
                 all_tables = []
                 for page in pdf.pages:
@@ -55,9 +77,9 @@ if uploaded_file is not None:
                     for table in tables:
                         if table and len(table) > 1:
                             all_tables.append(table)
-                
                 if all_tables:
                     table_data = all_tables[0]
+                    # Encontra o cabeçalho
                     header_row = None
                     for i, row in enumerate(table_data):
                         if row:
@@ -65,22 +87,13 @@ if uploaded_file is not None:
                             if 'UNIDADE' in row_text:
                                 header_row = i
                                 break
-                    
                     if header_row is not None:
-                        columns = []
-                        for col in table_data[header_row]:
-                            if col:
-                                columns.append(str(col).strip())
-                            else:
-                                columns.append('')
-                        for i, col in enumerate(columns):
-                            if not col or col == '':
-                                columns[i] = f'col_{i}'
+                        columns = [str(col).strip() if col else f'col_{i}' for i, col in enumerate(table_data[header_row])]
                         df = pd.DataFrame(table_data[header_row + 1:], columns=columns)
                         df = df.dropna(how='all')
                         df = df[~df.iloc[:, 0].astype(str).str.strip().eq('')]
                     else:
-                        st.error("❌ Cabeçalho da tabela não encontrado.")
+                        st.error("❌ Cabeçalho da tabela não encontrado no PDF.")
                         st.stop()
                 else:
                     st.error("❌ Nenhuma tabela encontrada no PDF.")
@@ -88,61 +101,75 @@ if uploaded_file is not None:
         elif uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
         else:
-            # Para XLS/XLSX - estratégia robusta
+            # --- LEITURA DO XLSX (CORRIGIDA) ---
+            # Lê o arquivo sem cabeçalho para processar manualmente
             df_raw = pd.read_excel(uploaded_file, header=None)
-            
-            # Encontra a linha que contém UNIDADE
-            linha_cabecalho = None
+            # Encontra a linha com os cabeçalhos
+            header_row_idx = None
             for i, row in df_raw.iterrows():
-                row_text = ' '.join([str(cell).upper() for cell in row if pd.notna(cell)])
-                if 'UNIDADE' in row_text:
-                    linha_cabecalho = i
+                # Verifica se a linha contém a palavra 'UNIDADE' em alguma célula
+                if row.astype(str).str.contains('UNIDADE', case=False, na=False).any():
+                    header_row_idx = i
                     break
-            
-            if linha_cabecalho is not None:
-                # Pega o cabeçalho
-                cabecalho = df_raw.iloc[linha_cabecalho].fillna('').astype(str).str.strip().tolist()
-                
-                # Remove colunas vazias do cabeçalho e dos dados
-                colunas_validas = [i for i, col in enumerate(cabecalho) if col and col != '']
-                cabecalho_limpo = [cabecalho[i] for i in colunas_validas]
-                
-                # Pega os dados a partir da linha seguinte
-                df = df_raw.iloc[linha_cabecalho + 1:].reset_index(drop=True)
-                df = df.iloc[:, colunas_validas]
-                df.columns = cabecalho_limpo
-                
-                # Remove linhas vazias
-                df = df.dropna(how='all')
-            else:
-                st.error("❌ Cabeçalho 'UNIDADE' não encontrado no XLSX.")
+
+            if header_row_idx is None:
+                st.error("❌ Cabeçalho 'UNIDADE' não encontrado no arquivo XLSX.")
                 st.stop()
+
+            # Define a linha do cabeçalho e os dados
+            raw_headers = df_raw.iloc[header_row_idx].fillna('').astype(str).str.strip()
+            data = df_raw.iloc[header_row_idx + 1:].reset_index(drop=True)
+            
+            # Limpa os cabeçalhos: remove colunas com cabeçalho vazio e renomeia
+            valid_headers = []
+            for i, header in enumerate(raw_headers):
+                if header != '':
+                    valid_headers.append((i, header))
+            
+            # Cria um novo DataFrame com apenas as colunas válidas
+            df = pd.DataFrame()
+            for original_idx, new_header in valid_headers:
+                df[new_header] = data.iloc[:, original_idx]
+            
+            # Remove linhas que estão completamente vazias
+            df = df.dropna(how='all')
+            
+            # Remove linhas onde a coluna 'UNIDADE' está vazia
+            if 'UNIDADE' in df.columns:
+                df = df[df['UNIDADE'].notna() & (df['UNIDADE'].astype(str).str.strip() != '')]
+            else:
+                st.error("❌ Coluna 'UNIDADE' não encontrada após limpeza.")
+                st.stop()
+
+        # --- 2. PRÉ-PROCESSAMENTO E CONVERSÃO ---
+        # Garante que as colunas numéricas estão em float
+        if 'PREÇO' in df.columns:
+            df['PREÇO'] = df['PREÇO'].apply(converter_moeda_br_para_float)
         
-        # Limpeza final
-        df = df.dropna(subset=['UNIDADE'])
+        if '1ª AVALIAÇÃO OÁSIS II' in df.columns:
+            df['1ª AVALIAÇÃO OÁSIS II'] = df['1ª AVALIAÇÃO OÁSIS II'].apply(converter_moeda_br_para_float)
         
-        # Converte colunas monetárias
-        colunas_para_converter = ['PREÇO', '1ª AVALIAÇÃO OÁSIS II', 'DESCONTO']
-        for col in colunas_para_converter:
-            if col in df.columns:
-                df[col] = df[col].apply(converter_para_float)
+        if 'DESCONTO' in df.columns:
+            df['DESCONTO'] = df['DESCONTO'].apply(converter_moeda_br_para_float)
         
-        # Converte M²
         if 'M²' in df.columns:
-            df['M²'] = df['M²'].apply(converter_m2)
+            df['M²'] = df['M²'].apply(converter_numero_br_para_float)
         
-        # Converte PAVTO
+        # PAVTO pode vir como 'PAVTO' ou 'PAVTO.'
         coluna_pavto = None
-        for nome in ['PAVTO.', 'PAVTO', 'Pavto.', 'Pavto']:
-            if nome in df.columns:
-                coluna_pavto = nome
+        for col in ['PAVTO.', 'PAVTO']:
+            if col in df.columns:
+                coluna_pavto = col
                 break
         if coluna_pavto:
-            df[coluna_pavto] = df[coluna_pavto].apply(converter_m2)
-        
-        with st.expander("📊 Visualizar dados da planilha"):
+            df[coluna_pavto] = df[coluna_pavto].apply(converter_numero_br_para_float)
+
+        # Verifica se a conversão foi bem-sucedida (debug)
+        with st.expander("📊 Dados após conversão (verifique os tipos)"):
+            st.write(df.dtypes)
             st.dataframe(df)
-        
+
+        # --- 3. FILTROS E EXIBIÇÃO ---
         st.markdown("---")
         
         # FILTROS
@@ -156,10 +183,10 @@ if uploaded_file is not None:
                 tipo_selecionado = 'Todas'
         
         with col2:
-            andar_min = st.number_input("📌 Andar mínimo", min_value=0, value=0)
+            andar_min = st.number_input("📌 Andar mínimo", min_value=0, value=0, step=1)
         
         with col3:
-            if 'PREÇO' in df.columns:
+            if 'PREÇO' in df.columns and not df['PREÇO'].isna().all():
                 preco_max = st.number_input(
                     "💰 Preço máximo (R$)",
                     min_value=100000,
@@ -186,12 +213,7 @@ if uploaded_file is not None:
             resultado = resultado[resultado['TIPOLOGIA'] == tipo_selecionado]
         
         if andar_min > 0:
-            coluna_pavto = None
-            for nome in ['PAVTO.', 'PAVTO', 'Pavto.', 'Pavto']:
-                if nome in df.columns:
-                    coluna_pavto = nome
-                    break
-            if coluna_pavto:
+            if coluna_pavto and coluna_pavto in df.columns:
                 resultado = resultado[resultado[coluna_pavto] >= andar_min]
         
         if 'PREÇO' in df.columns:
@@ -208,7 +230,6 @@ if uploaded_file is not None:
             if '1ª AVALIAÇÃO OÁSIS II' in resultado.columns and 'PREÇO' in resultado.columns:
                 resultado['% DESCONTO'] = ((resultado['1ª AVALIAÇÃO OÁSIS II'] - resultado['PREÇO']) / resultado['1ª AVALIAÇÃO OÁSIS II'] * 100).round(1)
         
-        # EXIBE RESULTADOS
         st.subheader(f"🔍 Resultados: {len(resultado)} imóveis encontrados")
         
         if not resultado.empty:
@@ -219,7 +240,6 @@ if uploaded_file is not None:
             
             colunas_base = ['UNIDADE', 'PAVTO.', 'COLUNA', 'M²', 'TIPOLOGIA', 'VAGA', 'SOL', 'PREÇO']
             colunas_extras = ['R$/m²', '% DESCONTO', 'DISPONIBILIDADE']
-            
             colunas_exibir = [c for c in colunas_base + colunas_extras if c in resultado_ordenado.columns]
             
             st.dataframe(
