@@ -24,37 +24,51 @@ if uploaded_file is not None:
         # Lê o arquivo conforme o tipo
         if uploaded_file.name.endswith('.pdf'):
             with pdfplumber.open(io.BytesIO(uploaded_file.read())) as pdf:
-                tables = pdf.pages[0].extract_tables()
-                if tables:
-                    table_data = tables[0]
+                all_tables = []
+                for page in pdf.pages:
+                    tables = page.extract_tables()
+                    for table in tables:
+                        if table and len(table) > 1:
+                            all_tables.append(table)
+                
+                if all_tables:
+                    table_data = all_tables[0]
                     
-                    # Pega o cabeçalho e limpa espaços
-                    columns = [str(col).strip() if col else '' for col in table_data[0]]
+                    # DEBUG: Mostra primeiras linhas
+                    st.write("🔍 Debug: Primeiras 5 linhas da tabela bruta:")
+                    for i, row in enumerate(table_data[:5]):
+                        st.write(f"Linha {i}: {row}")
                     
-                    # Cria o DataFrame com os dados
-                    df = pd.DataFrame(table_data[1:], columns=columns)
+                    # Procura onde está o cabeçalho
+                    header_row = None
+                    for i, row in enumerate(table_data):
+                        if row:
+                            row_text = ' '.join([str(cell).upper() for cell in row if cell])
+                            if 'UNIDADE' in row_text or 'PAVTO' in row_text or 'M²' in row_text:
+                                header_row = i
+                                break
                     
-                    # Remove linhas completamente vazias
-                    df = df.dropna(how='all')
-                    
-                    # Tenta encontrar a coluna 'UNIDADE' mesmo com espaços ou caracteres invisíveis
-                    unidade_col = None
-                    for col in df.columns:
-                        if 'UNIDADE' in col.upper().replace(' ', ''):
-                            unidade_col = col
-                            break
-                    
-                    if unidade_col:
-                        # Renomeia a coluna para 'UNIDADE' padronizada
-                        df.rename(columns={unidade_col: 'UNIDADE'}, inplace=True)
+                    if header_row is not None:
+                        columns = []
+                        for col in table_data[header_row]:
+                            if col:
+                                columns.append(str(col).strip())
+                            else:
+                                columns.append('')
+                        
+                        # Preenche colunas vazias com nomes genéricos
+                        for i, col in enumerate(columns):
+                            if not col or col == '':
+                                columns[i] = f'col_{i}'
+                        
+                        df = pd.DataFrame(table_data[header_row + 1:], columns=columns)
+                        df = df.dropna(how='all')
+                        
+                        # Remove linhas que são totalmente vazias ou só espaços
+                        df = df[~df.iloc[:, 0].astype(str).str.strip().eq('')]
                     else:
-                        st.error("❌ Coluna 'UNIDADE' não encontrada no PDF.")
-                        st.write("Colunas disponíveis:", df.columns.tolist())
+                        st.error("❌ Cabeçalho da tabela não encontrado.")
                         st.stop()
-                    
-                    # Padroniza nomes das outras colunas (remove espaços extras)
-                    df.columns = df.columns.str.strip()
-                    
                 else:
                     st.error("❌ Nenhuma tabela encontrada no PDF.")
                     st.stop()
@@ -63,10 +77,10 @@ if uploaded_file is not None:
         else:
             df = pd.read_excel(uploaded_file, skiprows=2)
         
-        # Limpeza final
+        # Limpeza
         df = df.dropna(subset=['UNIDADE'])
         
-        # Converte PREÇO para número (limpa R$ e . e ,)
+        # Converte PREÇO para número
         if 'PREÇO' in df.columns:
             df['PREÇO'] = df['PREÇO'].astype(str).str.replace('R$ ', '').str.replace('.', '').str.replace(',', '.').astype(float)
         
@@ -145,7 +159,6 @@ if uploaded_file is not None:
             else:
                 resultado_ordenado = resultado
             
-            # Define colunas a exibir (apenas as que existem)
             colunas_base = ['UNIDADE', 'PAVTO.', 'COLUNA', 'M²', 'TIPOLOGIA', 'VAGA', 'SOL', 'PREÇO']
             colunas_extras = ['R$/m²', '% DESCONTO', 'DISPONIBILIDADE']
             
