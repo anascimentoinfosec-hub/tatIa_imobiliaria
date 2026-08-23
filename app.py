@@ -5,7 +5,7 @@ import pdfplumber
 import re
 
 # CONFIGURAÇÃO DA PÁGINA
-st.set_page_config(page_title="IA Imobiliária", layout="wide")
+st.set_page_config(page_title="ImobFlux IA", layout="wide")
 st.title("🏢 ImobFlux IA")
 st.markdown("---")
 
@@ -28,6 +28,13 @@ def converter_para_float(valor):
         return float(valor_limpo)
     except:
         return 0.0
+
+# FUNÇÃO PARA GARANTIR QUE COLUNAS NUMÉRICAS SÃO FLOAT
+def garantir_numerico(df, coluna):
+    """Converte uma coluna para float, tratando erros"""
+    if coluna in df.columns:
+        df[coluna] = df[coluna].apply(converter_para_float)
+    return df
 
 # SIDEBAR
 with st.sidebar:
@@ -94,17 +101,20 @@ if uploaded_file is not None:
         # Limpeza
         df = df.dropna(subset=['UNIDADE'])
         
-        # Converte PREÇO usando a função universal
-        if 'PREÇO' in df.columns:
-            df['PREÇO'] = df['PREÇO'].apply(converter_para_float)
+        # Converte TODAS as colunas monetárias para float
+        colunas_para_converter = ['PREÇO', '1ª AVALIAÇÃO OÁSIS II', 'DESCONTO']
+        for col in colunas_para_converter:
+            if col in df.columns:
+                df[col] = df[col].apply(converter_para_float)
         
-        # Converte 1ª AVALIAÇÃO
-        if '1ª AVALIAÇÃO OÁSIS II' in df.columns:
-            df['1ª AVALIAÇÃO OÁSIS II'] = df['1ª AVALIAÇÃO OÁSIS II'].apply(converter_para_float)
+        # Converte M² para float
+        if 'M²' in df.columns:
+            df['M²'] = df['M²'].astype(str).str.replace(',', '.').str.extract(r'(\d+\.?\d*)').astype(float)
         
-        # Converte DESCONTO (se existir)
-        if 'DESCONTO' in df.columns:
-            df['DESCONTO'] = df['DESCONTO'].apply(converter_para_float)
+        # Converte PAVTO para inteiro (se existir)
+        if 'PAVTO.' in df.columns or 'PAVTO' in df.columns:
+            coluna_pavto = 'PAVTO.' if 'PAVTO.' in df.columns else 'PAVTO'
+            df[coluna_pavto] = df[coluna_pavto].astype(str).str.extract(r'(\d+)').astype(float)
         
         with st.expander("📊 Visualizar dados da planilha"):
             st.dataframe(df)
@@ -151,8 +161,10 @@ if uploaded_file is not None:
         if tipo_selecionado != 'Todas' and 'TIPOLOGIA' in df.columns:
             resultado = resultado[resultado['TIPOLOGIA'] == tipo_selecionado]
         
-        if andar_min > 0 and 'PAVTO.' in df.columns:
-            resultado = resultado[resultado['PAVTO.'] >= andar_min]
+        if andar_min > 0:
+            coluna_pavto = 'PAVTO.' if 'PAVTO.' in df.columns else 'PAVTO'
+            if coluna_pavto in df.columns:
+                resultado = resultado[resultado[coluna_pavto] >= andar_min]
         
         if 'PREÇO' in df.columns:
             resultado = resultado[resultado['PREÇO'] <= preco_max]
