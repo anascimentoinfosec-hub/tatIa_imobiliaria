@@ -80,46 +80,39 @@ if uploaded_file is not None:
         elif uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
         else:
-            # --- LEITURA XLSX SIMPLIFICADA ---
-            # Tenta ler com skiprows automático
-            try:
-                df = pd.read_excel(uploaded_file, skiprows=2)
-            except:
-                df = pd.read_excel(uploaded_file, header=0)
+            # --- LEITURA XLSX (skiprows=2) ---
+            df = pd.read_excel(uploaded_file, skiprows=2)
             
-            # Se não encontrou UNIDADE, tenta encontrar a linha correta
+            # Remove linhas completamente vazias
+            df = df.dropna(how='all')
+            
+            # Remove colunas completamente vazias
+            df = df.dropna(axis=1, how='all')
+            
+            # Filtra linhas com UNIDADE válida
+            if 'UNIDADE' in df.columns:
+                df = df[df['UNIDADE'].notna() & (df['UNIDADE'].astype(str).str.strip() != '')]
+            
+            # Se não encontrou UNIDADE, tenta outra abordagem
             if 'UNIDADE' not in df.columns:
-                df_raw = pd.read_excel(uploaded_file, header=None)
-                header_row = None
-                for i, row in df_raw.iterrows():
-                    row_text = ' '.join([str(cell).upper() for cell in row if pd.notna(cell)])
-                    if 'UNIDADE' in row_text:
-                        header_row = i
+                # Tenta ler sem skiprows
+                df = pd.read_excel(uploaded_file, header=0)
+                # Procura a linha com UNIDADE
+                for i, row in df.iterrows():
+                    if 'UNIDADE' in str(row.values):
+                        df = pd.read_excel(uploaded_file, skiprows=i)
                         break
-                
-                if header_row is not None:
-                    # Pula as linhas até o cabeçalho
-                    df = pd.read_excel(uploaded_file, skiprows=header_row)
-                else:
-                    st.error("❌ Cabeçalho 'UNIDADE' não encontrado.")
-                    st.stop()
-        
-        # --- LIMPEZA ---
-        # Remove colunas completamente vazias
-        df = df.dropna(axis=1, how='all')
-        
-        # Remove linhas vazias
-        df = df.dropna(how='all')
-        
-        # Filtra linhas com UNIDADE válida
-        if 'UNIDADE' in df.columns:
-            df = df[df['UNIDADE'].notna() & (df['UNIDADE'].astype(str).str.strip() != '')]
         
         # --- CONVERSÃO DE COLUNAS NUMÉRICAS ---
         colunas_para_converter = ['PREÇO', '1ª AVALIAÇÃO OÁSIS II', 'DESCONTO', 'M²', 'PAVTO.', 'PAVTO']
         for col in colunas_para_converter:
             if col in df.columns:
                 df[col] = df[col].apply(converter_para_float)
+        
+        # --- DEBUG: Mostra as colunas encontradas ---
+        with st.expander("🔍 Colunas encontradas"):
+            st.write("Colunas:", df.columns.tolist())
+            st.dataframe(df.head(5))
         
         st.markdown("---")
         
