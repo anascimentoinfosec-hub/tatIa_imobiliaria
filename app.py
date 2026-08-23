@@ -3,26 +3,34 @@ import pandas as pd
 import io
 import pdfplumber
 import re
-import numpy as np
 
-# CONFIGURAÇÃO DA PÁGINA
+# CONFIGURAÇÃO
 st.set_page_config(page_title="ImobFlux IA", layout="wide")
 st.title("🏢 ImobFlux IA")
 st.markdown("---")
 
-# --- FUNÇÕES DE CONVERSÃO ROBUSTAS ---
+# --- FUNÇÃO DE CONVERSÃO CORRIGIDA ---
 def converter_para_float(valor):
-    """Converte QUALQUER coisa para float"""
     if valor is None or pd.isna(valor):
         return 0.0
     if isinstance(valor, (int, float)):
         return float(valor)
     
     valor_str = str(valor).strip()
-    # Remove R$, espaços, pontos de milhar
-    valor_str = re.sub(r'[R$\s]', '', valor_str)
-    # Substitui vírgula por ponto
-    valor_str = valor_str.replace(',', '.')
+    
+    # Remove R$ e espaços
+    valor_str = re.sub(r'R\$\s*', '', valor_str)
+    
+    # Trata formato BR (1.234,56 ou 59,49)
+    if '.' in valor_str and ',' in valor_str:
+        valor_str = valor_str.replace('.', '').replace(',', '.')
+    elif ',' in valor_str:
+        partes = valor_str.split(',')
+        if len(partes) == 2 and len(partes[1]) <= 2:
+            valor_str = valor_str.replace(',', '.')
+        else:
+            valor_str = valor_str.replace(',', '')
+    
     # Remove tudo que não é número ou ponto
     valor_str = re.sub(r'[^0-9.]', '', valor_str)
     
@@ -35,7 +43,7 @@ def converter_para_float(valor):
 with st.sidebar:
     st.header("⚙️ Configurações")
     uploaded_file = st.file_uploader(
-        "📤 Envie a planilha da construtora",
+        "📤 Envie a planilha",
         type=['xlsx', 'xls', 'csv', 'pdf']
     )
     st.markdown("---")
@@ -44,7 +52,7 @@ with st.sidebar:
 # CORPO PRINCIPAL
 if uploaded_file is not None:
     try:
-        # --- LEITURA DO ARQUIVO ---
+        # --- LEITURA ---
         if uploaded_file.name.endswith('.pdf'):
             with pdfplumber.open(io.BytesIO(uploaded_file.read())) as pdf:
                 all_tables = []
@@ -76,10 +84,10 @@ if uploaded_file is not None:
         elif uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
         else:
-            # --- LEITURA DO XLSX (MANUAL) ---
+            # --- XLSX ---
             df_raw = pd.read_excel(uploaded_file, header=None)
             
-            # Encontra a linha com "UNIDADE"
+            # Encontra "UNIDADE"
             header_row = None
             for i, row in df_raw.iterrows():
                 row_text = ' '.join([str(cell).upper() for cell in row if pd.notna(cell)])
@@ -91,40 +99,35 @@ if uploaded_file is not None:
                 st.error("❌ Cabeçalho 'UNIDADE' não encontrado.")
                 st.stop()
             
-            # Pega cabeçalho e dados
             headers = df_raw.iloc[header_row].fillna('').astype(str).str.strip().tolist()
             dados = df_raw.iloc[header_row + 1:].reset_index(drop=True)
             
-            # Remove colunas sem nome
+            # Remove colunas vazias
             colunas_validas = [(i, h) for i, h in enumerate(headers) if h and h != '']
             
-            # Cria DataFrame
             df = pd.DataFrame()
             for i, h in colunas_validas:
                 df[h] = dados.iloc[:, i]
             
-            # Remove linhas vazias
             df = df.dropna(how='all')
             if 'UNIDADE' in df.columns:
                 df = df[df['UNIDADE'].notna() & (df['UNIDADE'].astype(str).str.strip() != '')]
-
-        # --- FORÇA A CONVERSÃO DE TODAS AS COLUNAS NUMÉRICAS ---
-        colunas_numericas = ['PREÇO', '1ª AVALIAÇÃO OÁSIS II', 'DESCONTO', 'M²', 'PAVTO.', 'PAVTO']
         
-        for col in colunas_numericas:
+        # --- CONVERSÃO ---
+        colunas_para_converter = ['PREÇO', '1ª AVALIAÇÃO OÁSIS II', 'DESCONTO', 'M²', 'PAVTO.', 'PAVTO']
+        for col in colunas_para_converter:
             if col in df.columns:
                 df[col] = df[col].apply(converter_para_float)
         
-        # --- MOSTRA OS TIPOS PARA DEBUG ---
+        # --- DEBUG ---
         with st.expander("🔍 Debug - Tipos das colunas"):
-            st.write("Tipos de dados após conversão:")
+            st.write("Tipos de dados:")
             st.write(df.dtypes)
-            st.write("Primeiras 5 linhas:")
             st.dataframe(df.head())
-
+        
         st.markdown("---")
         
-        # --- FILTROS (TODOS OS FILTROS SÃO APLICADOS COM SEGURANÇA) ---
+        # --- FILTROS ---
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
@@ -138,11 +141,11 @@ if uploaded_file is not None:
             andar_min = st.number_input("📌 Andar mínimo", min_value=0, value=0, step=1)
         
         with col3:
-            if 'PREÇO' in df.columns:
+            if 'PREÇO' in df.columns and not df['PREÇO'].isna().all():
                 preco_max = st.number_input(
                     "💰 Preço máximo (R$)",
                     min_value=0,
-                    value=int(df['PREÇO'].max()) if not df['PREÇO'].isna().all() else 1000000,
+                    value=int(df['PREÇO'].max()) if df['PREÇO'].max() > 0 else 1000000,
                     step=50000,
                     format="%d"
                 )
@@ -163,7 +166,6 @@ if uploaded_file is not None:
             resultado = resultado[resultado['TIPOLOGIA'] == tipo_selecionado]
         
         if andar_min > 0:
-            # Tenta encontrar a coluna de andar
             col_pavto = 'PAVTO.' if 'PAVTO.' in df.columns else ('PAVTO' if 'PAVTO' in df.columns else None)
             if col_pavto:
                 resultado = resultado[resultado[col_pavto] >= andar_min]
@@ -174,7 +176,7 @@ if uploaded_file is not None:
         if disponibilidade != 'Todas' and 'DISPONIBILIDADE' in df.columns:
             resultado = resultado[resultado['DISPONIBILIDADE'] == disponibilidade]
         
-        # --- CALCULA INDICADORES ---
+        # --- INDICADORES ---
         if not resultado.empty:
             if 'PREÇO' in resultado.columns and 'M²' in resultado.columns:
                 resultado['R$/m²'] = (resultado['PREÇO'] / resultado['M²']).round(2)
@@ -182,7 +184,7 @@ if uploaded_file is not None:
             if '1ª AVALIAÇÃO OÁSIS II' in resultado.columns and 'PREÇO' in resultado.columns:
                 resultado['% DESCONTO'] = ((resultado['1ª AVALIAÇÃO OÁSIS II'] - resultado['PREÇO']) / resultado['1ª AVALIAÇÃO OÁSIS II'] * 100).round(1)
         
-        # --- EXIBE RESULTADOS ---
+        # --- EXIBE ---
         st.subheader(f"🔍 Resultados: {len(resultado)} imóveis encontrados")
         
         if not resultado.empty:
@@ -220,7 +222,7 @@ if uploaded_file is not None:
                     st.write(f"- *Tipologia:* {melhor['TIPOLOGIA']}")
             
             with col_b:
-                if 'PREÇO' in melhor:
+                if 'PREÇO' in melhor and melhor['PREÇO'] > 0:
                     valor = melhor['PREÇO']
                     entrada_percentual = st.slider("Entrada (%)", 20, 50, 30)
                     entrada = valor * (entrada_percentual / 100)
@@ -235,12 +237,14 @@ if uploaded_file is not None:
                     st.write(f"Financiado: R$ {financiado:,.2f}")
                     st.write(f"Parcela estimada: R$ {parcela_media:,.2f}")
                     st.caption(f"Prazo: {prazo_meses} meses (35 anos), juros: {juros*100}% a.a. (SAC)")
+                else:
+                    st.warning("⚠️ Valor do imóvel não disponível para simulação.")
         else:
-            st.warning("⚠️ Nenhum imóvel encontrado com os filtros atuais. Tente ajustar.")
+            st.warning("⚠️ Nenhum imóvel encontrado com os filtros atuais.")
     
     except Exception as e:
-        st.error(f"❌ Erro ao ler a planilha: {str(e)}")
-        st.info("Verifique o formato do arquivo (XLSX, CSV ou PDF).")
+        st.error(f"❌ Erro: {str(e)}")
+        st.info("Verifique o formato do arquivo.")
 
 else:
     st.info("👈 Envie a planilha da construtora para começar")
