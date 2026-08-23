@@ -1,11 +1,11 @@
 import streamlit as st
 import pandas as pd
 import io
-import tabula
+import pdfplumber
 
 # CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="IA Imobiliária", layout="wide")
-st.title("🏢 ImobFlux IA")
+st.title("🏢 IA Imobiliária - Oásis II")
 st.markdown("---")
 
 # SIDEBAR
@@ -23,8 +23,14 @@ if uploaded_file is not None:
     try:
         # Lê o arquivo conforme o tipo
         if uploaded_file.name.endswith('.pdf'):
-            # Lê PDF com tabula
-            df = tabula.read_pdf(io.BytesIO(uploaded_file.read()), pages='all')[0]
+            # Lê PDF com pdfplumber (NÃO precisa de Java)
+            with pdfplumber.open(io.BytesIO(uploaded_file.read())) as pdf:
+                tables = pdf.pages[0].extract_tables()
+                if tables:
+                    df = pd.DataFrame(tables[0][1:], columns=tables[0][0])
+                else:
+                    st.error("❌ Nenhuma tabela encontrada no PDF")
+                    st.stop()
         elif uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
         else:
@@ -32,6 +38,9 @@ if uploaded_file is not None:
         
         # Limpeza
         df = df.dropna(subset=['UNIDADE'])
+        
+        # Converte PREÇO para número (limpa R$ e .)
+        df['PREÇO'] = df['PREÇO'].astype(str).str.replace('R$ ', '').str.replace('.', '').str.replace(',', '.').astype(float)
         
         with st.expander("📊 Visualizar dados da planilha"):
             st.dataframe(df)
@@ -103,11 +112,11 @@ if uploaded_file is not None:
             col_a, col_b = st.columns([2, 1])
             
             with col_a:
-                st.success(f"**Melhor custo-benefício:** Unidade {melhor['UNIDADE']}")
-                st.write(f"- **Preço:** R$ {melhor['PREÇO']:,.2f}")
-                st.write(f"- **R$/m²:** R$ {melhor['R$/m²']:.2f}")
-                st.write(f"- **Desconto:** {melhor['% DESCONTO']}%")
-                st.write(f"- **Tipologia:** {melhor['TIPOLOGIA']}")
+                st.success(f"*Melhor custo-benefício:* Unidade {melhor['UNIDADE']}")
+                st.write(f"- *Preço:* R$ {melhor['PREÇO']:,.2f}")
+                st.write(f"- *R$/m²:* R$ {melhor['R$/m²']:.2f}")
+                st.write(f"- *Desconto:* {melhor['% DESCONTO']}%")
+                st.write(f"- *Tipologia:* {melhor['TIPOLOGIA']}")
             
             with col_b:
                 valor = melhor['PREÇO']
@@ -118,12 +127,12 @@ if uploaded_file is not None:
                 prazo_meses = 420
                 parcela_media = financiado * (1 + juros/12) / prazo_meses
                 
-                st.info(f"**Simulação - Unidade {melhor['UNIDADE']}**")
+                st.info(f"*Simulação - Unidade {melhor['UNIDADE']}*")
                 st.write(f"Valor total: R$ {valor:,.2f}")
                 st.write(f"Entrada ({entrada_percentual}%): R$ {entrada:,.2f}")
                 st.write(f"Financiado: R$ {financiado:,.2f}")
                 st.write(f"Parcela estimada: R$ {parcela_media:,.2f}")
-                st.caption(f"*Prazo: {prazo_meses} meses (35 anos), juros: {juros*100}% a.a. (SAC)*")
+                st.caption(f"Prazo: {prazo_meses} meses (35 anos), juros: {juros*100}% a.a. (SAC)")
         else:
             st.warning("⚠️ Nenhum imóvel encontrado com os filtros atuais. Tente ajustar.")
     
@@ -135,7 +144,7 @@ else:
     st.info("👈 Envie a planilha da construtora no menu lateral para começar")
     st.markdown("""
     ### Como usar:
-    1. Clique em **"Browse files"** no menu lateral
+    1. Clique em *"Browse files"* no menu lateral
     2. Selecione a planilha (XLSX, CSV ou PDF) da construtora
     3. Ajuste os filtros
     4. A IA recomenda o melhor imóvel
