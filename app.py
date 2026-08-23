@@ -80,74 +80,40 @@ if uploaded_file is not None:
         elif uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
         else:
-            # --- LEITURA XLSX CORRIGIDA ---
-            df_raw = pd.read_excel(uploaded_file, header=None)
+            # --- LEITURA XLSX SIMPLIFICADA ---
+            # Tenta ler com skiprows automático
+            try:
+                df = pd.read_excel(uploaded_file, skiprows=2)
+            except:
+                df = pd.read_excel(uploaded_file, header=0)
             
-            # Encontra a linha com "UNIDADE"
-            header_row = None
-            for i, row in df_raw.iterrows():
-                row_text = ' '.join([str(cell).upper() for cell in row if pd.notna(cell)])
-                if 'UNIDADE' in row_text:
-                    header_row = i
-                    break
-            
-            if header_row is None:
-                st.error("❌ Cabeçalho 'UNIDADE' não encontrado.")
-                st.stop()
-            
-            # Pega os cabeçalhos
-            headers = df_raw.iloc[header_row].fillna('').astype(str).str.strip().tolist()
-            
-            # --- RENOMEIA AS COLUNAS PARA PADRÃO ---
-            # Mapeamento de nomes encontrados no XLSX para nomes padronizados
-            mapeamento = {
-                'UNIDADE': 'UNIDADE',
-                'PAVTO': 'PAVTO.',
-                'PAVTO.': 'PAVTO.',
-                'COLUNA': 'COLUNA',
-                'M²': 'M²',
-                'M2': 'M²',
-                'TIPOLOGIA': 'TIPOLOGIA',
-                'VAGA': 'VAGA',
-                'SOL': 'SOL',
-                '1ª AVALIAÇÃO OÁSIS II': '1ª AVALIAÇÃO OÁSIS II',
-                '1ª AVALIAÇÃO OÁSIS II': '1ª AVALIAÇÃO OÁSIS II',
-                'DESCONTO': 'DESCONTO',
-                'PREÇO': 'PREÇO',
-                'DISPONIBILIDADE': 'DISPONIBILIDADE'
-            }
-            
-            # Renomeia os cabeçalhos
-            headers_renomeados = []
-            for h in headers:
-                # Remove espaços extras e quebras de linha
-                h_limpo = re.sub(r'\s+', ' ', h).strip()
-                # Tenta encontrar no mapeamento
-                encontrado = False
-                for chave, valor in mapeamento.items():
-                    if chave in h_limpo:
-                        headers_renomeados.append(valor)
-                        encontrado = True
+            # Se não encontrou UNIDADE, tenta encontrar a linha correta
+            if 'UNIDADE' not in df.columns:
+                df_raw = pd.read_excel(uploaded_file, header=None)
+                header_row = None
+                for i, row in df_raw.iterrows():
+                    row_text = ' '.join([str(cell).upper() for cell in row if pd.notna(cell)])
+                    if 'UNIDADE' in row_text:
+                        header_row = i
                         break
-                if not encontrado:
-                    headers_renomeados.append(h_limpo)
-            
-            # Pega os dados
-            dados = df_raw.iloc[header_row + 1:].reset_index(drop=True)
-            
-            # Cria DataFrame com colunas renomeadas
-            df = pd.DataFrame()
-            for i, header in enumerate(headers_renomeados):
-                if i < len(dados.columns):
-                    df[header] = dados.iloc[:, i]
-            
-            # Remove colunas com cabeçalho vazio
-            df = df.loc[:, ~df.columns.str.strip().eq('')]
-            
-            # Remove linhas vazias
-            df = df.dropna(how='all')
-            if 'UNIDADE' in df.columns:
-                df = df[df['UNIDADE'].notna() & (df['UNIDADE'].astype(str).str.strip() != '')]
+                
+                if header_row is not None:
+                    # Pula as linhas até o cabeçalho
+                    df = pd.read_excel(uploaded_file, skiprows=header_row)
+                else:
+                    st.error("❌ Cabeçalho 'UNIDADE' não encontrado.")
+                    st.stop()
+        
+        # --- LIMPEZA ---
+        # Remove colunas completamente vazias
+        df = df.dropna(axis=1, how='all')
+        
+        # Remove linhas vazias
+        df = df.dropna(how='all')
+        
+        # Filtra linhas com UNIDADE válida
+        if 'UNIDADE' in df.columns:
+            df = df[df['UNIDADE'].notna() & (df['UNIDADE'].astype(str).str.strip() != '')]
         
         # --- CONVERSÃO DE COLUNAS NUMÉRICAS ---
         colunas_para_converter = ['PREÇO', '1ª AVALIAÇÃO OÁSIS II', 'DESCONTO', 'M²', 'PAVTO.', 'PAVTO']
