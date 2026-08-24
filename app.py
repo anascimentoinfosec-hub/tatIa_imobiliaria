@@ -80,7 +80,7 @@ if uploaded_file is not None:
         elif uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
         else:
-            # --- LEITURA XLSX (SEM CABEÇALHO) ---
+            # --- LEITURA XLSX ---
             df_raw = pd.read_excel(uploaded_file, header=None)
             
             # Encontra a linha do cabeçalho
@@ -95,23 +95,11 @@ if uploaded_file is not None:
                 st.error("❌ Cabeçalho 'UNIDADE' não encontrado.")
                 st.stop()
             
-            # Pega os cabeçalhos
-            cabecalho = []
-            for col in df_raw.iloc[linha_cabecalho]:
-                if pd.isna(col):
-                    cabecalho.append('')
-                else:
-                    cabecalho.append(str(col).strip())
-            
-            # --- CORREÇÃO: identifica as colunas com R$ e as ignora ---
             # Pega os dados a partir da linha seguinte
             dados = df_raw.iloc[linha_cabecalho + 1:].reset_index(drop=True)
             
-            # Cria um DataFrame com os cabeçalhos limpos
-            df = pd.DataFrame()
-            
-            # Mapeamento: índice da coluna -> nome correto
-            # Baseado na imagem: 
+            # --- MAPEAMENTO DAS COLUNAS (NA ORDEM DA PLANILHA) ---
+            # Baseado na imagem:
             # Coluna 0: UNIDADE
             # Coluna 1: PAVTO
             # Coluna 2: COLUNA
@@ -141,6 +129,8 @@ if uploaded_file is not None:
                 13: 'DISPONIBILIDADE'
             }
             
+            # Cria DataFrame com as colunas NA ORDEM DA PLANILHA
+            df = pd.DataFrame()
             for idx_original, nome_novo in mapeamento.items():
                 if idx_original < len(dados.columns):
                     df[nome_novo] = dados.iloc[:, idx_original]
@@ -212,25 +202,23 @@ if uploaded_file is not None:
         if not resultado.empty:
             if 'PREÇO' in resultado.columns and 'M²' in resultado.columns:
                 resultado['R$/m²'] = (resultado['PREÇO'] / resultado['M²']).round(2)
-            
-            if '1ª AVALIAÇÃO OÁSIS II' in resultado.columns and 'PREÇO' in resultado.columns:
-                resultado['% DESCONTO'] = ((resultado['1ª AVALIAÇÃO OÁSIS II'] - resultado['PREÇO']) / resultado['1ª AVALIAÇÃO OÁSIS II'] * 100).round(1)
+        
+        # --- ORDEM DAS COLUNAS IGUAL À PLANILHA ---
+        colunas_ordem = ['UNIDADE', 'PAVTO', 'COLUNA', 'M²', 'TIPOLOGIA', 'VAGA', 'SOL', '1ª AVALIAÇÃO OÁSIS II', 'DESCONTO', 'PREÇO', 'DISPONIBILIDADE']
+        colunas_adicionais = ['R$/m²']
+        colunas_ordem = colunas_ordem + colunas_adicionais
+        
+        # Garante que todas as colunas existem no DataFrame
+        colunas_ordem = [c for c in colunas_ordem if c in resultado.columns]
         
         # --- EXIBE ---
         st.subheader(f"🔍 Resultados: {len(resultado)} imóveis encontrados")
         
         if not resultado.empty:
-            if 'R$/m²' in resultado.columns:
-                resultado_ordenado = resultado.sort_values('R$/m²')
-            else:
-                resultado_ordenado = resultado
-            
-            colunas_base = ['UNIDADE', 'PAVTO', 'COLUNA', 'M²', 'TIPOLOGIA', 'VAGA', 'SOL', 'PREÇO']
-            colunas_extras = ['R$/m²', '% DESCONTO', 'DISPONIBILIDADE']
-            colunas_exibir = [c for c in colunas_base + colunas_extras if c in resultado_ordenado.columns]
+            resultado_ordenado = resultado.sort_values('R$/m²') if 'R$/m²' in resultado.columns else resultado
             
             st.dataframe(
-                resultado_ordenado[colunas_exibir],
+                resultado_ordenado[colunas_ordem],
                 use_container_width=True,
                 height=400
             )
@@ -248,8 +236,10 @@ if uploaded_file is not None:
                     st.write(f"- *Preço:* R$ {melhor['PREÇO']:,.2f}")
                 if 'R$/m²' in melhor:
                     st.write(f"- *R$/m²:* R$ {melhor['R$/m²']:.2f}")
-                if '% DESCONTO' in melhor:
-                    st.write(f"- *Desconto:* {melhor['% DESCONTO']}%")
+                if '1ª AVALIAÇÃO OÁSIS II' in melhor:
+                    st.write(f"- *Avaliação:* R$ {melhor['1ª AVALIAÇÃO OÁSIS II']:,.2f}")
+                if 'DESCONTO' in melhor:
+                    st.write(f"- *Desconto:* R$ {melhor['DESCONTO']:,.2f}")
                 if 'TIPOLOGIA' in melhor:
                     st.write(f"- *Tipologia:* {melhor['TIPOLOGIA']}")
             
