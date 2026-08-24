@@ -6,12 +6,11 @@ import re
 
 # CONFIGURAÇÃO
 st.set_page_config(page_title="ImobFlux IA", layout="wide")
-st.title("🏢 ImobFlux IA - Modo de Inspeção")
+st.title("🏢 ImobFlux IA")
 st.markdown("---")
 
 # --- FUNÇÃO DE CONVERSÃO ---
 def converter_para_float(valor):
-    """Converte strings de moeda BR para float."""
     if valor is None or pd.isna(valor):
         return 0.0
     if isinstance(valor, (int, float)):
@@ -36,6 +35,15 @@ def converter_para_float(valor):
     except:
         return 0.0
 
+def juntar_colunas_moeda(df, coluna_simbolo, coluna_valor, nome_novo):
+    """Junta duas colunas que formam um valor monetário (ex: R$ | 440.000,00)"""
+    if coluna_simbolo in df.columns and coluna_valor in df.columns:
+        # Junta as duas colunas
+        df[nome_novo] = df[coluna_simbolo].astype(str).str.strip() + ' ' + df[coluna_valor].astype(str).str.strip()
+        # Remove as colunas originais
+        df = df.drop(columns=[coluna_simbolo, coluna_valor])
+    return df
+
 # SIDEBAR
 with st.sidebar:
     st.header("⚙️ Configurações")
@@ -44,17 +52,13 @@ with st.sidebar:
         type=['xlsx', 'xls', 'csv', 'pdf']
     )
     st.markdown("---")
-    st.caption("Versão 1.0 - Modo de Inspeção")
+    st.caption("Versão 1.0")
 
 # CORPO PRINCIPAL
 if uploaded_file is not None:
     try:
-        st.subheader("📄 Arquivo Carregado")
-        st.write(f"Nome: {uploaded_file.name}")
-
-        # --- 1. LEITURA DO ARQUIVO ---
+        # --- LEITURA ---
         if uploaded_file.name.endswith('.pdf'):
-            # (Leitura de PDF - sem alterações)
             with pdfplumber.open(io.BytesIO(uploaded_file.read())) as pdf:
                 all_tables = []
                 for page in pdf.pages:
@@ -83,66 +87,226 @@ if uploaded_file is not None:
                     st.error("❌ Nenhuma tabela encontrada no PDF.")
                     st.stop()
         elif uploaded_file.name.endswith('.csv'):
-            # (Leitura de CSV)
             df = pd.read_csv(uploaded_file)
         else:
-            # --- LEITURA XLSX - MODO DE INSPEÇÃO (NENHUM skiprows ou header) ---
-            # Lê o arquivo sem nenhum parâmetro especial, para ver os dados brutos
+            # --- LEITURA XLSX ---
+            # Lê SEM cabeçalho para inspecionar
             df_raw = pd.read_excel(uploaded_file, header=None)
             
-            # === EXPANSOR DE INSPEÇÃO VISUAL ===
-            with st.expander("🔍 Modo de Inspeção do XLSX (veja os dados brutos)", expanded=True):
-                st.markdown("*Essa é a visualização do arquivo XLSX que você enviou, SEM pular nenhuma linha:*")
-                st.dataframe(df_raw)
-                
-                st.markdown("---")
-                st.markdown("*Aqui estão os primeiros registros que encontramos, para que você possa ver os cabeçalhos e os números:*")
-                
-                # Procura automaticamente a linha com 'UNIDADE' para sugerir o cabeçalho
-                linha_cabecalho_sugerida = None
+            # Encontra a linha com "1ª AVAL"
+            linha_cabecalho = None
+            for i, row in df_raw.iterrows():
+                row_text = ' '.join([str(cell).upper() for cell in row if pd.notna(cell)])
+                if '1ª AVAL' in row_text:
+                    linha_cabecalho = i
+                    break
+            
+            if linha_cabecalho is None:
+                # Tenta encontrar "UNIDADE"
                 for i, row in df_raw.iterrows():
-                    if 'UNIDADE' in ' '.join([str(cell) for cell in row if pd.notna(cell)]).upper():
-                        linha_cabecalho_sugerida = i
+                    row_text = ' '.join([str(cell).upper() for cell in row if pd.notna(cell)])
+                    if 'UNIDADE' in row_text:
+                        linha_cabecalho = i
                         break
-                
-                if linha_cabecalho_sugerida is not None:
-                    st.success(f"✅ Encontramos uma possível linha de cabeçalho na linha {linha_cabecalho_sugerida} (contém 'UNIDADE').")
-                    st.dataframe(df_raw.iloc[linha_cabecalho_sugerida:linha_cabecalho_sugerida+5])
-                    
-                    # Adiciona um aviso para você verificar
-                    st.warning("Verifique se a linha destacada contém os cabeçalhos corretos: UNIDADE, PAVTO, M², etc.")
+            
+            if linha_cabecalho is None:
+                linha_cabecalho = 0
+            
+            # Pega os cabeçalhos
+            cabecalho = []
+            for col in df_raw.iloc[linha_cabecalho]:
+                if pd.isna(col):
+                    cabecalho.append('')
                 else:
-                    st.warning("⚠️ Não encontramos nenhuma linha com 'UNIDADE' neste arquivo. Verifique se você selecionou o arquivo correto.")
-                
-                st.info("*Agora, envie uma imagem (print) desta tela no chat para podermos ajustar o código manualmente!*")
-
-            # --- APLICA O PROCESSAMENTO (usando o método antigo, para mostrar o resultado) ---
-            # Pula as 2 primeiras linhas para tentar ler a tabela principal
-            try:
-                df = pd.read_excel(io.BytesIO(uploaded_file.getvalue()), skiprows=2)
-                df = df.dropna(how='all')
-                df = df.dropna(axis=1, how='all')
-                
-                if 'UNIDADE' in df.columns:
-                    df = df[df['UNIDADE'].notna() & (df['UNIDADE'].astype(str).str.strip() != '')]
-            except Exception as e:
-                st.error(f"Não foi possível processar o arquivo com skiprows=2: {e}")
-                st.stop()
-
-        # --- CONVERSÃO E EXIBIÇÃO (para você ver o resultado do processamento) ---
-        colunas_para_converter = ['PREÇO', '1ª AVALIAÇÃO OÁSIS II', 'DESCONTO', 'M²', 'PAVTO.']
+                    cabecalho.append(str(col).strip())
+            
+            # Pega os dados a partir da linha seguinte
+            dados = df_raw.iloc[linha_cabecalho + 1:].reset_index(drop=True)
+            
+            # Cria DataFrame com cabeçalhos
+            df = pd.DataFrame()
+            for i, h in enumerate(cabecalho):
+                if i < len(dados.columns):
+                    if h and h != '':
+                        df[h] = dados.iloc[:, i]
+                    else:
+                        df[f'col_{i}'] = dados.iloc[:, i]
+            
+            # --- CORREÇÃO: JUNTA COLUNAS DE MOEDA DIVIDIDAS ---
+            # O XLSX tem colunas assim: [R$] [440.000,00] [R$] [40.560,00] [R$] [399.440,00]
+            # Vamos identificar e juntar as colunas com R$
+            
+            # Lista de colunas que contêm "R$"
+            colunas_r = [col for col in df.columns if 'R$' in col or col == 'R$']
+            
+            # Para cada coluna de símbolo, procura a próxima coluna que tem números
+            colunas_para_remover = []
+            for col_r in colunas_r:
+                # Pega o índice da coluna
+                idx = df.columns.get_loc(col_r)
+                # Se tem uma coluna à frente, é o valor
+                if idx + 1 < len(df.columns):
+                    col_valor = df.columns[idx + 1]
+                    # Verifica se a coluna de valor tem números (não texto)
+                    if df[col_valor].astype(str).str.replace(',', '').str.replace('.', '').str.isdigit().any():
+                        # Junta as duas colunas
+                        nome_novo = 'VALOR_MOEDA'
+                        df[nome_novo] = df[col_r].astype(str).str.strip() + ' ' + df[col_valor].astype(str).str.strip()
+                        colunas_para_remover.extend([col_r, col_valor])
+                        break  # Só processa o primeiro par
+            
+            # Remove as colunas originais (que foram juntas)
+            if colunas_para_remover:
+                df = df.drop(columns=[c for c in colunas_para_remover if c in df.columns])
+                # Renomeia a coluna juntada para 'PREÇO' (ou outro nome)
+                if 'VALOR_MOEDA' in df.columns:
+                    # Identifica qual é essa coluna (avaliação, desconto ou preço)
+                    if '1ª AVAL' in ' '.join(cabecalho):
+                        df['1ª AVALIAÇÃO OÁSIS II'] = df['VALOR_MOEDA']
+                    else:
+                        df['PREÇO'] = df['VALOR_MOEDA']
+                    df = df.drop(columns=['VALOR_MOEDA'])
+            
+            # Remove linhas vazias
+            df = df.dropna(how='all')
+            
+            # Remove colunas completamente vazias
+            df = df.dropna(axis=1, how='all')
+        
+        # --- CONVERSÃO DE COLUNAS NUMÉRICAS ---
+        colunas_para_converter = ['PREÇO', '1ª AVALIAÇÃO OÁSIS II', 'DESCONTO', 'M²', 'PAVTO']
         for col in colunas_para_converter:
             if col in df.columns:
                 df[col] = df[col].apply(converter_para_float)
         
         st.markdown("---")
-        st.subheader("📊 Resultado do Processamento Atual")
-        st.dataframe(df.head(10))
         
-        st.warning("Se os valores de 'PREÇO', '1ª AVALIAÇÃO OÁSIS II' ou 'DESCONTO' estão zerados, o problema é que o cabeçalho do XLSX não foi reconhecido. O print da inspeção acima vai nos ajudar a corrigir isso.")
+        # --- FILTROS ---
+        col1, col2, col3, col4 = st.columns(4)
         
+        with col1:
+            if 'TIPOLOGIA' in df.columns:
+                tipologias = ['Todas'] + sorted(df['TIPOLOGIA'].dropna().unique().tolist())
+                tipo_selecionado = st.selectbox("🏠 Tipologia", tipologias)
+            else:
+                tipo_selecionado = 'Todas'
+        
+        with col2:
+            andar_min = st.number_input("📌 Andar mínimo", min_value=0, value=0, step=1)
+        
+        with col3:
+            if 'PREÇO' in df.columns and not df['PREÇO'].isna().all():
+                preco_max = st.number_input(
+                    "💰 Preço máximo (R$)",
+                    min_value=0,
+                    value=int(df['PREÇO'].max()) if df['PREÇO'].max() > 0 else 1000000,
+                    step=50000,
+                    format="%d"
+                )
+            else:
+                preco_max = 1000000
+        
+        with col4:
+            if 'DISPONIBILIDADE' in df.columns:
+                disp_opcoes = ['Todas'] + sorted(df['DISPONIBILIDADE'].dropna().unique().tolist())
+                disponibilidade = st.selectbox("🔑 Disponibilidade", disp_opcoes)
+            else:
+                disponibilidade = 'Todas'
+        
+        # --- APLICA FILTROS ---
+        resultado = df.copy()
+        
+        if tipo_selecionado != 'Todas' and 'TIPOLOGIA' in df.columns:
+            resultado = resultado[resultado['TIPOLOGIA'] == tipo_selecionado]
+        
+        if andar_min > 0:
+            if 'PAVTO' in df.columns:
+                resultado = resultado[resultado['PAVTO'] >= andar_min]
+            elif 'PAVTO.' in df.columns:
+                resultado = resultado[resultado['PAVTO.'] >= andar_min]
+        
+        if 'PREÇO' in df.columns:
+            resultado = resultado[resultado['PREÇO'] <= preco_max]
+        
+        if disponibilidade != 'Todas' and 'DISPONIBILIDADE' in df.columns:
+            resultado = resultado[resultado['DISPONIBILIDADE'] == disponibilidade]
+        
+        # --- INDICADORES ---
+        if not resultado.empty:
+            if 'PREÇO' in resultado.columns and 'M²' in resultado.columns:
+                resultado['R$/m²'] = (resultado['PREÇO'] / resultado['M²']).round(2)
+            
+            if '1ª AVALIAÇÃO OÁSIS II' in resultado.columns and 'PREÇO' in resultado.columns:
+                resultado['% DESCONTO'] = ((resultado['1ª AVALIAÇÃO OÁSIS II'] - resultado['PREÇO']) / resultado['1ª AVALIAÇÃO OÁSIS II'] * 100).round(1)
+        
+        # --- EXIBE ---
+        st.subheader(f"🔍 Resultados: {len(resultado)} imóveis encontrados")
+        
+        if not resultado.empty:
+            if 'R$/m²' in resultado.columns:
+                resultado_ordenado = resultado.sort_values('R$/m²')
+            else:
+                resultado_ordenado = resultado
+            
+            colunas_base = ['UNIDADE', 'PAVTO', 'COLUNA', 'M²', 'TIPOLOGIA', 'VAGA', 'SOL', 'PREÇO']
+            colunas_extras = ['R$/m²', '% DESCONTO', 'DISPONIBILIDADE']
+            colunas_exibir = [c for c in colunas_base + colunas_extras if c in resultado_ordenado.columns]
+            
+            st.dataframe(
+                resultado_ordenado[colunas_exibir],
+                use_container_width=True,
+                height=400
+            )
+            
+            st.markdown("---")
+            st.subheader("🤖 Recomendação da IA")
+            
+            melhor = resultado_ordenado.iloc[0]
+            
+            col_a, col_b = st.columns([2, 1])
+            
+            with col_a:
+                st.success(f"*Melhor custo-benefício:* Unidade {melhor['UNIDADE']}")
+                if 'PREÇO' in melhor:
+                    st.write(f"- *Preço:* R$ {melhor['PREÇO']:,.2f}")
+                if 'R$/m²' in melhor:
+                    st.write(f"- *R$/m²:* R$ {melhor['R$/m²']:.2f}")
+                if '% DESCONTO' in melhor:
+                    st.write(f"- *Desconto:* {melhor['% DESCONTO']}%")
+                if 'TIPOLOGIA' in melhor:
+                    st.write(f"- *Tipologia:* {melhor['TIPOLOGIA']}")
+            
+            with col_b:
+                if 'PREÇO' in melhor and melhor['PREÇO'] > 0:
+                    valor = melhor['PREÇO']
+                    entrada_percentual = st.slider("Entrada (%)", 20, 50, 30)
+                    entrada = valor * (entrada_percentual / 100)
+                    financiado = valor - entrada
+                    juros = 0.10
+                    prazo_meses = 420
+                    parcela_media = financiado * (1 + juros/12) / prazo_meses
+                    
+                    st.info(f"*Simulação - Unidade {melhor['UNIDADE']}*")
+                    st.write(f"Valor total: R$ {valor:,.2f}")
+                    st.write(f"Entrada ({entrada_percentual}%): R$ {entrada:,.2f}")
+                    st.write(f"Financiado: R$ {financiado:,.2f}")
+                    st.write(f"Parcela estimada: R$ {parcela_media:,.2f}")
+                    st.caption(f"Prazo: {prazo_meses} meses (35 anos), juros: {juros*100}% a.a. (SAC)")
+                else:
+                    st.warning("⚠️ Valor do imóvel não disponível para simulação.")
+        else:
+            st.warning("⚠️ Nenhum imóvel encontrado com os filtros atuais.")
+    
     except Exception as e:
-        st.error(f"❌ Erro ao processar o arquivo: {str(e)}")
-        st.info("Verifique o formato do arquivo.")
+        st.error(f"❌ Erro ao ler a planilha: {str(e)}")
+        st.info("Verifique o formato do arquivo (XLSX, CSV ou PDF).")
+
 else:
-    st.info("👈 Envie a planilha da construtora no menu lateral para começar a inspeção.")
+    st.info("👈 Envie a planilha da construtora no menu lateral para começar")
+    st.markdown("""
+    ### Como usar:
+    1. Clique em *"Browse files"* no menu lateral
+    2. Selecione a planilha (XLSX, CSV ou PDF) da construtora
+    3. Ajuste os filtros
+    4. A IA recomenda o melhor imóvel
+    """)
