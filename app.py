@@ -5,8 +5,8 @@ import pdfplumber
 import re
 
 # CONFIGURAÇÃO
-st.set_page_config(page_title="ImobFlux IA", layout="wide")
-st.title("🏢 ImobFlux IA")
+st.set_page_config(page_title="Simulador Crédito - IA", layout="wide")
+st.title("🏢 Simulador Crédito IA")
 st.markdown("---")
 
 # --- FUNÇÃO DE CONVERSÃO ---
