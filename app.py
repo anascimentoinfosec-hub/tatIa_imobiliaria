@@ -5,21 +5,58 @@ import pdfplumber
 import re
 import json
 import os
+import hashlib
+from datetime import datetime
 
 # CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="Simulador de Crédito", layout="wide")
 st.title("🏢 Simulador de Crédito")
 st.markdown("---")
 
-# --- SENHA DO GERENTE (altere aqui) ---
-SENHA_GERENTE = "gerente2026"
-
-# --- ARQUIVO DE CONFIGURAÇÃO ---
+# --- ARQUIVOS DE CONFIGURAÇÃO ---
 ARQUIVO_CONFIG = "construtoras.json"
+ARQUIVO_USUARIOS = "usuarios.json"
 
-# --- FUNÇÃO PARA CARREGAR CONFIGURAÇÕES ---
+# --- FUNÇÕES DE HASH ---
+def hash_senha(senha: str) -> str:
+    """Retorna o hash SHA-256 da senha digitada."""
+    return hashlib.sha256(senha.encode()).hexdigest()
+
+def verificar_login(usuario: str, senha: str, usuarios: dict) -> bool:
+    """Verifica se o hash da senha digitada bate com o armazenado."""
+    hash_digitado = hash_senha(senha)
+    if usuario not in usuarios:
+        return False
+    return usuarios[usuario]["hash"] == hash_digitado and usuarios[usuario]["ativo"]
+
+# --- FUNÇÕES DE USUÁRIOS ---
+def carregar_usuarios():
+    """Carrega os usuários do arquivo JSON ou cria padrão"""
+    try:
+        if os.path.exists(ARQUIVO_USUARIOS):
+            with open(ARQUIVO_USUARIOS, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except:
+        pass
+    
+    # Usuário padrão (gerente)
+    return {
+        "gerente": {
+            "nome": "Gerente Geral",
+            "hash": hash_senha("gerente2026"),
+            "perfil": "gerente",
+            "ativo": True,
+            "criado_em": datetime.now().isoformat()
+        }
+    }
+
+def salvar_usuarios(usuarios):
+    """Salva os usuários no arquivo JSON"""
+    with open(ARQUIVO_USUARIOS, 'w', encoding='utf-8') as f:
+        json.dump(usuarios, f, indent=2, ensure_ascii=False)
+
+# --- FUNÇÕES DE CONSTRUTORAS ---
 def carregar_construtoras():
-    """Carrega as construtoras do arquivo JSON ou usa o padrão"""
     try:
         if os.path.exists(ARQUIVO_CONFIG):
             with open(ARQUIVO_CONFIG, 'r', encoding='utf-8') as f:
@@ -27,7 +64,6 @@ def carregar_construtoras():
     except:
         pass
     
-    # Configuração padrão (Oásis II)
     return {
         "Oásis II": {
             "skiprows": 2,
@@ -41,9 +77,7 @@ def carregar_construtoras():
         }
     }
 
-# --- FUNÇÃO PARA SALVAR CONFIGURAÇÕES ---
 def salvar_construtoras(construtoras):
-    """Salva as construtoras no arquivo JSON"""
     with open(ARQUIVO_CONFIG, 'w', encoding='utf-8') as f:
         json.dump(construtoras, f, indent=2, ensure_ascii=False)
 
@@ -75,7 +109,6 @@ def converter_para_float(valor):
 
 # --- FUNÇÃO PARA LER PLANILHA ---
 def ler_planilha(uploaded_file, config):
-    """Lê a planilha com a configuração da construtora"""
     try:
         if uploaded_file.name.endswith('.pdf'):
             with pdfplumber.open(io.BytesIO(uploaded_file.read())) as pdf:
@@ -109,7 +142,6 @@ def ler_planilha(uploaded_file, config):
         else:
             df_raw = pd.read_excel(uploaded_file, header=None)
             
-            # Encontra a linha do cabeçalho
             linha_cabecalho = None
             for i, row in df_raw.iterrows():
                 row_text = ' '.join([str(cell).upper() for cell in row if pd.notna(cell)])
@@ -122,7 +154,6 @@ def ler_planilha(uploaded_file, config):
             
             dados = df_raw.iloc[linha_cabecalho + 1:].reset_index(drop=True)
             
-            # Aplica o mapeamento
             mapeamento = config.get("mapeamento", {})
             df = pd.DataFrame()
             for idx_str, nome_novo in mapeamento.items():
@@ -130,7 +161,6 @@ def ler_planilha(uploaded_file, config):
                 if idx < len(dados.columns):
                     df[nome_novo] = dados.iloc[:, idx]
             
-            # Remove linhas vazias
             df = df.dropna(how='all')
             if 'UNIDADE' in df.columns:
                 df = df[df['UNIDADE'].notna() & (df['UNIDADE'].astype(str).str.strip() != '')]
@@ -143,27 +173,135 @@ def ler_planilha(uploaded_file, config):
 with st.sidebar:
     st.header("⚙️ Configurações")
     
-    # --- VERIFICA SE É GERENTE ---
-    is_gerente = False
-    if st.checkbox("🔧 Painel do Gerente"):
-        senha_digitada = st.text_input("Senha do Gerente:", type="password")
-        if senha_digitada == SENHA_GERENTE:
-            is_gerente = True
-            st.success("✅ Acesso liberado!")
-        elif senha_digitada:
-            st.error("❌ Senha incorreta!")
+    # Carrega usuários e construtoras
+    USUARIOS = carregar_usuarios()
+    CONSTRUTORAS = carregar_construtoras()
+    
+    # --- LOGIN ---
+    if "usuario_logado" not in st.session_state:
+        st.session_state.usuario_logado = None
+    
+    if st.session_state.usuario_logado is None:
+        st.markdown("### 🔑 Login")
+        usuario = st.text_input("Usuário")
+        senha = st.text_input("Senha", type="password")
+        if st.button("Entrar"):
+            if verificar_login(usuario, senha, USUARIOS):
+                st.session_state.usuario_logado = usuario
+                st.success(f"✅ Bem-vindo, {USUARIOS[usuario]['nome']}!")
+                st.rerun()
+            else:
+                st.error("❌ Usuário ou senha inválidos!")
+        st.stop()
+    
+    # --- USUÁRIO LOGADO ---
+    usuario_atual = st.session_state.usuario_logado
+    perfil_atual = USUARIOS[usuario_atual]["perfil"]
+    st.write(f"👤 *{USUARIOS[usuario_atual]['nome']}*")
+    if st.button("🚪 Sair"):
+        st.session_state.usuario_logado = None
+        st.rerun()
     
     st.markdown("---")
     
-    # Carrega as construtoras
-    CONSTRUTORAS = carregar_construtoras()
-    
-    # Se for gerente, mostra o painel de gestão
-    if is_gerente:
-        with st.expander("🔧 Gerenciar Construtoras", expanded=True):
-            st.markdown("#### Adicionar Nova Construtora")
+    # --- PAINEL DO GERENTE ---
+    if perfil_atual == "gerente":
+        with st.expander("🔧 Painel do Gerente", expanded=True):
+            # =====================================
+            # SEÇÃO: GESTÃO DE USUÁRIOS
+            # =====================================
+            st.markdown("### 👥 Gestão de Usuários")
             
-            # Formulário para adicionar
+            tabs = st.tabs(["Listar", "Adicionar", "Editar"])
+            
+            # --- TAB 1: LISTAR USUÁRIOS ---
+            with tabs[0]:
+                st.markdown("*Usuários cadastrados:*")
+                for login, dados in USUARIOS.items():
+                    col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
+                    with col1:
+                        st.write(f"*{login}*")
+                    with col2:
+                        st.write(dados["nome"])
+                    with col3:
+                        status = "✅ Ativo" if dados["ativo"] else "❌ Inativo"
+                        st.write(status)
+                    with col4:
+                        st.write(f"{dados['perfil']}")
+            
+            # --- TAB 2: ADICIONAR USUÁRIO ---
+            with tabs[1]:
+                with st.form("form_novo_usuario"):
+                    novo_login = st.text_input("Login (usuario)")
+                    novo_nome = st.text_input("Nome completo")
+                    nova_senha = st.text_input("Senha", type="password")
+                    novo_perfil = st.selectbox("Perfil", ["corretor", "gerente"])
+                    novo_ativo = st.checkbox("Ativo", value=True)
+                    
+                    if st.form_submit_button("➕ Adicionar Usuário"):
+                        if novo_login and novo_nome and nova_senha:
+                            if novo_login in USUARIOS:
+                                st.error("❌ Usuário já existe!")
+                            else:
+                                USUARIOS[novo_login] = {
+                                    "nome": novo_nome,
+                                    "hash": hash_senha(nova_senha),
+                                    "perfil": novo_perfil,
+                                    "ativo": novo_ativo,
+                                    "criado_em": datetime.now().isoformat()
+                                }
+                                salvar_usuarios(USUARIOS)
+                                st.success(f"✅ Usuário '{novo_login}' adicionado!")
+                                st.rerun()
+                        else:
+                            st.error("❌ Preencha todos os campos!")
+            
+            # --- TAB 3: EDITAR USUÁRIO ---
+            with tabs[2]:
+                usuarios_lista = list(USUARIOS.keys())
+                if usuarios_lista:
+                    usuario_editar = st.selectbox("Selecione o usuário", usuarios_lista)
+                    
+                    if usuario_editar:
+                        dados = USUARIOS[usuario_editar]
+                        
+                        with st.form("form_editar_usuario"):
+                            novo_nome = st.text_input("Nome", value=dados["nome"])
+                            nova_senha = st.text_input("Nova senha (deixe em branco para manter)", type="password")
+                            novo_perfil = st.selectbox("Perfil", ["corretor", "gerente"], index=0 if dados["perfil"] == "corretor" else 1)
+                            novo_ativo = st.checkbox("Ativo", value=dados["ativo"])
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                if st.form_submit_button("💾 Salvar"):
+                                    dados["nome"] = novo_nome
+                                    if nova_senha:
+                                        dados["hash"] = hash_senha(nova_senha)
+                                    dados["perfil"] = novo_perfil
+                                    dados["ativo"] = novo_ativo
+                                    salvar_usuarios(USUARIOS)
+                                    st.success("✅ Usuário atualizado!")
+                                    st.rerun()
+                            
+                            with col2:
+                                if st.form_submit_button("🗑️ Excluir"):
+                                    if usuario_editar == "gerente":
+                                        st.error("❌ Não é possível excluir o gerente principal!")
+                                    else:
+                                        del USUARIOS[usuario_editar]
+                                        salvar_usuarios(USUARIOS)
+                                        st.success(f"✅ Usuário '{usuario_editar}' excluído!")
+                                        st.rerun()
+                else:
+                    st.warning("Nenhum usuário cadastrado.")
+            
+            st.markdown("---")
+            
+            # =====================================
+            # SEÇÃO: GESTÃO DE CONSTRUTORAS
+            # =====================================
+            st.markdown("### 🏗️ Gestão de Construtoras")
+            
             with st.form("form_nova_construtora"):
                 nome = st.text_input("Nome da Construtora")
                 skiprows = st.number_input("Linhas para pular (skiprows)", min_value=0, value=0, step=1)
@@ -190,37 +328,28 @@ with st.sidebar:
                     placeholder="PREÇO, M², ANDAR"
                 )
                 
-                submitted = st.form_submit_button("➕ Adicionar Construtora")
-                
-                if submitted and nome:
-                    try:
-                        # Converte o mapeamento
-                        if mapeamento_str:
-                            mapeamento = json.loads(mapeamento_str)
-                        else:
-                            mapeamento = {}
-                        
-                        # Converte listas
-                        colunas_ordem = [c.strip() for c in colunas_ordem_str.split(',') if c.strip()]
-                        colunas_numericas = [c.strip() for c in colunas_numericas_str.split(',') if c.strip()]
-                        
-                        # Adiciona a nova construtora
-                        CONSTRUTORAS[nome] = {
-                            "skiprows": skiprows,
-                            "mapeamento": {str(k): v for k, v in mapeamento.items()},
-                            "colunas_ordem": colunas_ordem,
-                            "colunas_para_converter": colunas_numericas
-                        }
-                        
-                        salvar_construtoras(CONSTRUTORAS)
-                        st.success(f"✅ Construtora '{nome}' adicionada com sucesso!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"❌ Erro ao adicionar: {str(e)}")
+                if st.form_submit_button("➕ Adicionar Construtora"):
+                    if nome:
+                        try:
+                            mapeamento = json.loads(mapeamento_str) if mapeamento_str else {}
+                            colunas_ordem = [c.strip() for c in colunas_ordem_str.split(',') if c.strip()]
+                            colunas_numericas = [c.strip() for c in colunas_numericas_str.split(',') if c.strip()]
+                            
+                            CONSTRUTORAS[nome] = {
+                                "skiprows": skiprows,
+                                "mapeamento": {str(k): v for k, v in mapeamento.items()},
+                                "colunas_ordem": colunas_ordem,
+                                "colunas_para_converter": colunas_numericas
+                            }
+                            
+                            salvar_construtoras(CONSTRUTORAS)
+                            st.success(f"✅ Construtora '{nome}' adicionada!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"❌ Erro: {str(e)}")
             
             st.markdown("---")
             
-            # Lista as construtoras existentes
             st.markdown("#### Construtoras Cadastradas")
             for nome, config in CONSTRUTORAS.items():
                 col1, col2, col3 = st.columns([3, 1, 1])
@@ -234,54 +363,48 @@ with st.sidebar:
                 with col3:
                     if st.button(f"📋 Editar", key=f"edit_{nome}"):
                         st.session_state['editando'] = nome
-                
-                # Edição inline
-                if st.session_state.get('editando') == nome:
-                    with st.form(f"form_edit_{nome}"):
-                        novo_nome = st.text_input("Novo nome", value=nome)
-                        novo_skiprows = st.number_input("Skiprows", value=config.get("skiprows", 0), step=1)
-                        
-                        novo_mapeamento = st.text_area(
-                            "Mapeamento",
-                            value=json.dumps(config.get("mapeamento", {}), indent=2, ensure_ascii=False),
-                            height=100
-                        )
-                        
-                        novo_colunas_ordem = st.text_input(
-                            "Colunas para exibir",
-                            value=", ".join(config.get("colunas_ordem", []))
-                        )
-                        
-                        novo_colunas_numericas = st.text_input(
-                            "Colunas numéricas",
-                            value=", ".join(config.get("colunas_para_converter", []))
-                        )
-                        
-                        col_edit1, col_edit2 = st.columns(2)
-                        with col_edit1:
-                            if st.form_submit_button("💾 Salvar"):
-                                try:
-                                    # Remove a antiga
-                                    del CONSTRUTORAS[nome]
-                                    
-                                    # Adiciona a nova
-                                    CONSTRUTORAS[novo_nome] = {
-                                        "skiprows": novo_skiprows,
-                                        "mapeamento": json.loads(novo_mapeamento),
-                                        "colunas_ordem": [c.strip() for c in novo_colunas_ordem.split(',') if c.strip()],
-                                        "colunas_para_converter": [c.strip() for c in novo_colunas_numericas.split(',') if c.strip()]
-                                    }
-                                    
-                                    salvar_construtoras(CONSTRUTORAS)
-                                    st.session_state['editando'] = None
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"❌ Erro: {str(e)}")
-                        
-                        with col_edit2:
-                            if st.form_submit_button("❌ Cancelar"):
+            
+            if st.session_state.get('editando') == nome:
+                with st.form(f"form_edit_{nome}"):
+                    novo_nome = st.text_input("Novo nome", value=nome)
+                    novo_skiprows = st.number_input("Skiprows", value=config.get("skiprows", 0), step=1)
+                    
+                    novo_mapeamento = st.text_area(
+                        "Mapeamento",
+                        value=json.dumps(config.get("mapeamento", {}), indent=2, ensure_ascii=False),
+                        height=100
+                    )
+                    
+                    novo_colunas_ordem = st.text_input(
+                        "Colunas para exibir",
+                        value=", ".join(config.get("colunas_ordem", []))
+                    )
+                    
+                    novo_colunas_numericas = st.text_input(
+                        "Colunas numéricas",
+                        value=", ".join(config.get("colunas_para_converter", []))
+                    )
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.form_submit_button("💾 Salvar"):
+                            try:
+                                del CONSTRUTORAS[nome]
+                                CONSTRUTORAS[novo_nome] = {
+                                    "skiprows": novo_skiprows,
+                                    "mapeamento": json.loads(novo_mapeamento),
+                                    "colunas_ordem": [c.strip() for c in novo_colunas_ordem.split(',') if c.strip()],
+                                    "colunas_para_converter": [c.strip() for c in novo_colunas_numericas.split(',') if c.strip()]
+                                }
+                                salvar_construtoras(CONSTRUTORAS)
                                 st.session_state['editando'] = None
                                 st.rerun()
+                            except Exception as e:
+                                st.error(f"❌ Erro: {str(e)}")
+                    with col2:
+                        if st.form_submit_button("❌ Cancelar"):
+                            st.session_state['editando'] = None
+                            st.rerun()
         
         st.markdown("---")
     
@@ -293,7 +416,6 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # Upload do arquivo
     uploaded_file = st.file_uploader(
         "📤 Envie a planilha",
         type=['xlsx', 'xls', 'csv', 'pdf']
@@ -305,24 +427,19 @@ with st.sidebar:
 # --- CORPO PRINCIPAL ---
 if uploaded_file is not None:
     try:
-        # Pega a configuração da construtora selecionada
         config = CONSTRUTORAS[construtora_selecionada]
-        
-        # Lê a planilha
         df = ler_planilha(uploaded_file, config)
         
         if df is None:
             st.error("❌ Não foi possível ler a planilha. Verifique o formato e o mapeamento.")
             st.stop()
         
-        # --- CONVERSÃO DE COLUNAS NUMÉRICAS ---
         for col in config.get("colunas_para_converter", []):
             if col in df.columns:
                 df[col] = df[col].apply(converter_para_float)
         
         st.markdown("---")
         
-        # --- FILTROS DINÂMICOS ---
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
@@ -385,7 +502,6 @@ if uploaded_file is not None:
             else:
                 status_selecionado = 'Todas'
         
-        # --- APLICA FILTROS ---
         resultado = df.copy()
         
         if tipo_selecionado != 'Todas' and tipo_col:
@@ -400,7 +516,6 @@ if uploaded_file is not None:
         if status_selecionado != 'Todas' and status_col:
             resultado = resultado[resultado[status_col] == status_selecionado]
         
-        # --- INDICADORES ---
         if not resultado.empty:
             colunas_area = ['M²', 'AREA_M2', 'AREA']
             area_col = None
@@ -412,14 +527,12 @@ if uploaded_file is not None:
             if preco_col and area_col:
                 resultado['R$/m²'] = (resultado[preco_col] / resultado[area_col]).round(2)
         
-        # --- ORDEM DAS COLUNAS ---
         colunas_ordem = config.get("colunas_ordem", list(df.columns)).copy()
         if 'R$/m²' in resultado.columns:
             colunas_ordem.append('R$/m²')
         
         colunas_ordem = [c for c in colunas_ordem if c in resultado.columns]
         
-        # --- EXIBE ---
         st.subheader(f"🔍 Resultados: {len(resultado)} imóveis encontrados - {construtora_selecionada}")
         
         if not resultado.empty:
@@ -483,8 +596,9 @@ else:
     st.info("👈 Selecione a construtora e envie a planilha no menu lateral para começar")
     st.markdown("""
     ### Como usar:
-    1. Selecione a *construtora* no menu lateral
-    2. Envie a planilha da construtora (XLSX, CSV ou PDF)
-    3. Ajuste os filtros disponíveis
-    4. A IA recomenda o melhor imóvel
+    1. Faça login com suas credenciais
+    2. Selecione a *construtora* no menu lateral
+    3. Envie a planilha da construtora (XLSX, CSV ou PDF)
+    4. Ajuste os filtros disponíveis
+    5. A IA recomenda o melhor imóvel
     """)
