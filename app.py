@@ -1,4 +1,4 @@
-#ATUALIZADO EM 25/08/2026
+#ATUALIZADO EM 25/8/2026
 import streamlit as st
 import pandas as pd
 import io
@@ -13,7 +13,6 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import requests
-import random
 
 # CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="Simulador de Crédito", layout="wide")
@@ -292,211 +291,46 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual):
         )
         
         st.markdown("---")
-        st.caption("Versão 2.0")
+        st.caption("Versão 2.0 - Multi Construtoras")
     
     # --- CORPO PRINCIPAL ---
     if uploaded_file is None:
-        # --- CSS CORRIGIDO ---
-        st.markdown("""
-        <style>
-        .hero {
-            background: linear-gradient(135deg, #1a237e, #0d47a1, #1565c0);
-            padding: 50px 30px;
-            border-radius: 16px;
-            color: white;
-            text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
-            margin-bottom: 30px;
-            border-bottom: 6px solid #ff6f00;
-        }
-        .hero h1 {
-            font-size: 38px;
-            font-weight: 700;
-            margin: 0;
-        }
-        .hero p {
-            font-size: 18px;
-            opacity: 0.9;
-            margin: 8px 0 0 0;
-        }
-        .card-info {
-            background-color: #f0f4ff;
-            padding: 16px 20px;
-            border-radius: 12px;
-            border-left: 6px solid #0066cc;
-            margin-bottom: 12px;
-        }
-        .card-info h4 {
-            margin: 0 0 4px 0;
-            color: #0066cc;
-            font-size: 14px;
-        }
-        .card-info p {
-            margin: 0;
-            color: #333;
-            font-weight: 600;
-            font-size: 16px;
-        }
-        .dica-card {
-            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
-            padding: 20px;
-            border-radius: 12px;
-            color: white;
-            text-align: center;
-            margin-top: 16px;
-        }
-        .dica-card p {
-            font-size: 17px;
-            font-style: italic;
-            margin: 0;
-        }
-        .clima-card {
-            background-color: #e8f4fd;
-            padding: 16px 20px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-        .clima-card .temp {
-            font-size: 28px;
-            font-weight: 700;
-        }
-        .empreendimento-card {
-            background: linear-gradient(135deg, #1a237e, #0d47a1);
-            padding: 20px;
-            border-radius: 12px;
-            color: white;
-            text-align: center;
-            margin-top: 12px;
-        }
-        .empreendimento-card h3 {
-            margin: 0;
-        }
-        .empreendimento-card p {
-            margin: 4px 0;
-            opacity: 0.9;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
-        # --- HERO (sem imagem, apenas gradiente) ---
-        st.markdown("""
-        <div class="hero">
-            <h1>🏢 Simulador de Crédito Imobiliário</h1>
-            <p>Rio de Janeiro • Oásis II e outras construtoras</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        col_esq, col_dir = st.columns([2, 1])
-
-        with col_esq:
-            st.markdown("### 📊 Mercado Imobiliário")
-            
-            mercado = {
-                "Taxa Selic": "10,50%",
-                "Taxa de Juros (SFH)": "9,50% a.a.",
-                "TR (referência)": "1,50% a.a.",
-                "Valor médio m² (RJ)": "R$ 12.800",
-                "Média de entrada": "20% a 30%",
-                "Prazo máximo": "420 meses (35 anos)"
-            }
-            
-            for titulo, valor in mercado.items():
-                st.markdown(f"""
-                <div class="card-info">
-                    <h4>{titulo}</h4>
-                    <p>{valor}</p>
-                </div>
-                """, unsafe_allow_html=True)
-
-        with col_dir:
-            st.markdown("### 🌤️ Clima no Rio")
-            
-            try:
-                if "OPENWEATHER_API_KEY" in st.secrets:
-                    api_key = st.secrets["OPENWEATHER_API_KEY"]
-                    url = f"https://api.openweathermap.org/data/2.5/weather?q=Rio de Janeiro,BR&units=metric&lang=pt_br&appid={api_key}"
-                    response = requests.get(url, timeout=5)
-                    if response.status_code == 200:
-                        dados = response.json()
-                        temp = dados['main']['temp']
-                        desc = dados['weather'][0]['description']
-                        umidade = dados['main']['humidity']
-                        vento = dados['wind']['speed']
-                        
-                        st.markdown(f"""
-                        <div class="clima-card">
-                            <div>
-                                <div class="temp">{temp:.1f}°C</div>
-                                <div style="text-transform: capitalize;">{desc}</div>
-                            </div>
-                            <div style="margin-left: auto; text-align: right; font-size: 14px;">
-                                🌧️ Umidade: {umidade}%<br>
-                                💨 Vento: {vento} km/h
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        st.info("🌤️ Clima: 28°C, Ensolarado")
-                else:
-                    st.info("🌤️ Configure a chave OpenWeather para clima em tempo real!")
-            except:
-                st.info("🌤️ Clima: 28°C, Ensolarado")
-
-            st.markdown("---")
-            st.markdown("### 🏗️ Empreendimento em Destaque")
-            st.markdown("""
-            <div class="empreendimento-card">
-                <h3>Oásis II</h3>
-                <p>📍 Barra da Tijuca - Rio de Janeiro</p>
-                <p>🏢 18 andares • 115 unidades • 2 e 3 quartos</p>
-                <p>💰 Preços a partir de R$ 384.950</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-        # --- DICA DO DIA ---
-        dicas = [
-            "💡 'A melhor época para comprar imóvel é sempre aquela em que você está preparado financeiramente.'",
-            "💡 'Clientes valorizam corretores que entendem de financiamento, não só de imóveis.'",
-            "💡 'Um bom corretor não vende um imóvel, ele realiza um sonho.'",
-            "💡 'Conhecer as taxas de juros é tão importante quanto conhecer a planta do imóvel.'",
-            "💡 'A confiança se constrói com transparência. Mostre todas as opções de financiamento.'",
-            "💡 'O cliente não compra o imóvel, compra a segurança de ter um lar.'",
-            "💡 'A simulação é o primeiro passo. O segundo é acreditar que é possível.'",
-            "💡 'Imóvel é o único investimento que você pode usar enquanto ele valoriza.'"
-        ]
+        st.info("👈 Selecione a construtora e envie uma planilha para começar")
         
-        dia = datetime.now().day
-        dica = dicas[dia % len(dicas)]
-        
-        st.markdown(f"""
-        <div class="dica-card">
-            <p>{dica}</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # --- INSTRUÇÕES ---
-        st.markdown("---")
-        st.markdown("### 📌 Como usar o Simulador")
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns([2, 1])
         
         with col1:
-            st.markdown("""
-            *1. Selecione a construtora*
-            No menu lateral, escolha a construtora desejada.
-            """)
+            st.markdown("### 📊 Mercado Imobiliário - Rio de Janeiro")
+            col_a, col_b, col_c = st.columns(3)
+            with col_a:
+                st.metric("Taxa Selic", "10,50%")
+                st.metric("TR", "1,50% a.a.")
+            with col_b:
+                st.metric("Taxa SFH", "9,50% a.a.")
+                st.metric("Entrada média", "20-30%")
+            with col_c:
+                st.metric("Valor m² (RJ)", "R$ 12.800")
+                st.metric("Prazo máximo", "420 meses")
         
         with col2:
-            st.markdown("""
-            *2. Envie a planilha*
-            Faça upload da planilha da construtora (XLSX ou PDF).
+            st.markdown("### 🏗️ Empreendimento")
+            st.success("""
+            *Oásis II*  
+            📍 Barra da Tijuca - RJ  
+            🏢 18 andares • 115 unidades  
+            💰 Preços a partir de R$ 384.950
             """)
         
-        with col3:
-            st.markdown("""
-            *3. Simule e compare*
-            A IA recomenda o melhor imóvel com base em custo-benefício.
-            """)
+        st.markdown("---")
+        
+        # Dica do dia
+        dicas = [
+            "A melhor época para comprar imóvel é quando você está preparado financeiramente.",
+            "Clientes valorizam corretores que entendem de financiamento.",
+            "Um bom corretor não vende um imóvel, ele realiza um sonho.",
+            "Conhecer as taxas de juros é tão importante quanto conhecer a planta."
+        ]
+        st.info(f"💡 {dicas[datetime.now().day % len(dicas)]}")
         
         return
     
