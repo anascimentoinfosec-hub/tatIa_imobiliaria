@@ -1,3 +1,4 @@
+#ATUALIZADO EM 25/08/2026 ÀS 19:50 #
 import streamlit as st
 import pandas as pd
 import io
