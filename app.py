@@ -1,4 +1,4 @@
-#ATUALIZADO EM 25/08/2026 ÀS 19:59 #
+#ATUALIZADO EM 25/08/2026 ÀS 20:07 #
 import streamlit as st
 import pandas as pd
 import io
@@ -116,7 +116,7 @@ def enviar_email_recuperacao(email, token):
     try:
         if "EMAIL_SENDER" not in st.secrets or "EMAIL_PASSWORD" not in st.secrets:
             st.warning(f"⚠️ Configure EMAIL_SENDER e EMAIL_PASSWORD nos Secrets do Streamlit")
-            st.info(f"💡 Token gerado: **{token}** (copie e cole)")
+            st.info(f"💡 Token gerado: *{token}* (copie e cole)")
             return True
         
         remetente = st.secrets["EMAIL_SENDER"]
@@ -132,7 +132,7 @@ def enviar_email_recuperacao(email, token):
         
         Você solicitou a recuperação de senha do Simulador de Crédito.
         
-        Seu código de verificação é: **{token}**
+        Seu código de verificação é: *{token}*
         
         Digite este código no app para criar uma nova senha.
         
@@ -292,7 +292,6 @@ def pagina_simulador(CONSTRUTORAS):
         st.markdown("---")
         st.caption("Versão 2.0 - Multi Construtoras")
     
-    # --- CORPO PRINCIPAL ---
     if uploaded_file is None:
         st.info("👈 Selecione a construtora e envie uma planilha para começar")
         
@@ -311,7 +310,7 @@ def pagina_simulador(CONSTRUTORAS):
         st.markdown("---")
         
         st.markdown("### 🏗️ Empreendimento em Destaque")
-        st.success("**Oásis II**  \n📍 Barra da Tijuca - Rio de Janeiro  \n🏢 18 andares • 115 unidades • 2 e 3 quartos  \n💰 Preços a partir de R$ 384.950")
+        st.success("*Oásis II*  \n📍 Barra da Tijuca - Rio de Janeiro  \n🏢 18 andares • 115 unidades • 2 e 3 quartos  \n💰 Preços a partir de R$ 384.950")
         
         return
     
@@ -445,17 +444,17 @@ def pagina_simulador(CONSTRUTORAS):
             col_a, col_b = st.columns([2, 1])
             
             with col_a:
-                st.success(f"**Melhor custo-benefício:** Unidade {melhor['UNIDADE']}")
+                st.success(f"*Melhor custo-benefício:* Unidade {melhor['UNIDADE']}")
                 if preco_col and preco_col in melhor:
-                    st.write(f"- **Preço:** R$ {melhor[preco_col]:,.2f}")
+                    st.write(f"- *Preço:* R$ {melhor[preco_col]:,.2f}")
                 if 'R$/m²' in melhor:
-                    st.write(f"- **R$/m²:** R$ {melhor['R$/m²']:.2f}")
+                    st.write(f"- *R$/m²:* R$ {melhor['R$/m²']:.2f}")
                 if '1ª AVALIAÇÃO OÁSIS II' in melhor:
-                    st.write(f"- **Avaliação:** R$ {melhor['1ª AVALIAÇÃO OÁSIS II']:,.2f}")
+                    st.write(f"- *Avaliação:* R$ {melhor['1ª AVALIAÇÃO OÁSIS II']:,.2f}")
                 if 'DESCONTO' in melhor:
-                    st.write(f"- **Desconto:** R$ {melhor['DESCONTO']:,.2f}")
+                    st.write(f"- *Desconto:* R$ {melhor['DESCONTO']:,.2f}")
                 if tipo_col and tipo_col in melhor:
-                    st.write(f"- **Tipo:** {melhor[tipo_col]}")
+                    st.write(f"- *Tipo:* {melhor[tipo_col]}")
             
             with col_b:
                 if preco_col and preco_col in melhor and melhor[preco_col] > 0:
@@ -467,12 +466,12 @@ def pagina_simulador(CONSTRUTORAS):
                     prazo_meses = 420
                     parcela_media = financiado * (1 + juros/12) / prazo_meses
                     
-                    st.info(f"**Simulação - Unidade {melhor['UNIDADE']}**")
+                    st.info(f"*Simulação - Unidade {melhor['UNIDADE']}*")
                     st.write(f"Valor total: R$ {valor:,.2f}")
                     st.write(f"Entrada ({entrada_percentual}%): R$ {entrada:,.2f}")
                     st.write(f"Financiado: R$ {financiado:,.2f}")
                     st.write(f"Parcela estimada: R$ {parcela_media:,.2f}")
-                    st.caption(f"*Prazo: {prazo_meses} meses (35 anos), juros: {juros*100}% a.a. (SAC)*")
+                    st.caption(f"Prazo: {prazo_meses} meses (35 anos), juros: {juros*100}% a.a. (SAC)")
                 else:
                     st.warning("⚠️ Valor do imóvel não disponível para simulação.")
         else:
@@ -591,21 +590,21 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                 nome = st.text_input("Nome da Construtora")
                 skiprows = st.number_input("Linhas para pular (skiprows)", min_value=0, value=0, step=1)
             with col2:
-                st.markdown("**Colunas para exibir**")
+                st.markdown("*Colunas para exibir*")
                 st.caption("Ex: UNIDADE, PAVTO, PREÇO")
                 colunas_ordem_str = st.text_input(
                     "Colunas (separadas por vírgula)",
                     placeholder="UNIDADE, PAVTO, PREÇO"
                 )
                 
-                st.markdown("**Colunas numéricas**")
+                st.markdown("*Colunas numéricas*")
                 st.caption("Ex: PREÇO, M², ANDAR")
                 colunas_numericas_str = st.text_input(
                     "Colunas numéricas (separadas por vírgula)",
                     placeholder="PREÇO, M², ANDAR"
                 )
             
-            st.markdown("**Mapeamento de colunas (índice: nome)**")
+            st.markdown("*Mapeamento de colunas (índice: nome)*")
             st.caption('Ex: {"0": "UNIDADE", "1": "PAVTO", "2": "PREÇO"}')
             mapeamento_str = st.text_area(
                 "Digite o mapeamento",
@@ -641,7 +640,7 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
             with st.container():
                 col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
                 with col1:
-                    st.write(f"**{nome}**")
+                    st.write(f"*{nome}*")
                 with col2:
                     st.write(f"{len(config.get('colunas_ordem', []))} colunas")
                 with col3:
@@ -700,48 +699,37 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
     else:
         st.info("Nenhuma construtora cadastrada. Adicione a primeira!")
 
-# --- FUNÇÃO PARA EXIBIR PÁGINA DE LOGIN (COM IMAGEM) ---
+# --- FUNÇÃO PARA EXIBIR PÁGINA DE LOGIN (CENTRALIZADA) ---
 def pagina_login():
-    st.title("🏢 Simulador de Crédito")
-    
-    # --- IMAGEM DE FUNDO (SEM QUEBRAR O LAYOUT) ---
+    # --- IMAGEM DE DESTAQUE (CENTRALIZADA) ---
     st.markdown("""
     <style>
-    .login-image {
-        background-image: url('https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800');
-        background-size: cover;
-        background-position: center;
+    .login-hero {
+        background: linear-gradient(135deg, #1a237e, #0d47a1, #1565c0);
         padding: 40px 30px;
         border-radius: 16px;
         color: white;
         text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
         margin-bottom: 30px;
-        min-height: 150px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        text-align: center;
     }
-    .login-image h2 {
+    .login-hero h1 {
+        font-size: 36px;
         margin: 0;
-        font-size: 28px;
-        text-align: center;
     }
-    .login-image p {
-        margin: 8px 0 0 0;
+    .login-hero p {
         font-size: 18px;
-        text-align: center;
+        margin: 8px 0 0 0;
         opacity: 0.9;
     }
     </style>
-    <div class="login-image">
-        <div style="text-align: center;">
-            <h2>🏢 Simulador de Crédito Imobiliário</h2>
-            <p>Rio de Janeiro • Oásis II e outras construtoras</p>
-        </div>
+    <div class="login-hero">
+        <h1>🏢 Simulador de Crédito Imobiliário</h1>
+        <p>Rio de Janeiro • Oásis II e outras construtoras</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # --- CONTEÚDO DA PÁGINA DE LOGIN ---
+    # --- INFORMAÇÕES DO MERCADO ---
     st.markdown("### 📊 Mercado Imobiliário")
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -756,23 +744,30 @@ def pagina_login():
     
     st.markdown("---")
     
+    # --- EMPREENDIMENTO EM DESTAQUE ---
     st.markdown("### 🏗️ Empreendimento em Destaque")
-    st.success("**Oásis II**  \n📍 Barra da Tijuca - Rio de Janeiro  \n🏢 18 andares • 115 unidades • 2 e 3 quartos  \n💰 Preços a partir de R$ 384.950")
+    st.success(
+        "*Oásis II*  \n"
+        "📍 Barra da Tijuca - Rio de Janeiro  \n"
+        "🏢 18 andares • 115 unidades • 2 e 3 quartos  \n"
+        "💰 Preços a partir de R$ 384.950"
+    )
     
     st.markdown("---")
     
+    # --- COMO USAR ---
     st.markdown("### 📌 Como usar")
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.markdown("**1. Faça login** com suas credenciais")
+        st.markdown("*1. Faça login* com suas credenciais")
     with col2:
-        st.markdown("**2. Selecione a construtora** e envie a planilha")
+        st.markdown("*2. Selecione a construtora* e envie a planilha")
     with col3:
-        st.markdown("**3. Simule e compare** as melhores oportunidades")
+        st.markdown("*3. Simule e compare* as melhores oportunidades")
 
 # --- SIDEBAR COM LOGIN E NAVEGAÇÃO ---
 with st.sidebar:
-    st.markdown("### 🏢 Simulador de Crédito")
+    st.markdown("### 🔑 Acesso")
     st.markdown("---")
     
     USUARIOS = carregar_usuarios()
@@ -782,7 +777,7 @@ with st.sidebar:
         st.session_state.usuario_logado = None
     
     if st.session_state.usuario_logado is None:
-        st.markdown("### 🔑 Login")
+        st.markdown("### Login")
         usuario = st.text_input("Usuário")
         senha = st.text_input("Senha", type="password")
         
@@ -860,14 +855,14 @@ with st.sidebar:
                 st.session_state['token_enviado'] = False
                 st.rerun()
         
-        # --- MOSTRA A PÁGINA DE LOGIN COM IMAGEM ---
+        # --- MOSTRA A PÁGINA DE LOGIN NO CENTRO ---
         pagina_login()
         st.stop()
     
     usuario_atual = st.session_state.usuario_logado
     perfil_atual = USUARIOS[usuario_atual]["perfil"]
     
-    st.write(f"👤 **{USUARIOS[usuario_atual]['nome']}**")
+    st.write(f"👤 *{USUARIOS[usuario_atual]['nome']}*")
     st.caption(f"Perfil: {perfil_atual}")
     
     if st.button("🚪 Sair", use_container_width=True):
