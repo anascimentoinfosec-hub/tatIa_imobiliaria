@@ -164,7 +164,6 @@ def ler_planilha(uploaded_file, config):
 def pagina_simulador(CONSTRUTORAS):
     st.title("📊 Simulador de Crédito")
     
-    # Sidebar simplificada para o simulador
     with st.sidebar:
         st.header("⚙️ Configurações")
         
@@ -183,7 +182,6 @@ def pagina_simulador(CONSTRUTORAS):
         st.markdown("---")
         st.caption("Versão 2.0 - Multi Construtoras")
     
-    # Corpo do simulador
     if uploaded_file is not None:
         try:
             config = CONSTRUTORAS[construtora_selecionada]
@@ -199,7 +197,6 @@ def pagina_simulador(CONSTRUTORAS):
             
             st.markdown("---")
             
-            # Filtros
             col1, col2, col3, col4 = st.columns(4)
             
             with col1:
@@ -262,7 +259,6 @@ def pagina_simulador(CONSTRUTORAS):
                 else:
                     status_selecionado = 'Todas'
             
-            # Aplica filtros
             resultado = df.copy()
             
             if tipo_selecionado != 'Todas' and tipo_col:
@@ -277,7 +273,6 @@ def pagina_simulador(CONSTRUTORAS):
             if status_selecionado != 'Todas' and status_col:
                 resultado = resultado[resultado[status_col] == status_selecionado]
             
-            # Indicadores
             if not resultado.empty:
                 colunas_area = ['M²', 'AREA_M2', 'AREA']
                 area_col = None
@@ -289,14 +284,12 @@ def pagina_simulador(CONSTRUTORAS):
                 if preco_col and area_col:
                     resultado['R$/m²'] = (resultado[preco_col] / resultado[area_col]).round(2)
             
-            # Ordem das colunas
             colunas_ordem = config.get("colunas_ordem", list(df.columns)).copy()
             if 'R$/m²' in resultado.columns:
                 colunas_ordem.append('R$/m²')
             
             colunas_ordem = [c for c in colunas_ordem if c in resultado.columns]
             
-            # Exibe resultados
             st.subheader(f"🔍 Resultados: {len(resultado)} imóveis encontrados - {construtora_selecionada}")
             
             if not resultado.empty:
@@ -372,7 +365,6 @@ def pagina_gestao_usuarios(USUARIOS):
     
     tabs = st.tabs(["📋 Listar", "➕ Adicionar", "✏️ Editar"])
     
-    # Tab 1: Listar
     with tabs[0]:
         st.markdown("### Usuários cadastrados:")
         if USUARIOS:
@@ -388,7 +380,6 @@ def pagina_gestao_usuarios(USUARIOS):
         else:
             st.info("Nenhum usuário cadastrado.")
     
-    # Tab 2: Adicionar
     with tabs[1]:
         with st.form("form_novo_usuario"):
             col1, col2 = st.columns(2)
@@ -418,7 +409,6 @@ def pagina_gestao_usuarios(USUARIOS):
                 else:
                     st.error("❌ Preencha todos os campos!")
     
-    # Tab 3: Editar
     with tabs[2]:
         usuarios_lista = list(USUARIOS.keys())
         if usuarios_lista:
@@ -468,7 +458,6 @@ def pagina_gestao_usuarios(USUARIOS):
 def pagina_gestao_construtoras(CONSTRUTORAS):
     st.title("🏗️ Gestão de Construtoras")
     
-    # Formulário para adicionar
     with st.expander("➕ Adicionar Nova Construtora", expanded=True):
         with st.form("form_nova_construtora"):
             col1, col2 = st.columns(2)
@@ -518,7 +507,6 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                     except Exception as e:
                         st.error(f"❌ Erro ao adicionar: {str(e)}")
     
-    # Lista de construtoras
     st.markdown("---")
     st.markdown("### 📋 Construtoras Cadastradas")
     
@@ -539,7 +527,6 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                         salvar_construtoras(CONSTRUTORAS)
                         st.rerun()
                 
-                # Edição inline
                 if st.session_state.get('editando') == nome:
                     with st.form(f"form_edit_{nome}"):
                         col1, col2 = st.columns(2)
@@ -589,14 +576,12 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
 
 # --- SIDEBAR COM LOGIN E NAVEGAÇÃO ---
 with st.sidebar:
-    st.image("https://via.placeholder.com/150x50?text=Logo", use_container_width=True)
+    st.markdown("### 🏢 Simulador de Crédito")
     st.markdown("---")
     
-    # Carrega dados
     USUARIOS = carregar_usuarios()
     CONSTRUTORAS = carregar_construtoras()
     
-    # --- LOGIN ---
     if "usuario_logado" not in st.session_state:
         st.session_state.usuario_logado = None
     
@@ -613,7 +598,6 @@ with st.sidebar:
                 st.error("❌ Usuário ou senha inválidos!")
         st.stop()
     
-    # --- USUÁRIO LOGADO ---
     usuario_atual = st.session_state.usuario_logado
     perfil_atual = USUARIOS[usuario_atual]["perfil"]
     
@@ -626,11 +610,9 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # --- NAVEGAÇÃO ---
     if "pagina" not in st.session_state:
         st.session_state.pagina = "Simulador"
     
-    # Botões de navegação
     if st.button("📊 Simulador", use_container_width=True):
         st.session_state.pagina = "Simulador"
         st.rerun()
@@ -645,16 +627,21 @@ with st.sidebar:
             st.rerun()
     
     st.markdown("---")
-    st.caption("Versão 2.0 - Multi Construtoras")
+    st.caption("Versão 2.0")
 
-# --- RENDERIZAÇÃO DA PÁGINA SELECIONADA ---
-pagina = st.session_state.get("pagina", "Simulador")
-
-if pagina == "Simulador":
+# --- RENDERIZAÇÃO DA PÁGINA SELECIONADA (CORRIGIDA) ---
+# Se for corretor, SEMPRE vai para o simulador
+if perfil_atual == "corretor":
     pagina_simulador(CONSTRUTORAS)
-elif pagina == "Usuários" and perfil_atual == "gerente":
-    pagina_gestao_usuarios(USUARIOS)
-elif pagina == "Construtoras" and perfil_atual == "gerente":
-    pagina_gestao_construtoras(CONSTRUTORAS)
 else:
-    st.error("⚠️ Acesso negado ou página não encontrada.")
+    # Gerente: usa a navegação normal
+    pagina = st.session_state.get("pagina", "Simulador")
+    
+    if pagina == "Simulador":
+        pagina_simulador(CONSTRUTORAS)
+    elif pagina == "Usuários":
+        pagina_gestao_usuarios(USUARIOS)
+    elif pagina == "Construtoras":
+        pagina_gestao_construtoras(CONSTRUTORAS)
+    else:
+        pagina_simulador(CONSTRUTORAS)
