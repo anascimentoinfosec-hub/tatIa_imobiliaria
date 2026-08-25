@@ -7,6 +7,10 @@ import json
 import os
 import hashlib
 from datetime import datetime
+from google_auth_oauthlib.flow import Flow
+from googleapiclient.discovery import build
+from google.oauth2.credentials import Credentials
+import requests
 
 # CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="Simulador de Crédito", layout="wide")
@@ -160,28 +164,215 @@ def ler_planilha(uploaded_file, config):
     except:
         return None
 
+# --- AUTENTICAÇÃO GOOGLE OAUTH 2.0 ---
+def autenticar_google_drive_oauth():
+    """Autentica com OAuth 2.0 usando a conta do gerente"""
+    
+    # Se já tem token na sessão, usa
+    if "google_token" in st.session_state:
+        try:
+            creds = Credentials(token=st.session_state.google_token)
+            return build('drive', 'v3', credentials=creds)
+        except:
+            st.session_state.google_token = None
+    
+    # Verifica se tem as credenciais nos secrets
+    if not all(k in st.secrets for k in ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]):
+        st.warning("⚠️ Configure as credenciais OAuth nos Secrets do Streamlit")
+        return None
+    
+    # Configura o fluxo OAuth
+    client_config = {
+        "web": {
+            "client_id": st.secrets["GOOGLE_CLIENT_ID"],
+            "client_secret": st.secrets["GOOGLE_CLIENT_SECRET"],
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": [st.secrets.get("GOOGLE_REDIRECT_URI", "https://simulador-credito.streamlit.app/_stcore/oauth2-redirect")]
+        }
+    }
+    
+    flow = Flow.from_client_config(
+        client_config,
+        scopes=['https://www.googleapis.com/auth/drive.readonly', 
+                'https://www.googleapis.com/auth/drive.file']
+    )
+    
+    # Verifica se tem código de autorização na URL
+    query_params = st.query_params
+    
+    if 'code' not in query_params:
+        # Gera URL de autorização
+        auth_url, state = flow.authorization_url(prompt='consent')
+        st.session_state['oauth_state'] = state
+        
+        # Exibe botão para autorizar
+        st.info("### 🔑 Autorize o acesso ao Google Drive")
+        st.markdown("""
+        O app precisa acessar suas planilhas no Google Drive.
+        Clique no botão abaixo para autorizar:
+        """)
+        
+        # Botão estilizado
+        st.markdown(f"""
+        <div style="display: flex; justify-content: center; margin: 20px 0;">
+            <a href="{auth_url}" target="_blank" style="
+                background-color: #4285F4;
+                color: white;
+                padding: 14px 28px;
+                text-decoration: none;
+                border-radius: 8px;
+                font-weight: bold;
+                font-size: 18px;
+                display: inline-block;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            ">
+                🔐 Autorizar Google Drive
+            </a>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.caption("Você será redirecionado para fazer login na sua conta Google e autorizar o acesso.")
+        return None
+    
+    # Troca o código por token
+    try:
+        flow.fetch_token(code=query_params['code'])
+        creds = flow.credentials
+        
+        # Salva o token na sessão
+        st.session_state.google_token = creds.token
+        
+        # Limpa o código da URL
+        st.query_params.clear()
+        
+        st.success("✅ Autenticado com sucesso!")
+        st.rerun()
+        
+    except Exception as e:
+        st.error(f"❌ Erro na autenticação: {str(e)}")
+        return None
+
+# --- FUNÇÃO PARA BUSCAR PLANILHA DO DRIVE ---
+def buscar_planilha_drive(service, nome_arquivo=None):
+    """Busca a planilha mais recente no Drive do gerente"""
+    try:
+        if nome_arquivo:
+            # Busca por nome específico
+            query = f"name='{nome_arquivo}' and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and trashed=false"
+        else:
+            # Busca a mais recente
+            query = "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and trashed=false"
+        
+        results = service.files().list(
+            q=query,
+            orderBy="modifiedTime desc",
+            pageSize=5
+        ).execute()
+        
+        files = results.get('files', [])
+        return files
+    
+    except Exception as e:
+        st.error(f"❌ Erro ao buscar arquivos: {str(e)}")
+        return []
+
+# --- FUNÇÃO PARA BAIXAR PLANILHA DO DRIVE ---
+def baixar_planilha_drive(service, file_id):
+    """Baixa uma planilha do Drive"""
+    try:
+        request = service.files().get_media(fileId=file_id)
+        file_data = request.execute()
+        return io.BytesIO(file_data)
+    except Exception as e:
+        st.error(f"❌ Erro ao baixar arquivo: {str(e)}")
+        return None
+
 # --- FUNÇÃO PARA EXIBIR O SIMULADOR ---
-def pagina_simulador(CONSTRUTORAS):
+def pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual):
     st.title("📊 Simulador de Crédito")
     
     with st.sidebar:
         st.header("⚙️ Configurações")
         
-        construtora_selecionada = st.selectbox(
-            "🏗️ Selecione a construtora",
-            options=list(CONSTRUTORAS.keys())
-        )
+        # Para o gerente: opção de usar o Drive
+        if perfil_atual == "gerente":
+            usar_drive = st.checkbox("☁️ Buscar planilha do Google Drive")
+            if usar_drive:
+                st.markdown("---")
+                st.markdown("### 📁 Google Drive")
+                
+                drive_service = autenticar_google_drive_oauth()
+                
+                if drive_service:
+                    # Busca os arquivos
+                    arquivos = buscar_planilha_drive(drive_service)
+                    
+                    if arquivos:
+                        # Seleciona um arquivo
+                        opcoes = {f"{f['name']} ({f['modifiedTime']})": f['id'] for f in arquivos}
+                        arquivo_selecionado = st.selectbox(
+                            "Selecione a planilha:",
+                            options=list(opcoes.keys())
+                        )
+                        
+                        if st.button("📥 Carregar do Drive", use_container_width=True):
+                            file_id = opcoes[arquivo_selecionado]
+                            file_data = baixar_planilha_drive(drive_service, file_id)
+                            if file_data:
+                                st.session_state['drive_file_data'] = file_data
+                                st.session_state['drive_file_name'] = arquivo_selecionado
+                                st.success(f"✅ Planilha carregada: {arquivo_selecionado}")
+                                st.rerun()
+                        
+                        if 'drive_file_data' in st.session_state:
+                            st.info(f"📄 Planilha atual: {st.session_state.get('drive_file_name', '')}")
+                    else:
+                        st.warning("⚠️ Nenhuma planilha encontrada no Drive")
+                else:
+                    st.info("🔑 Autorize o acesso ao Drive para carregar planilhas")
+                
+                st.markdown("---")
+        
+        # Upload tradicional
+        if not perfil_atual == "gerente" or not usar_drive:
+            construtora_selecionada = st.selectbox(
+                "🏗️ Selecione a construtora",
+                options=list(CONSTRUTORAS.keys())
+            )
+            
+            st.markdown("---")
+            
+            uploaded_file = st.file_uploader(
+                "📤 Envie a planilha",
+                type=['xlsx', 'xls', 'csv', 'pdf']
+            )
+        else:
+            # Se está usando Drive, usa a construtora selecionada abaixo
+            construtora_selecionada = st.selectbox(
+                "🏗️ Selecione a construtora",
+                options=list(CONSTRUTORAS.keys())
+            )
+            uploaded_file = None
+            
+            if 'drive_file_data' in st.session_state:
+                # Cria um objeto parecido com uploaded_file
+                class DriveFile:
+                    def _init_(self, data, name):
+                        self._data = data
+                        self.name = name
+                    def read(self):
+                        return self._data.getvalue() if hasattr(self._data, 'getvalue') else self._data
+                
+                uploaded_file = DriveFile(
+                    st.session_state['drive_file_data'],
+                    st.session_state.get('drive_file_name', 'planilha_drive.xlsx')
+                )
         
         st.markdown("---")
-        
-        uploaded_file = st.file_uploader(
-            "📤 Envie a planilha",
-            type=['xlsx', 'xls', 'csv', 'pdf']
-        )
-        
-        st.markdown("---")
-        st.caption("Versão 2.0 - Multi Construtoras")
+        st.caption("Versão 2.0")
     
+    # --- PROCESSAMENTO DA PLANILHA ---
     if uploaded_file is not None:
         try:
             config = CONSTRUTORAS[construtora_selecionada]
@@ -354,7 +545,7 @@ def pagina_simulador(CONSTRUTORAS):
         st.markdown("""
         ### Como usar:
         1. Selecione a *construtora* no menu lateral
-        2. Envie a planilha da construtora (XLSX, CSV ou PDF)
+        2. Envie a planilha da construtora (XLSX, CSV ou PDF) ou use o Google Drive
         3. Ajuste os filtros disponíveis
         4. A IA recomenda o melhor imóvel
         """)
@@ -606,6 +797,8 @@ with st.sidebar:
     
     if st.button("🚪 Sair", use_container_width=True):
         st.session_state.usuario_logado = None
+        if "google_token" in st.session_state:
+            del st.session_state.google_token
         st.rerun()
     
     st.markdown("---")
@@ -629,19 +822,19 @@ with st.sidebar:
     st.markdown("---")
     st.caption("Versão 2.0")
 
-# --- RENDERIZAÇÃO DA PÁGINA SELECIONADA (CORRIGIDA) ---
+# --- RENDERIZAÇÃO DA PÁGINA SELECIONADA ---
 # Se for corretor, SEMPRE vai para o simulador
 if perfil_atual == "corretor":
-    pagina_simulador(CONSTRUTORAS)
+    pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual)
 else:
     # Gerente: usa a navegação normal
     pagina = st.session_state.get("pagina", "Simulador")
     
     if pagina == "Simulador":
-        pagina_simulador(CONSTRUTORAS)
+        pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual)
     elif pagina == "Usuários":
         pagina_gestao_usuarios(USUARIOS)
     elif pagina == "Construtoras":
         pagina_gestao_construtoras(CONSTRUTORAS)
     else:
-        pagina_simulador(CONSTRUTORAS)
+        pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual)
