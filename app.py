@@ -292,22 +292,21 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual):
         )
         
         st.markdown("---")
-        st.caption("Versão 2.0 - Multi Construtoras")
+        st.caption("Versão 2.0")
     
     # --- CORPO PRINCIPAL ---
     if uploaded_file is None:
-        # --- CSS ---
+        # --- CSS CORRIGIDO ---
         st.markdown("""
         <style>
         .hero {
-            background-image: url('https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1200');
-            background-size: cover;
-            background-position: center;
+            background: linear-gradient(135deg, #1a237e, #0d47a1, #1565c0);
             padding: 50px 30px;
             border-radius: 16px;
             color: white;
             text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
             margin-bottom: 30px;
+            border-bottom: 6px solid #ff6f00;
         }
         .hero h1 {
             font-size: 38px;
@@ -380,7 +379,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual):
         </style>
         """, unsafe_allow_html=True)
 
-        # --- HERO ---
+        # --- HERO (sem imagem, apenas gradiente) ---
         st.markdown("""
         <div class="hero">
             <h1>🏢 Simulador de Crédito Imobiliário</h1>
@@ -1007,7 +1006,7 @@ with st.sidebar:
             st.rerun()
     
     st.markdown("---")
-    st.caption("Versão 2.0 - Recuperação de senha")
+    st.caption("Versão 2.0")
 
 # --- RENDERIZAÇÃO DA PÁGINA SELECIONADA ---
 if perfil_atual == "corretor":
