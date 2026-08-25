@@ -11,6 +11,8 @@ import secrets
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import requests
+import random
 
 # CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="Simulador de Crédito", layout="wide")
@@ -38,7 +40,7 @@ def carregar_usuarios():
             "hash": hash_senha("gerente2026"),
             "perfil": "gerente",
             "ativo": True,
-            "email": "gerente@email.com",  # <-- ADICIONE O E-MAIL DO GERENTE
+            "email": "gerente@email.com",
             "criado_em": datetime.now().isoformat()
         }
     }
@@ -55,11 +57,9 @@ def verificar_login(usuario: str, senha: str, usuarios: dict) -> bool:
 
 # --- FUNÇÕES DE RECUPERAÇÃO DE SENHA ---
 def gerar_token_recuperacao():
-    """Gera um token de 6 dígitos"""
     return ''.join(secrets.choice('0123456789') for _ in range(6))
 
 def salvar_token_recuperacao(email, token):
-    """Salva o token com timestamp"""
     recuperacao = {}
     try:
         if os.path.exists(ARQUIVO_RECUPERACAO):
@@ -77,7 +77,6 @@ def salvar_token_recuperacao(email, token):
         json.dump(recuperacao, f, indent=2, ensure_ascii=False)
 
 def validar_token_recuperacao(email, token):
-    """Valida se o token é válido e não expirou"""
     try:
         if not os.path.exists(ARQUIVO_RECUPERACAO):
             return False
@@ -92,7 +91,6 @@ def validar_token_recuperacao(email, token):
         if dados["token"] != token:
             return False
         
-        # Verifica se não expirou (15 minutos)
         criado_em = datetime.fromisoformat(dados["criado_em"])
         if datetime.now() - criado_em > timedelta(minutes=15):
             return False
@@ -102,7 +100,6 @@ def validar_token_recuperacao(email, token):
         return False
 
 def remover_token_recuperacao(email):
-    """Remove o token após uso"""
     try:
         if os.path.exists(ARQUIVO_RECUPERACAO):
             with open(ARQUIVO_RECUPERACAO, 'r', encoding='utf-8') as f:
@@ -117,11 +114,8 @@ def remover_token_recuperacao(email):
         pass
 
 def enviar_email_recuperacao(email, token):
-    """Envia o token por e-mail usando Gmail"""
     try:
-        # Verifica se tem as credenciais nos secrets
         if "EMAIL_SENDER" not in st.secrets or "EMAIL_PASSWORD" not in st.secrets:
-            # Fallback: exibe o token na tela (apenas para teste)
             st.warning(f"⚠️ Configure EMAIL_SENDER e EMAIL_PASSWORD nos Secrets do Streamlit")
             st.info(f"💡 Token gerado: *{token}* (copie e cole)")
             return True
@@ -129,7 +123,6 @@ def enviar_email_recuperacao(email, token):
         remetente = st.secrets["EMAIL_SENDER"]
         senha = st.secrets["EMAIL_PASSWORD"]
         
-        # Cria a mensagem
         msg = MIMEMultipart()
         msg['From'] = remetente
         msg['To'] = email
@@ -154,7 +147,6 @@ def enviar_email_recuperacao(email, token):
         
         msg.attach(MIMEText(corpo, 'plain'))
         
-        # Envia o e-mail
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
         server.login(remetente, senha)
@@ -299,184 +291,381 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual):
         )
         
         st.markdown("---")
-        st.caption("Versão 2.0")
+        st.caption("Versão 2.0 - Multi Construtoras")
     
-    if uploaded_file is not None:
-        try:
-            config = CONSTRUTORAS[construtora_selecionada]
-            df = ler_planilha(uploaded_file, config)
+    # --- CORPO PRINCIPAL ---
+    if uploaded_file is None:
+        # --- CSS ---
+        st.markdown("""
+        <style>
+        .hero {
+            background-image: url('https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1200');
+            background-size: cover;
+            background-position: center;
+            padding: 50px 30px;
+            border-radius: 16px;
+            color: white;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
+            margin-bottom: 30px;
+        }
+        .hero h1 {
+            font-size: 38px;
+            font-weight: 700;
+            margin: 0;
+        }
+        .hero p {
+            font-size: 18px;
+            opacity: 0.9;
+            margin: 8px 0 0 0;
+        }
+        .card-info {
+            background-color: #f0f4ff;
+            padding: 16px 20px;
+            border-radius: 12px;
+            border-left: 6px solid #0066cc;
+            margin-bottom: 12px;
+        }
+        .card-info h4 {
+            margin: 0 0 4px 0;
+            color: #0066cc;
+            font-size: 14px;
+        }
+        .card-info p {
+            margin: 0;
+            color: #333;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        .dica-card {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+            text-align: center;
+            margin-top: 16px;
+        }
+        .dica-card p {
+            font-size: 17px;
+            font-style: italic;
+            margin: 0;
+        }
+        .clima-card {
+            background-color: #e8f4fd;
+            padding: 16px 20px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .clima-card .temp {
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .empreendimento-card {
+            background: linear-gradient(135deg, #1a237e, #0d47a1);
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+            text-align: center;
+            margin-top: 12px;
+        }
+        .empreendimento-card h3 {
+            margin: 0;
+        }
+        .empreendimento-card p {
+            margin: 4px 0;
+            opacity: 0.9;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+        # --- HERO ---
+        st.markdown("""
+        <div class="hero">
+            <h1>🏢 Simulador de Crédito Imobiliário</h1>
+            <p>Rio de Janeiro • Oásis II e outras construtoras</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        col_esq, col_dir = st.columns([2, 1])
+
+        with col_esq:
+            st.markdown("### 📊 Mercado Imobiliário")
             
-            if df is None:
-                st.error("❌ Não foi possível ler a planilha. Verifique o formato e o mapeamento.")
-                st.stop()
+            mercado = {
+                "Taxa Selic": "10,50%",
+                "Taxa de Juros (SFH)": "9,50% a.a.",
+                "TR (referência)": "1,50% a.a.",
+                "Valor médio m² (RJ)": "R$ 12.800",
+                "Média de entrada": "20% a 30%",
+                "Prazo máximo": "420 meses (35 anos)"
+            }
             
-            for col in config.get("colunas_para_converter", []):
-                if col in df.columns:
-                    df[col] = df[col].apply(converter_para_float)
+            for titulo, valor in mercado.items():
+                st.markdown(f"""
+                <div class="card-info">
+                    <h4>{titulo}</h4>
+                    <p>{valor}</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+        with col_dir:
+            st.markdown("### 🌤️ Clima no Rio")
+            
+            try:
+                if "OPENWEATHER_API_KEY" in st.secrets:
+                    api_key = st.secrets["OPENWEATHER_API_KEY"]
+                    url = f"https://api.openweathermap.org/data/2.5/weather?q=Rio de Janeiro,BR&units=metric&lang=pt_br&appid={api_key}"
+                    response = requests.get(url, timeout=5)
+                    if response.status_code == 200:
+                        dados = response.json()
+                        temp = dados['main']['temp']
+                        desc = dados['weather'][0]['description']
+                        umidade = dados['main']['humidity']
+                        vento = dados['wind']['speed']
+                        
+                        st.markdown(f"""
+                        <div class="clima-card">
+                            <div>
+                                <div class="temp">{temp:.1f}°C</div>
+                                <div style="text-transform: capitalize;">{desc}</div>
+                            </div>
+                            <div style="margin-left: auto; text-align: right; font-size: 14px;">
+                                🌧️ Umidade: {umidade}%<br>
+                                💨 Vento: {vento} km/h
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.info("🌤️ Clima: 28°C, Ensolarado")
+                else:
+                    st.info("🌤️ Configure a chave OpenWeather para clima em tempo real!")
+            except:
+                st.info("🌤️ Clima: 28°C, Ensolarado")
+
+            st.markdown("---")
+            st.markdown("### 🏗️ Empreendimento em Destaque")
+            st.markdown("""
+            <div class="empreendimento-card">
+                <h3>Oásis II</h3>
+                <p>📍 Barra da Tijuca - Rio de Janeiro</p>
+                <p>🏢 18 andares • 115 unidades • 2 e 3 quartos</p>
+                <p>💰 Preços a partir de R$ 384.950</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # --- DICA DO DIA ---
+        dicas = [
+            "💡 'A melhor época para comprar imóvel é sempre aquela em que você está preparado financeiramente.'",
+            "💡 'Clientes valorizam corretores que entendem de financiamento, não só de imóveis.'",
+            "💡 'Um bom corretor não vende um imóvel, ele realiza um sonho.'",
+            "💡 'Conhecer as taxas de juros é tão importante quanto conhecer a planta do imóvel.'",
+            "💡 'A confiança se constrói com transparência. Mostre todas as opções de financiamento.'",
+            "💡 'O cliente não compra o imóvel, compra a segurança de ter um lar.'",
+            "💡 'A simulação é o primeiro passo. O segundo é acreditar que é possível.'",
+            "💡 'Imóvel é o único investimento que você pode usar enquanto ele valoriza.'"
+        ]
+        
+        dia = datetime.now().day
+        dica = dicas[dia % len(dicas)]
+        
+        st.markdown(f"""
+        <div class="dica-card">
+            <p>{dica}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # --- INSTRUÇÕES ---
+        st.markdown("---")
+        st.markdown("### 📌 Como usar o Simulador")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("""
+            *1. Selecione a construtora*
+            No menu lateral, escolha a construtora desejada.
+            """)
+        
+        with col2:
+            st.markdown("""
+            *2. Envie a planilha*
+            Faça upload da planilha da construtora (XLSX ou PDF).
+            """)
+        
+        with col3:
+            st.markdown("""
+            *3. Simule e compare*
+            A IA recomenda o melhor imóvel com base em custo-benefício.
+            """)
+        
+        return
+    
+    # --- PROCESSAMENTO DA PLANILHA ---
+    try:
+        config = CONSTRUTORAS[construtora_selecionada]
+        df = ler_planilha(uploaded_file, config)
+        
+        if df is None:
+            st.error("❌ Não foi possível ler a planilha. Verifique o formato e o mapeamento.")
+            st.stop()
+        
+        for col in config.get("colunas_para_converter", []):
+            if col in df.columns:
+                df[col] = df[col].apply(converter_para_float)
+        
+        st.markdown("---")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            colunas_tipo = ['TIPOLOGIA', 'QUARTOS', 'DORMITÓRIOS', 'TIPO']
+            tipo_col = None
+            for c in colunas_tipo:
+                if c in df.columns:
+                    tipo_col = c
+                    break
+            
+            if tipo_col:
+                tipos = ['Todas'] + sorted(df[tipo_col].dropna().unique().tolist())
+                tipo_selecionado = st.selectbox("🏠 Tipo", tipos)
+            else:
+                tipo_selecionado = 'Todas'
+        
+        with col2:
+            colunas_andar = ['PAVTO', 'ANDAR']
+            andar_col = None
+            for c in colunas_andar:
+                if c in df.columns:
+                    andar_col = c
+                    break
+            
+            if andar_col:
+                andar_min = st.number_input("📌 Andar mínimo", min_value=0, value=0, step=1)
+            else:
+                andar_min = 0
+        
+        with col3:
+            colunas_preco = ['PREÇO', 'VALOR']
+            preco_col = None
+            for c in colunas_preco:
+                if c in df.columns:
+                    preco_col = c
+                    break
+            
+            if preco_col and not df[preco_col].isna().all():
+                preco_max = st.number_input(
+                    "💰 Preço máximo (R$)",
+                    min_value=0,
+                    value=int(df[preco_col].max()) if df[preco_col].max() > 0 else 1000000,
+                    step=50000,
+                    format="%d"
+                )
+            else:
+                preco_max = 1000000
+        
+        with col4:
+            colunas_status = ['DISPONIBILIDADE', 'STATUS', 'SITUAÇÃO']
+            status_col = None
+            for c in colunas_status:
+                if c in df.columns:
+                    status_col = c
+                    break
+            
+            if status_col:
+                status_opcoes = ['Todas'] + sorted(df[status_col].dropna().unique().tolist())
+                status_selecionado = st.selectbox("🔑 Disponibilidade", status_opcoes)
+            else:
+                status_selecionado = 'Todas'
+        
+        resultado = df.copy()
+        
+        if tipo_selecionado != 'Todas' and tipo_col:
+            resultado = resultado[resultado[tipo_col] == tipo_selecionado]
+        
+        if andar_min > 0 and andar_col:
+            resultado = resultado[resultado[andar_col] >= andar_min]
+        
+        if preco_col and preco_col in df.columns:
+            resultado = resultado[resultado[preco_col] <= preco_max]
+        
+        if status_selecionado != 'Todas' and status_col:
+            resultado = resultado[resultado[status_col] == status_selecionado]
+        
+        if not resultado.empty:
+            colunas_area = ['M²', 'AREA_M2', 'AREA']
+            area_col = None
+            for c in colunas_area:
+                if c in resultado.columns:
+                    area_col = c
+                    break
+            
+            if preco_col and area_col:
+                resultado['R$/m²'] = (resultado[preco_col] / resultado[area_col]).round(2)
+        
+        colunas_ordem = config.get("colunas_ordem", list(df.columns)).copy()
+        if 'R$/m²' in resultado.columns:
+            colunas_ordem.append('R$/m²')
+        
+        colunas_ordem = [c for c in colunas_ordem if c in resultado.columns]
+        
+        st.subheader(f"🔍 Resultados: {len(resultado)} imóveis encontrados - {construtora_selecionada}")
+        
+        if not resultado.empty:
+            if 'R$/m²' in resultado.columns:
+                resultado_ordenado = resultado.sort_values('R$/m²')
+            else:
+                resultado_ordenado = resultado
+            
+            st.dataframe(
+                resultado_ordenado[colunas_ordem],
+                use_container_width=True,
+                height=400
+            )
             
             st.markdown("---")
+            st.subheader("🤖 Recomendação da IA")
             
-            col1, col2, col3, col4 = st.columns(4)
+            melhor = resultado_ordenado.iloc[0]
             
-            with col1:
-                colunas_tipo = ['TIPOLOGIA', 'QUARTOS', 'DORMITÓRIOS', 'TIPO']
-                tipo_col = None
-                for c in colunas_tipo:
-                    if c in df.columns:
-                        tipo_col = c
-                        break
-                
-                if tipo_col:
-                    tipos = ['Todas'] + sorted(df[tipo_col].dropna().unique().tolist())
-                    tipo_selecionado = st.selectbox("🏠 Tipo", tipos)
+            col_a, col_b = st.columns([2, 1])
+            
+            with col_a:
+                st.success(f"*Melhor custo-benefício:* Unidade {melhor['UNIDADE']}")
+                if preco_col and preco_col in melhor:
+                    st.write(f"- *Preço:* R$ {melhor[preco_col]:,.2f}")
+                if 'R$/m²' in melhor:
+                    st.write(f"- *R$/m²:* R$ {melhor['R$/m²']:.2f}")
+                if '1ª AVALIAÇÃO OÁSIS II' in melhor:
+                    st.write(f"- *Avaliação:* R$ {melhor['1ª AVALIAÇÃO OÁSIS II']:,.2f}")
+                if 'DESCONTO' in melhor:
+                    st.write(f"- *Desconto:* R$ {melhor['DESCONTO']:,.2f}")
+                if tipo_col and tipo_col in melhor:
+                    st.write(f"- *Tipo:* {melhor[tipo_col]}")
+            
+            with col_b:
+                if preco_col and preco_col in melhor and melhor[preco_col] > 0:
+                    valor = melhor[preco_col]
+                    entrada_percentual = st.slider("Entrada (%)", 20, 50, 30)
+                    entrada = valor * (entrada_percentual / 100)
+                    financiado = valor - entrada
+                    juros = 0.10
+                    prazo_meses = 420
+                    parcela_media = financiado * (1 + juros/12) / prazo_meses
+                    
+                    st.info(f"*Simulação - Unidade {melhor['UNIDADE']}*")
+                    st.write(f"Valor total: R$ {valor:,.2f}")
+                    st.write(f"Entrada ({entrada_percentual}%): R$ {entrada:,.2f}")
+                    st.write(f"Financiado: R$ {financiado:,.2f}")
+                    st.write(f"Parcela estimada: R$ {parcela_media:,.2f}")
+                    st.caption(f"Prazo: {prazo_meses} meses (35 anos), juros: {juros*100}% a.a. (SAC)")
                 else:
-                    tipo_selecionado = 'Todas'
-            
-            with col2:
-                colunas_andar = ['PAVTO', 'ANDAR']
-                andar_col = None
-                for c in colunas_andar:
-                    if c in df.columns:
-                        andar_col = c
-                        break
-                
-                if andar_col:
-                    andar_min = st.number_input("📌 Andar mínimo", min_value=0, value=0, step=1)
-                else:
-                    andar_min = 0
-            
-            with col3:
-                colunas_preco = ['PREÇO', 'VALOR']
-                preco_col = None
-                for c in colunas_preco:
-                    if c in df.columns:
-                        preco_col = c
-                        break
-                
-                if preco_col and not df[preco_col].isna().all():
-                    preco_max = st.number_input(
-                        "💰 Preço máximo (R$)",
-                        min_value=0,
-                        value=int(df[preco_col].max()) if df[preco_col].max() > 0 else 1000000,
-                        step=50000,
-                        format="%d"
-                    )
-                else:
-                    preco_max = 1000000
-            
-            with col4:
-                colunas_status = ['DISPONIBILIDADE', 'STATUS', 'SITUAÇÃO']
-                status_col = None
-                for c in colunas_status:
-                    if c in df.columns:
-                        status_col = c
-                        break
-                
-                if status_col:
-                    status_opcoes = ['Todas'] + sorted(df[status_col].dropna().unique().tolist())
-                    status_selecionado = st.selectbox("🔑 Disponibilidade", status_opcoes)
-                else:
-                    status_selecionado = 'Todas'
-            
-            resultado = df.copy()
-            
-            if tipo_selecionado != 'Todas' and tipo_col:
-                resultado = resultado[resultado[tipo_col] == tipo_selecionado]
-            
-            if andar_min > 0 and andar_col:
-                resultado = resultado[resultado[andar_col] >= andar_min]
-            
-            if preco_col and preco_col in df.columns:
-                resultado = resultado[resultado[preco_col] <= preco_max]
-            
-            if status_selecionado != 'Todas' and status_col:
-                resultado = resultado[resultado[status_col] == status_selecionado]
-            
-            if not resultado.empty:
-                colunas_area = ['M²', 'AREA_M2', 'AREA']
-                area_col = None
-                for c in colunas_area:
-                    if c in resultado.columns:
-                        area_col = c
-                        break
-                
-                if preco_col and area_col:
-                    resultado['R$/m²'] = (resultado[preco_col] / resultado[area_col]).round(2)
-            
-            colunas_ordem = config.get("colunas_ordem", list(df.columns)).copy()
-            if 'R$/m²' in resultado.columns:
-                colunas_ordem.append('R$/m²')
-            
-            colunas_ordem = [c for c in colunas_ordem if c in resultado.columns]
-            
-            st.subheader(f"🔍 Resultados: {len(resultado)} imóveis encontrados - {construtora_selecionada}")
-            
-            if not resultado.empty:
-                if 'R$/m²' in resultado.columns:
-                    resultado_ordenado = resultado.sort_values('R$/m²')
-                else:
-                    resultado_ordenado = resultado
-                
-                st.dataframe(
-                    resultado_ordenado[colunas_ordem],
-                    use_container_width=True,
-                    height=400
-                )
-                
-                st.markdown("---")
-                st.subheader("🤖 Recomendação da IA")
-                
-                melhor = resultado_ordenado.iloc[0]
-                
-                col_a, col_b = st.columns([2, 1])
-                
-                with col_a:
-                    st.success(f"*Melhor custo-benefício:* Unidade {melhor['UNIDADE']}")
-                    if preco_col and preco_col in melhor:
-                        st.write(f"- *Preço:* R$ {melhor[preco_col]:,.2f}")
-                    if 'R$/m²' in melhor:
-                        st.write(f"- *R$/m²:* R$ {melhor['R$/m²']:.2f}")
-                    if '1ª AVALIAÇÃO OÁSIS II' in melhor:
-                        st.write(f"- *Avaliação:* R$ {melhor['1ª AVALIAÇÃO OÁSIS II']:,.2f}")
-                    if 'DESCONTO' in melhor:
-                        st.write(f"- *Desconto:* R$ {melhor['DESCONTO']:,.2f}")
-                    if tipo_col and tipo_col in melhor:
-                        st.write(f"- *Tipo:* {melhor[tipo_col]}")
-                
-                with col_b:
-                    if preco_col and preco_col in melhor and melhor[preco_col] > 0:
-                        valor = melhor[preco_col]
-                        entrada_percentual = st.slider("Entrada (%)", 20, 50, 30)
-                        entrada = valor * (entrada_percentual / 100)
-                        financiado = valor - entrada
-                        juros = 0.10
-                        prazo_meses = 420
-                        parcela_media = financiado * (1 + juros/12) / prazo_meses
-                        
-                        st.info(f"*Simulação - Unidade {melhor['UNIDADE']}*")
-                        st.write(f"Valor total: R$ {valor:,.2f}")
-                        st.write(f"Entrada ({entrada_percentual}%): R$ {entrada:,.2f}")
-                        st.write(f"Financiado: R$ {financiado:,.2f}")
-                        st.write(f"Parcela estimada: R$ {parcela_media:,.2f}")
-                        st.caption(f"Prazo: {prazo_meses} meses (35 anos), juros: {juros*100}% a.a. (SAC)")
-                    else:
-                        st.warning("⚠️ Valor do imóvel não disponível para simulação.")
-            else:
-                st.warning("⚠️ Nenhum imóvel encontrado com os filtros atuais.")
-        
-        except Exception as e:
-            st.error(f"❌ Erro ao ler a planilha: {str(e)}")
-            st.info("Verifique o formato do arquivo (XLSX, CSV ou PDF).")
+                    st.warning("⚠️ Valor do imóvel não disponível para simulação.")
+        else:
+            st.warning("⚠️ Nenhum imóvel encontrado com os filtros atuais.")
     
-    else:
-        st.info("👈 Selecione a construtora e envie a planilha no menu lateral para começar")
-        st.markdown("""
-        ### Como usar:
-        1. Selecione a *construtora* no menu lateral
-        2. Envie a planilha da construtora (XLSX, CSV ou PDF)
-        3. Ajuste os filtros disponíveis
-        4. A IA recomenda o melhor imóvel
-        """)
+    except Exception as e:
+        st.error(f"❌ Erro ao ler a planilha: {str(e)}")
+        st.info("Verifique o formato do arquivo (XLSX, CSV ou PDF).")
 
 # --- FUNÇÃO PARA EXIBIR GESTÃO DE USUÁRIOS ---
 def pagina_gestao_usuarios(USUARIOS):
@@ -520,6 +709,7 @@ def pagina_gestao_usuarios(USUARIOS):
                             "hash": hash_senha(nova_senha),
                             "perfil": novo_perfil,
                             "ativo": novo_ativo,
+                            "email": "",
                             "criado_em": datetime.now().isoformat()
                         }
                         salvar_usuarios(USUARIOS)
@@ -548,6 +738,7 @@ def pagina_gestao_usuarios(USUARIOS):
                     with col2:
                         nova_senha = st.text_input("Nova senha (deixe em branco para manter)", type="password")
                         novo_ativo = st.checkbox("Ativo", value=dados["ativo"])
+                        novo_email = st.text_input("E-mail", value=dados.get("email", ""))
                     
                     col_btn1, col_btn2 = st.columns(2)
                     with col_btn1:
@@ -557,6 +748,7 @@ def pagina_gestao_usuarios(USUARIOS):
                                 dados["hash"] = hash_senha(nova_senha)
                             dados["perfil"] = novo_perfil
                             dados["ativo"] = novo_ativo
+                            dados["email"] = novo_email
                             salvar_usuarios(USUARIOS)
                             st.success("✅ Usuário atualizado com sucesso!")
                             st.rerun()
@@ -639,198 +831,4 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                     st.write(f"{len(config.get('colunas_ordem', []))} colunas")
                 with col3:
                     if st.button(f"✏️ Editar", key=f"edit_{nome}"):
-                        st.session_state['editando'] = nome
-                with col4:
-                    if st.button(f"🗑️ Excluir", key=f"del_{nome}"):
-                        del CONSTRUTORAS[nome]
-                        salvar_construtoras(CONSTRUTORAS)
-                        st.rerun()
-                
-                if st.session_state.get('editando') == nome:
-                    with st.form(f"form_edit_{nome}"):
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            novo_nome = st.text_input("Novo nome", value=nome)
-                            novo_skiprows = st.number_input("Skiprows", value=config.get("skiprows", 0), step=1)
-                        with col2:
-                            novo_colunas_ordem = st.text_input(
-                                "Colunas para exibir",
-                                value=", ".join(config.get("colunas_ordem", []))
-                            )
-                            novo_colunas_numericas = st.text_input(
-                                "Colunas numéricas",
-                                value=", ".join(config.get("colunas_para_converter", []))
-                            )
-                        
-                        novo_mapeamento = st.text_area(
-                            "Mapeamento",
-                            value=json.dumps(config.get("mapeamento", {}), indent=2, ensure_ascii=False),
-                            height=100
-                        )
-                        
-                        col_btn1, col_btn2 = st.columns(2)
-                        with col_btn1:
-                            if st.form_submit_button("💾 Salvar", use_container_width=True):
-                                try:
-                                    del CONSTRUTORAS[nome]
-                                    CONSTRUTORAS[novo_nome] = {
-                                        "skiprows": novo_skiprows,
-                                        "mapeamento": json.loads(novo_mapeamento),
-                                        "colunas_ordem": [c.strip() for c in novo_colunas_ordem.split(',') if c.strip()],
-                                        "colunas_para_converter": [c.strip() for c in novo_colunas_numericas.split(',') if c.strip()]
-                                    }
-                                    salvar_construtoras(CONSTRUTORAS)
-                                    st.session_state['editando'] = None
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"❌ Erro: {str(e)}")
-                        with col_btn2:
-                            if st.form_submit_button("❌ Cancelar", use_container_width=True):
-                                st.session_state['editando'] = None
-                                st.rerun()
-                
-                st.markdown("---")
-    else:
-        st.info("Nenhuma construtora cadastrada. Adicione a primeira!")
-
-# --- SIDEBAR COM LOGIN E NAVEGAÇÃO ---
-with st.sidebar:
-    st.markdown("### 🏢 Simulador de Crédito")
-    st.markdown("---")
-    
-    USUARIOS = carregar_usuarios()
-    CONSTRUTORAS = carregar_construtoras()
-    
-    if "usuario_logado" not in st.session_state:
-        st.session_state.usuario_logado = None
-    
-    if st.session_state.usuario_logado is None:
-        st.markdown("### 🔑 Login")
-        usuario = st.text_input("Usuário")
-        senha = st.text_input("Senha", type="password")
-        
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            if st.button("Entrar", use_container_width=True):
-                if verificar_login(usuario, senha, USUARIOS):
-                    st.session_state.usuario_logado = usuario
-                    st.success(f"✅ Bem-vindo, {USUARIOS[usuario]['nome']}!")
-                    st.rerun()
-                else:
-                    st.error("❌ Usuário ou senha inválidos!")
-        
-        with col2:
-            if st.button("🔑 Esqueci a senha", use_container_width=True):
-                st.session_state['recuperando_senha'] = True
-                st.rerun()
-        
-        # --- TELA DE RECUPERAÇÃO DE SENHA ---
-        if st.session_state.get('recuperando_senha', False):
-            st.markdown("---")
-            st.markdown("### 🔐 Recuperar senha")
-            
-            email = st.text_input("E-mail cadastrado")
-            
-            if st.button("📧 Enviar código", use_container_width=True):
-                if email:
-                    # Verifica se o e-mail existe no sistema
-                    email_existe = False
-                    for user, dados in USUARIOS.items():
-                        if dados.get("email") == email:
-                            email_existe = True
-                            break
-                    
-                    if not email_existe:
-                        st.warning("⚠️ E-mail não encontrado. Verifique ou contate o administrador.")
-                    else:
-                        token = gerar_token_recuperacao()
-                        salvar_token_recuperacao(email, token)
-                        
-                        if enviar_email_recuperacao(email, token):
-                            st.success("✅ Código enviado para seu e-mail!")
-                            st.session_state['token_enviado'] = True
-                        else:
-                            st.error("❌ Erro ao enviar e-mail")
-            
-            if st.session_state.get('token_enviado', False):
-                codigo = st.text_input("Código de verificação")
-                nova_senha = st.text_input("Nova senha", type="password")
-                confirmar_senha = st.text_input("Confirmar nova senha", type="password")
-                
-                if st.button("✅ Alterar senha", use_container_width=True):
-                    if codigo and nova_senha and confirmar_senha:
-                        if nova_senha != confirmar_senha:
-                            st.error("❌ As senhas não coincidem!")
-                        elif len(nova_senha) < 6:
-                            st.error("❌ A senha deve ter pelo menos 6 caracteres!")
-                        else:
-                            # Valida o token
-                            if validar_token_recuperacao(email, codigo):
-                                # Atualiza a senha
-                                for user, dados in USUARIOS.items():
-                                    if dados.get("email") == email:
-                                        dados["hash"] = hash_senha(nova_senha)
-                                        salvar_usuarios(USUARIOS)
-                                        remover_token_recuperacao(email)
-                                        st.success("✅ Senha alterada com sucesso!")
-                                        st.session_state['recuperando_senha'] = False
-                                        st.session_state['token_enviado'] = False
-                                        st.rerun()
-                                        break
-                            else:
-                                st.error("❌ Código inválido ou expirado!")
-                    else:
-                        st.error("❌ Preencha todos os campos!")
-            
-            if st.button("🔙 Voltar ao login"):
-                st.session_state['recuperando_senha'] = False
-                st.session_state['token_enviado'] = False
-                st.rerun()
-        
-        st.stop()
-    
-    usuario_atual = st.session_state.usuario_logado
-    perfil_atual = USUARIOS[usuario_atual]["perfil"]
-    
-    st.write(f"👤 *{USUARIOS[usuario_atual]['nome']}*")
-    st.caption(f"Perfil: {perfil_atual}")
-    
-    if st.button("🚪 Sair", use_container_width=True):
-        st.session_state.usuario_logado = None
-        st.rerun()
-    
-    st.markdown("---")
-    
-    if "pagina" not in st.session_state:
-        st.session_state.pagina = "Simulador"
-    
-    if st.button("📊 Simulador", use_container_width=True):
-        st.session_state.pagina = "Simulador"
-        st.rerun()
-    
-    if perfil_atual == "gerente":
-        if st.button("👥 Gestão de Usuários", use_container_width=True):
-            st.session_state.pagina = "Usuários"
-            st.rerun()
-        
-        if st.button("🏗️ Gestão de Construtoras", use_container_width=True):
-            st.session_state.pagina = "Construtoras"
-            st.rerun()
-    
-    st.markdown("---")
-    st.caption("Versão 2.0 - Recuperação de senha")
-
-# --- RENDERIZAÇÃO DA PÁGINA SELECIONADA ---
-if perfil_atual == "corretor":
-    pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual)
-else:
-    pagina = st.session_state.get("pagina", "Simulador")
-    
-    if pagina == "Simulador":
-        pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual)
-    elif pagina == "Usuários":
-        pagina_gestao_usuarios(USUARIOS)
-    elif pagina == "Construtoras":
-        pagina_gestao_construtoras(CONSTRUTORAS)
-    else:
-        pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual)
+                        st.session_state
