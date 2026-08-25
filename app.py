@@ -3,11 +3,49 @@ import pandas as pd
 import io
 import pdfplumber
 import re
+import json
+import os
 
-# CONFIGURAÇÃO
-st.set_page_config(page_title="Simulador Crédito - IA", layout="wide")
-st.title("🏢 Simulador Crédito IA")
+# CONFIGURAÇÃO DA PÁGINA
+st.set_page_config(page_title="Simulador de Crédito", layout="wide")
+st.title("🏢 Simulador de Crédito")
 st.markdown("---")
+
+# --- SENHA DO GERENTE (altere aqui) ---
+SENHA_GERENTE = "gerente2026"
+
+# --- ARQUIVO DE CONFIGURAÇÃO ---
+ARQUIVO_CONFIG = "construtoras.json"
+
+# --- FUNÇÃO PARA CARREGAR CONFIGURAÇÕES ---
+def carregar_construtoras():
+    """Carrega as construtoras do arquivo JSON ou usa o padrão"""
+    try:
+        if os.path.exists(ARQUIVO_CONFIG):
+            with open(ARQUIVO_CONFIG, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except:
+        pass
+    
+    # Configuração padrão (Oásis II)
+    return {
+        "Oásis II": {
+            "skiprows": 2,
+            "mapeamento": {
+                "0": "UNIDADE", "1": "PAVTO", "2": "COLUNA", "3": "M²",
+                "4": "TIPOLOGIA", "5": "VAGA", "6": "SOL",
+                "8": "1ª AVALIAÇÃO OÁSIS II", "10": "DESCONTO", "12": "PREÇO", "13": "DISPONIBILIDADE"
+            },
+            "colunas_ordem": ["UNIDADE", "PAVTO", "COLUNA", "M²", "TIPOLOGIA", "VAGA", "SOL", "1ª AVALIAÇÃO OÁSIS II", "DESCONTO", "PREÇO", "DISPONIBILIDADE"],
+            "colunas_para_converter": ["PREÇO", "1ª AVALIAÇÃO OÁSIS II", "DESCONTO", "M²", "PAVTO"]
+        }
+    }
+
+# --- FUNÇÃO PARA SALVAR CONFIGURAÇÕES ---
+def salvar_construtoras(construtoras):
+    """Salva as construtoras no arquivo JSON"""
+    with open(ARQUIVO_CONFIG, 'w', encoding='utf-8') as f:
+        json.dump(construtoras, f, indent=2, ensure_ascii=False)
 
 # --- FUNÇÃO DE CONVERSÃO ---
 def converter_para_float(valor):
@@ -35,20 +73,10 @@ def converter_para_float(valor):
     except:
         return 0.0
 
-# SIDEBAR
-with st.sidebar:
-    st.header("⚙️ Configurações")
-    uploaded_file = st.file_uploader(
-        "📤 Envie a planilha da construtora",
-        type=['xlsx', 'xls', 'csv', 'pdf']
-    )
-    st.markdown("---")
-    st.caption("Versão 1.0")
-
-# CORPO PRINCIPAL
-if uploaded_file is not None:
+# --- FUNÇÃO PARA LER PLANILHA ---
+def ler_planilha(uploaded_file, config):
+    """Lê a planilha com a configuração da construtora"""
     try:
-        # --- LEITURA ---
         if uploaded_file.name.endswith('.pdf'):
             with pdfplumber.open(io.BytesIO(uploaded_file.read())) as pdf:
                 all_tables = []
@@ -71,16 +99,14 @@ if uploaded_file is not None:
                         df = pd.DataFrame(table_data[header_row + 1:], columns=columns)
                         df = df.dropna(how='all')
                         df = df[~df.iloc[:, 0].astype(str).str.strip().eq('')]
+                        return df
                     else:
-                        st.error("❌ Cabeçalho não encontrado no PDF.")
-                        st.stop()
+                        return None
                 else:
-                    st.error("❌ Nenhuma tabela encontrada no PDF.")
-                    st.stop()
+                    return None
         elif uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(uploaded_file)
+            return pd.read_csv(uploaded_file)
         else:
-            # --- LEITURA XLSX ---
             df_raw = pd.read_excel(uploaded_file, header=None)
             
             # Encontra a linha do cabeçalho
@@ -92,83 +118,253 @@ if uploaded_file is not None:
                     break
             
             if linha_cabecalho is None:
-                st.error("❌ Cabeçalho 'UNIDADE' não encontrado.")
-                st.stop()
+                return None
             
-            # Pega os dados a partir da linha seguinte
             dados = df_raw.iloc[linha_cabecalho + 1:].reset_index(drop=True)
             
-            # --- MAPEAMENTO DAS COLUNAS (NA ORDEM DA PLANILHA) ---
-            # Baseado na imagem:
-            # Coluna 0: UNIDADE
-            # Coluna 1: PAVTO
-            # Coluna 2: COLUNA
-            # Coluna 3: M²
-            # Coluna 4: TIPOLOGIA
-            # Coluna 5: VAGA
-            # Coluna 6: SOL
-            # Coluna 7: R$ (AVALIAÇÃO - ignorar)
-            # Coluna 8: VALOR (AVALIAÇÃO)
-            # Coluna 9: R$ (DESCONTO - ignorar)
-            # Coluna 10: VALOR (DESCONTO)
-            # Coluna 11: R$ (PREÇO - ignorar)
-            # Coluna 12: VALOR (PREÇO)
-            # Coluna 13: DISPONIBILIDADE
-            
-            mapeamento = {
-                0: 'UNIDADE',
-                1: 'PAVTO',
-                2: 'COLUNA',
-                3: 'M²',
-                4: 'TIPOLOGIA',
-                5: 'VAGA',
-                6: 'SOL',
-                8: '1ª AVALIAÇÃO OÁSIS II',  # Pula coluna 7 (R$)
-                10: 'DESCONTO',               # Pula coluna 9 (R$)
-                12: 'PREÇO',                  # Pula coluna 11 (R$)
-                13: 'DISPONIBILIDADE'
-            }
-            
-            # Cria DataFrame com as colunas NA ORDEM DA PLANILHA
+            # Aplica o mapeamento
+            mapeamento = config.get("mapeamento", {})
             df = pd.DataFrame()
-            for idx_original, nome_novo in mapeamento.items():
-                if idx_original < len(dados.columns):
-                    df[nome_novo] = dados.iloc[:, idx_original]
+            for idx_str, nome_novo in mapeamento.items():
+                idx = int(idx_str)
+                if idx < len(dados.columns):
+                    df[nome_novo] = dados.iloc[:, idx]
             
             # Remove linhas vazias
             df = df.dropna(how='all')
-            
-            # Remove linhas onde UNIDADE está vazia
             if 'UNIDADE' in df.columns:
                 df = df[df['UNIDADE'].notna() & (df['UNIDADE'].astype(str).str.strip() != '')]
+            
+            return df
+    except:
+        return None
+
+# --- SIDEBAR ---
+with st.sidebar:
+    st.header("⚙️ Configurações")
+    
+    # --- VERIFICA SE É GERENTE ---
+    is_gerente = False
+    if st.checkbox("🔧 Painel do Gerente"):
+        senha_digitada = st.text_input("Senha do Gerente:", type="password")
+        if senha_digitada == SENHA_GERENTE:
+            is_gerente = True
+            st.success("✅ Acesso liberado!")
+        elif senha_digitada:
+            st.error("❌ Senha incorreta!")
+    
+    st.markdown("---")
+    
+    # Carrega as construtoras
+    CONSTRUTORAS = carregar_construtoras()
+    
+    # Se for gerente, mostra o painel de gestão
+    if is_gerente:
+        with st.expander("🔧 Gerenciar Construtoras", expanded=True):
+            st.markdown("#### Adicionar Nova Construtora")
+            
+            # Formulário para adicionar
+            with st.form("form_nova_construtora"):
+                nome = st.text_input("Nome da Construtora")
+                skiprows = st.number_input("Linhas para pular (skiprows)", min_value=0, value=0, step=1)
+                
+                st.markdown("*Mapeamento de colunas (índice: nome)*")
+                st.caption("Ex: 0:UNIDADE, 1:PAVTO, 2:PREÇO")
+                mapeamento_str = st.text_area(
+                    "Digite o mapeamento",
+                    placeholder='{"0": "UNIDADE", "1": "PAVTO", "2": "PREÇO"}',
+                    height=100
+                )
+                
+                st.markdown("*Colunas para exibir*")
+                st.caption("Ex: UNIDADE, PAVTO, PREÇO")
+                colunas_ordem_str = st.text_input(
+                    "Colunas (separadas por vírgula)",
+                    placeholder="UNIDADE, PAVTO, PREÇO"
+                )
+                
+                st.markdown("*Colunas numéricas*")
+                st.caption("Ex: PREÇO, M², ANDAR")
+                colunas_numericas_str = st.text_input(
+                    "Colunas numéricas (separadas por vírgula)",
+                    placeholder="PREÇO, M², ANDAR"
+                )
+                
+                submitted = st.form_submit_button("➕ Adicionar Construtora")
+                
+                if submitted and nome:
+                    try:
+                        # Converte o mapeamento
+                        if mapeamento_str:
+                            mapeamento = json.loads(mapeamento_str)
+                        else:
+                            mapeamento = {}
+                        
+                        # Converte listas
+                        colunas_ordem = [c.strip() for c in colunas_ordem_str.split(',') if c.strip()]
+                        colunas_numericas = [c.strip() for c in colunas_numericas_str.split(',') if c.strip()]
+                        
+                        # Adiciona a nova construtora
+                        CONSTRUTORAS[nome] = {
+                            "skiprows": skiprows,
+                            "mapeamento": {str(k): v for k, v in mapeamento.items()},
+                            "colunas_ordem": colunas_ordem,
+                            "colunas_para_converter": colunas_numericas
+                        }
+                        
+                        salvar_construtoras(CONSTRUTORAS)
+                        st.success(f"✅ Construtora '{nome}' adicionada com sucesso!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Erro ao adicionar: {str(e)}")
+            
+            st.markdown("---")
+            
+            # Lista as construtoras existentes
+            st.markdown("#### Construtoras Cadastradas")
+            for nome, config in CONSTRUTORAS.items():
+                col1, col2, col3 = st.columns([3, 1, 1])
+                with col1:
+                    st.write(f"*{nome}*")
+                with col2:
+                    if st.button(f"🗑️ Excluir", key=f"del_{nome}"):
+                        del CONSTRUTORAS[nome]
+                        salvar_construtoras(CONSTRUTORAS)
+                        st.rerun()
+                with col3:
+                    if st.button(f"📋 Editar", key=f"edit_{nome}"):
+                        st.session_state['editando'] = nome
+                
+                # Edição inline
+                if st.session_state.get('editando') == nome:
+                    with st.form(f"form_edit_{nome}"):
+                        novo_nome = st.text_input("Novo nome", value=nome)
+                        novo_skiprows = st.number_input("Skiprows", value=config.get("skiprows", 0), step=1)
+                        
+                        novo_mapeamento = st.text_area(
+                            "Mapeamento",
+                            value=json.dumps(config.get("mapeamento", {}), indent=2, ensure_ascii=False),
+                            height=100
+                        )
+                        
+                        novo_colunas_ordem = st.text_input(
+                            "Colunas para exibir",
+                            value=", ".join(config.get("colunas_ordem", []))
+                        )
+                        
+                        novo_colunas_numericas = st.text_input(
+                            "Colunas numéricas",
+                            value=", ".join(config.get("colunas_para_converter", []))
+                        )
+                        
+                        col_edit1, col_edit2 = st.columns(2)
+                        with col_edit1:
+                            if st.form_submit_button("💾 Salvar"):
+                                try:
+                                    # Remove a antiga
+                                    del CONSTRUTORAS[nome]
+                                    
+                                    # Adiciona a nova
+                                    CONSTRUTORAS[novo_nome] = {
+                                        "skiprows": novo_skiprows,
+                                        "mapeamento": json.loads(novo_mapeamento),
+                                        "colunas_ordem": [c.strip() for c in novo_colunas_ordem.split(',') if c.strip()],
+                                        "colunas_para_converter": [c.strip() for c in novo_colunas_numericas.split(',') if c.strip()]
+                                    }
+                                    
+                                    salvar_construtoras(CONSTRUTORAS)
+                                    st.session_state['editando'] = None
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"❌ Erro: {str(e)}")
+                        
+                        with col_edit2:
+                            if st.form_submit_button("❌ Cancelar"):
+                                st.session_state['editando'] = None
+                                st.rerun()
+        
+        st.markdown("---")
+    
+    # --- SELEÇÃO DA CONSTRUTORA (para todos) ---
+    construtora_selecionada = st.selectbox(
+        "🏗️ Selecione a construtora",
+        options=list(CONSTRUTORAS.keys())
+    )
+    
+    st.markdown("---")
+    
+    # Upload do arquivo
+    uploaded_file = st.file_uploader(
+        "📤 Envie a planilha",
+        type=['xlsx', 'xls', 'csv', 'pdf']
+    )
+    
+    st.markdown("---")
+    st.caption("Versão 2.0 - Multi Construtoras")
+
+# --- CORPO PRINCIPAL ---
+if uploaded_file is not None:
+    try:
+        # Pega a configuração da construtora selecionada
+        config = CONSTRUTORAS[construtora_selecionada]
+        
+        # Lê a planilha
+        df = ler_planilha(uploaded_file, config)
+        
+        if df is None:
+            st.error("❌ Não foi possível ler a planilha. Verifique o formato e o mapeamento.")
+            st.stop()
         
         # --- CONVERSÃO DE COLUNAS NUMÉRICAS ---
-        colunas_para_converter = ['PREÇO', '1ª AVALIAÇÃO OÁSIS II', 'DESCONTO', 'M²', 'PAVTO']
-        for col in colunas_para_converter:
+        for col in config.get("colunas_para_converter", []):
             if col in df.columns:
                 df[col] = df[col].apply(converter_para_float)
         
         st.markdown("---")
         
-        # --- FILTROS ---
+        # --- FILTROS DINÂMICOS ---
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            if 'TIPOLOGIA' in df.columns:
-                tipologias = ['Todas'] + sorted(df['TIPOLOGIA'].dropna().unique().tolist())
-                tipo_selecionado = st.selectbox("🏠 Tipologia", tipologias)
+            colunas_tipo = ['TIPOLOGIA', 'QUARTOS', 'DORMITÓRIOS', 'TIPO']
+            tipo_col = None
+            for c in colunas_tipo:
+                if c in df.columns:
+                    tipo_col = c
+                    break
+            
+            if tipo_col:
+                tipos = ['Todas'] + sorted(df[tipo_col].dropna().unique().tolist())
+                tipo_selecionado = st.selectbox("🏠 Tipo", tipos)
             else:
                 tipo_selecionado = 'Todas'
         
         with col2:
-            andar_min = st.number_input("📌 Andar mínimo", min_value=0, value=0, step=1)
+            colunas_andar = ['PAVTO', 'ANDAR']
+            andar_col = None
+            for c in colunas_andar:
+                if c in df.columns:
+                    andar_col = c
+                    break
+            
+            if andar_col:
+                andar_min = st.number_input("📌 Andar mínimo", min_value=0, value=0, step=1)
+            else:
+                andar_min = 0
         
         with col3:
-            if 'PREÇO' in df.columns and not df['PREÇO'].isna().all():
+            colunas_preco = ['PREÇO', 'VALOR']
+            preco_col = None
+            for c in colunas_preco:
+                if c in df.columns:
+                    preco_col = c
+                    break
+            
+            if preco_col and not df[preco_col].isna().all():
                 preco_max = st.number_input(
                     "💰 Preço máximo (R$)",
                     min_value=0,
-                    value=int(df['PREÇO'].max()) if df['PREÇO'].max() > 0 else 1000000,
+                    value=int(df[preco_col].max()) if df[preco_col].max() > 0 else 1000000,
                     step=50000,
                     format="%d"
                 )
@@ -176,46 +372,61 @@ if uploaded_file is not None:
                 preco_max = 1000000
         
         with col4:
-            if 'DISPONIBILIDADE' in df.columns:
-                disp_opcoes = ['Todas'] + sorted(df['DISPONIBILIDADE'].dropna().unique().tolist())
-                disponibilidade = st.selectbox("🔑 Disponibilidade", disp_opcoes)
+            colunas_status = ['DISPONIBILIDADE', 'STATUS', 'SITUAÇÃO']
+            status_col = None
+            for c in colunas_status:
+                if c in df.columns:
+                    status_col = c
+                    break
+            
+            if status_col:
+                status_opcoes = ['Todas'] + sorted(df[status_col].dropna().unique().tolist())
+                status_selecionado = st.selectbox("🔑 Disponibilidade", status_opcoes)
             else:
-                disponibilidade = 'Todas'
+                status_selecionado = 'Todas'
         
         # --- APLICA FILTROS ---
         resultado = df.copy()
         
-        if tipo_selecionado != 'Todas' and 'TIPOLOGIA' in df.columns:
-            resultado = resultado[resultado['TIPOLOGIA'] == tipo_selecionado]
+        if tipo_selecionado != 'Todas' and tipo_col:
+            resultado = resultado[resultado[tipo_col] == tipo_selecionado]
         
-        if andar_min > 0:
-            if 'PAVTO' in df.columns:
-                resultado = resultado[resultado['PAVTO'] >= andar_min]
+        if andar_min > 0 and andar_col:
+            resultado = resultado[resultado[andar_col] >= andar_min]
         
-        if 'PREÇO' in df.columns:
-            resultado = resultado[resultado['PREÇO'] <= preco_max]
+        if preco_col and preco_col in df.columns:
+            resultado = resultado[resultado[preco_col] <= preco_max]
         
-        if disponibilidade != 'Todas' and 'DISPONIBILIDADE' in df.columns:
-            resultado = resultado[resultado['DISPONIBILIDADE'] == disponibilidade]
+        if status_selecionado != 'Todas' and status_col:
+            resultado = resultado[resultado[status_col] == status_selecionado]
         
         # --- INDICADORES ---
         if not resultado.empty:
-            if 'PREÇO' in resultado.columns and 'M²' in resultado.columns:
-                resultado['R$/m²'] = (resultado['PREÇO'] / resultado['M²']).round(2)
+            colunas_area = ['M²', 'AREA_M2', 'AREA']
+            area_col = None
+            for c in colunas_area:
+                if c in resultado.columns:
+                    area_col = c
+                    break
+            
+            if preco_col and area_col:
+                resultado['R$/m²'] = (resultado[preco_col] / resultado[area_col]).round(2)
         
-        # --- ORDEM DAS COLUNAS IGUAL À PLANILHA ---
-        colunas_ordem = ['UNIDADE', 'PAVTO', 'COLUNA', 'M²', 'TIPOLOGIA', 'VAGA', 'SOL', '1ª AVALIAÇÃO OÁSIS II', 'DESCONTO', 'PREÇO', 'DISPONIBILIDADE']
-        colunas_adicionais = ['R$/m²']
-        colunas_ordem = colunas_ordem + colunas_adicionais
+        # --- ORDEM DAS COLUNAS ---
+        colunas_ordem = config.get("colunas_ordem", list(df.columns)).copy()
+        if 'R$/m²' in resultado.columns:
+            colunas_ordem.append('R$/m²')
         
-        # Garante que todas as colunas existem no DataFrame
         colunas_ordem = [c for c in colunas_ordem if c in resultado.columns]
         
         # --- EXIBE ---
-        st.subheader(f"🔍 Resultados: {len(resultado)} imóveis encontrados")
+        st.subheader(f"🔍 Resultados: {len(resultado)} imóveis encontrados - {construtora_selecionada}")
         
         if not resultado.empty:
-            resultado_ordenado = resultado.sort_values('R$/m²') if 'R$/m²' in resultado.columns else resultado
+            if 'R$/m²' in resultado.columns:
+                resultado_ordenado = resultado.sort_values('R$/m²')
+            else:
+                resultado_ordenado = resultado
             
             st.dataframe(
                 resultado_ordenado[colunas_ordem],
@@ -232,20 +443,20 @@ if uploaded_file is not None:
             
             with col_a:
                 st.success(f"*Melhor custo-benefício:* Unidade {melhor['UNIDADE']}")
-                if 'PREÇO' in melhor:
-                    st.write(f"- *Preço:* R$ {melhor['PREÇO']:,.2f}")
+                if preco_col and preco_col in melhor:
+                    st.write(f"- *Preço:* R$ {melhor[preco_col]:,.2f}")
                 if 'R$/m²' in melhor:
                     st.write(f"- *R$/m²:* R$ {melhor['R$/m²']:.2f}")
                 if '1ª AVALIAÇÃO OÁSIS II' in melhor:
                     st.write(f"- *Avaliação:* R$ {melhor['1ª AVALIAÇÃO OÁSIS II']:,.2f}")
                 if 'DESCONTO' in melhor:
                     st.write(f"- *Desconto:* R$ {melhor['DESCONTO']:,.2f}")
-                if 'TIPOLOGIA' in melhor:
-                    st.write(f"- *Tipologia:* {melhor['TIPOLOGIA']}")
+                if tipo_col and tipo_col in melhor:
+                    st.write(f"- *Tipo:* {melhor[tipo_col]}")
             
             with col_b:
-                if 'PREÇO' in melhor and melhor['PREÇO'] > 0:
-                    valor = melhor['PREÇO']
+                if preco_col and preco_col in melhor and melhor[preco_col] > 0:
+                    valor = melhor[preco_col]
                     entrada_percentual = st.slider("Entrada (%)", 20, 50, 30)
                     entrada = valor * (entrada_percentual / 100)
                     financiado = valor - entrada
@@ -269,11 +480,11 @@ if uploaded_file is not None:
         st.info("Verifique o formato do arquivo (XLSX, CSV ou PDF).")
 
 else:
-    st.info("👈 Envie a planilha da construtora no menu lateral para começar")
+    st.info("👈 Selecione a construtora e envie a planilha no menu lateral para começar")
     st.markdown("""
     ### Como usar:
-    1. Clique em *"Browse files"* no menu lateral
-    2. Selecione a planilha (XLSX, CSV ou PDF) da construtora
-    3. Ajuste os filtros
+    1. Selecione a *construtora* no menu lateral
+    2. Envie a planilha da construtora (XLSX, CSV ou PDF)
+    3. Ajuste os filtros disponíveis
     4. A IA recomenda o melhor imóvel
     """)
