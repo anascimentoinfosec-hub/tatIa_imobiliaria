@@ -1,4 +1,3 @@
-#ATUALIZADO EM 25/8/2026
 import streamlit as st
 import pandas as pd
 import io
@@ -12,7 +11,6 @@ import secrets
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import requests
 
 # CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="Simulador de Crédito", layout="wide")
@@ -272,7 +270,7 @@ def ler_planilha(uploaded_file, config):
         return None
 
 # --- FUNÇÃO PARA EXIBIR O SIMULADOR ---
-def pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual):
+def pagina_simulador(CONSTRUTORAS):
     st.title("📊 Simulador de Crédito")
     
     with st.sidebar:
@@ -293,44 +291,27 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual):
         st.markdown("---")
         st.caption("Versão 2.0 - Multi Construtoras")
     
-    # --- CORPO PRINCIPAL ---
+    # --- CORPO PRINCIPAL (CORRIGIDO) ---
     if uploaded_file is None:
         st.info("👈 Selecione a construtora e envie uma planilha para começar")
         
-        col1, col2 = st.columns([2, 1])
-        
+        # Usa elementos nativos do Streamlit (não quebra)
+        st.markdown("### 📊 Mercado Imobiliário")
+        col1, col2, col3 = st.columns(3)
         with col1:
-            st.markdown("### 📊 Mercado Imobiliário - Rio de Janeiro")
-            col_a, col_b, col_c = st.columns(3)
-            with col_a:
-                st.metric("Taxa Selic", "10,50%")
-                st.metric("TR", "1,50% a.a.")
-            with col_b:
-                st.metric("Taxa SFH", "9,50% a.a.")
-                st.metric("Entrada média", "20-30%")
-            with col_c:
-                st.metric("Valor m² (RJ)", "R$ 12.800")
-                st.metric("Prazo máximo", "420 meses")
-        
+            st.metric("Taxa Selic", "10,50%")
+            st.metric("TR", "1,50% a.a.")
         with col2:
-            st.markdown("### 🏗️ Empreendimento")
-            st.success("""
-            *Oásis II*  
-            📍 Barra da Tijuca - RJ  
-            🏢 18 andares • 115 unidades  
-            💰 Preços a partir de R$ 384.950
-            """)
+            st.metric("Taxa SFH", "9,50% a.a.")
+            st.metric("Entrada média", "20-30%")
+        with col3:
+            st.metric("Valor m² (RJ)", "R$ 12.800")
+            st.metric("Prazo máximo", "420 meses")
         
         st.markdown("---")
         
-        # Dica do dia
-        dicas = [
-            "A melhor época para comprar imóvel é quando você está preparado financeiramente.",
-            "Clientes valorizam corretores que entendem de financiamento.",
-            "Um bom corretor não vende um imóvel, ele realiza um sonho.",
-            "Conhecer as taxas de juros é tão importante quanto conhecer a planta."
-        ]
-        st.info(f"💡 {dicas[datetime.now().day % len(dicas)]}")
+        st.markdown("### 🏗️ Empreendimento em Destaque")
+        st.success("*Oásis II*  \n📍 Barra da Tijuca - Rio de Janeiro  \n🏢 18 andares • 115 unidades • 2 e 3 quartos  \n💰 Preços a partir de R$ 384.950")
         
         return
     
@@ -844,15 +825,15 @@ with st.sidebar:
 
 # --- RENDERIZAÇÃO DA PÁGINA SELECIONADA ---
 if perfil_atual == "corretor":
-    pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual)
+    pagina_simulador(CONSTRUTORAS)
 else:
     pagina = st.session_state.get("pagina", "Simulador")
     
     if pagina == "Simulador":
-        pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual)
+        pagina_simulador(CONSTRUTORAS)
     elif pagina == "Usuários":
         pagina_gestao_usuarios(USUARIOS)
     elif pagina == "Construtoras":
         pagina_gestao_construtoras(CONSTRUTORAS)
     else:
-        pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual)
+        pagina_simulador(CONSTRUTORAS)
