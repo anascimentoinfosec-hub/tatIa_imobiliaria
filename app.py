@@ -6,11 +6,11 @@ import re
 import json
 import os
 import hashlib
-from datetime import datetime
-from google_auth_oauthlib.flow import Flow
-from googleapiclient.discovery import build
-from google.oauth2.credentials import Credentials
-import requests
+from datetime import datetime, timedelta
+import secrets
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="Simulador de Crédito", layout="wide")
@@ -18,16 +18,11 @@ st.set_page_config(page_title="Simulador de Crédito", layout="wide")
 # --- ARQUIVOS DE CONFIGURAÇÃO ---
 ARQUIVO_CONFIG = "construtoras.json"
 ARQUIVO_USUARIOS = "usuarios.json"
+ARQUIVO_RECUPERACAO = "recuperacao.json"
 
 # --- FUNÇÕES DE HASH ---
 def hash_senha(senha: str) -> str:
     return hashlib.sha256(senha.encode()).hexdigest()
-
-def verificar_login(usuario: str, senha: str, usuarios: dict) -> bool:
-    hash_digitado = hash_senha(senha)
-    if usuario not in usuarios:
-        return False
-    return usuarios[usuario]["hash"] == hash_digitado and usuarios[usuario]["ativo"]
 
 # --- FUNÇÕES DE USUÁRIOS ---
 def carregar_usuarios():
@@ -43,6 +38,7 @@ def carregar_usuarios():
             "hash": hash_senha("gerente2026"),
             "perfil": "gerente",
             "ativo": True,
+            "email": "gerente@email.com",  # <-- ADICIONE O E-MAIL DO GERENTE
             "criado_em": datetime.now().isoformat()
         }
     }
@@ -50,6 +46,125 @@ def carregar_usuarios():
 def salvar_usuarios(usuarios):
     with open(ARQUIVO_USUARIOS, 'w', encoding='utf-8') as f:
         json.dump(usuarios, f, indent=2, ensure_ascii=False)
+
+def verificar_login(usuario: str, senha: str, usuarios: dict) -> bool:
+    hash_digitado = hash_senha(senha)
+    if usuario not in usuarios:
+        return False
+    return usuarios[usuario]["hash"] == hash_digitado and usuarios[usuario]["ativo"]
+
+# --- FUNÇÕES DE RECUPERAÇÃO DE SENHA ---
+def gerar_token_recuperacao():
+    """Gera um token de 6 dígitos"""
+    return ''.join(secrets.choice('0123456789') for _ in range(6))
+
+def salvar_token_recuperacao(email, token):
+    """Salva o token com timestamp"""
+    recuperacao = {}
+    try:
+        if os.path.exists(ARQUIVO_RECUPERACAO):
+            with open(ARQUIVO_RECUPERACAO, 'r', encoding='utf-8') as f:
+                recuperacao = json.load(f)
+    except:
+        pass
+    
+    recuperacao[email] = {
+        "token": token,
+        "criado_em": datetime.now().isoformat()
+    }
+    
+    with open(ARQUIVO_RECUPERACAO, 'w', encoding='utf-8') as f:
+        json.dump(recuperacao, f, indent=2, ensure_ascii=False)
+
+def validar_token_recuperacao(email, token):
+    """Valida se o token é válido e não expirou"""
+    try:
+        if not os.path.exists(ARQUIVO_RECUPERACAO):
+            return False
+        
+        with open(ARQUIVO_RECUPERACAO, 'r', encoding='utf-8') as f:
+            recuperacao = json.load(f)
+        
+        if email not in recuperacao:
+            return False
+        
+        dados = recuperacao[email]
+        if dados["token"] != token:
+            return False
+        
+        # Verifica se não expirou (15 minutos)
+        criado_em = datetime.fromisoformat(dados["criado_em"])
+        if datetime.now() - criado_em > timedelta(minutes=15):
+            return False
+        
+        return True
+    except:
+        return False
+
+def remover_token_recuperacao(email):
+    """Remove o token após uso"""
+    try:
+        if os.path.exists(ARQUIVO_RECUPERACAO):
+            with open(ARQUIVO_RECUPERACAO, 'r', encoding='utf-8') as f:
+                recuperacao = json.load(f)
+            
+            if email in recuperacao:
+                del recuperacao[email]
+            
+            with open(ARQUIVO_RECUPERACAO, 'w', encoding='utf-8') as f:
+                json.dump(recuperacao, f, indent=2, ensure_ascii=False)
+    except:
+        pass
+
+def enviar_email_recuperacao(email, token):
+    """Envia o token por e-mail usando Gmail"""
+    try:
+        # Verifica se tem as credenciais nos secrets
+        if "EMAIL_SENDER" not in st.secrets or "EMAIL_PASSWORD" not in st.secrets:
+            # Fallback: exibe o token na tela (apenas para teste)
+            st.warning(f"⚠️ Configure EMAIL_SENDER e EMAIL_PASSWORD nos Secrets do Streamlit")
+            st.info(f"💡 Token gerado: *{token}* (copie e cole)")
+            return True
+        
+        remetente = st.secrets["EMAIL_SENDER"]
+        senha = st.secrets["EMAIL_PASSWORD"]
+        
+        # Cria a mensagem
+        msg = MIMEMultipart()
+        msg['From'] = remetente
+        msg['To'] = email
+        msg['Subject'] = "🔐 Código de recuperação - Simulador de Crédito"
+        
+        corpo = f"""
+        Olá!
+        
+        Você solicitou a recuperação de senha do Simulador de Crédito.
+        
+        Seu código de verificação é: *{token}*
+        
+        Digite este código no app para criar uma nova senha.
+        
+        Este código é válido por 15 minutos.
+        
+        Se você não solicitou esta recuperação, ignore este e-mail.
+        
+        Atenciosamente,
+        Equipe Simulador de Crédito
+        """
+        
+        msg.attach(MIMEText(corpo, 'plain'))
+        
+        # Envia o e-mail
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(remetente, senha)
+        server.send_message(msg)
+        server.quit()
+        
+        return True
+    except Exception as e:
+        st.error(f"❌ Erro ao enviar e-mail: {str(e)}")
+        return False
 
 # --- FUNÇÕES DE CONSTRUTORAS ---
 def carregar_construtoras():
@@ -164,130 +279,6 @@ def ler_planilha(uploaded_file, config):
     except:
         return None
 
-# --- AUTENTICAÇÃO GOOGLE OAUTH 2.0 ---
-def autenticar_google_drive_oauth():
-    """Autentica com OAuth 2.0 usando a conta do gerente"""
-    
-    # Se já tem token na sessão, usa
-    if "google_token" in st.session_state:
-        try:
-            creds = Credentials(token=st.session_state.google_token)
-            return build('drive', 'v3', credentials=creds)
-        except:
-            st.session_state.google_token = None
-    
-    # Verifica se tem as credenciais nos secrets
-    if not all(k in st.secrets for k in ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]):
-        st.warning("⚠️ Configure as credenciais OAuth nos Secrets do Streamlit")
-        return None
-    
-    # Configura o fluxo OAuth
-    client_config = {
-        "web": {
-            "client_id": st.secrets["GOOGLE_CLIENT_ID"],
-            "client_secret": st.secrets["GOOGLE_CLIENT_SECRET"],
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": [st.secrets.get("GOOGLE_REDIRECT_URI", "https://simulador-credito.streamlit.app/_stcore/oauth2-redirect")]
-        }
-    }
-    
-    flow = Flow.from_client_config(
-        client_config,
-        scopes=['https://www.googleapis.com/auth/drive.readonly', 
-                'https://www.googleapis.com/auth/drive.file']
-    )
-    
-    # Verifica se tem código de autorização na URL
-    query_params = st.query_params
-    
-    if 'code' not in query_params:
-        # Gera URL de autorização
-        auth_url, state = flow.authorization_url(prompt='consent')
-        st.session_state['oauth_state'] = state
-        
-        # Exibe botão para autorizar
-        st.info("### 🔑 Autorize o acesso ao Google Drive")
-        st.markdown("""
-        O app precisa acessar suas planilhas no Google Drive.
-        Clique no botão abaixo para autorizar:
-        """)
-        
-        # Botão estilizado
-        st.markdown(f"""
-        <div style="display: flex; justify-content: center; margin: 20px 0;">
-            <a href="{auth_url}" target="_blank" style="
-                background-color: #4285F4;
-                color: white;
-                padding: 14px 28px;
-                text-decoration: none;
-                border-radius: 8px;
-                font-weight: bold;
-                font-size: 18px;
-                display: inline-block;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            ">
-                🔐 Autorizar Google Drive
-            </a>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.caption("Você será redirecionado para fazer login na sua conta Google e autorizar o acesso.")
-        return None
-    
-    # Troca o código por token
-    try:
-        flow.fetch_token(code=query_params['code'])
-        creds = flow.credentials
-        
-        # Salva o token na sessão
-        st.session_state.google_token = creds.token
-        
-        # Limpa o código da URL
-        st.query_params.clear()
-        
-        st.success("✅ Autenticado com sucesso!")
-        st.rerun()
-        
-    except Exception as e:
-        st.error(f"❌ Erro na autenticação: {str(e)}")
-        return None
-
-# --- FUNÇÃO PARA BUSCAR PLANILHA DO DRIVE ---
-def buscar_planilha_drive(service, nome_arquivo=None):
-    """Busca a planilha mais recente no Drive do gerente"""
-    try:
-        if nome_arquivo:
-            # Busca por nome específico
-            query = f"name='{nome_arquivo}' and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and trashed=false"
-        else:
-            # Busca a mais recente
-            query = "mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' and trashed=false"
-        
-        results = service.files().list(
-            q=query,
-            orderBy="modifiedTime desc",
-            pageSize=5
-        ).execute()
-        
-        files = results.get('files', [])
-        return files
-    
-    except Exception as e:
-        st.error(f"❌ Erro ao buscar arquivos: {str(e)}")
-        return []
-
-# --- FUNÇÃO PARA BAIXAR PLANILHA DO DRIVE ---
-def baixar_planilha_drive(service, file_id):
-    """Baixa uma planilha do Drive"""
-    try:
-        request = service.files().get_media(fileId=file_id)
-        file_data = request.execute()
-        return io.BytesIO(file_data)
-    except Exception as e:
-        st.error(f"❌ Erro ao baixar arquivo: {str(e)}")
-        return None
-
 # --- FUNÇÃO PARA EXIBIR O SIMULADOR ---
 def pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual):
     st.title("📊 Simulador de Crédito")
@@ -295,84 +286,21 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual):
     with st.sidebar:
         st.header("⚙️ Configurações")
         
-        # Para o gerente: opção de usar o Drive
-        if perfil_atual == "gerente":
-            usar_drive = st.checkbox("☁️ Buscar planilha do Google Drive")
-            if usar_drive:
-                st.markdown("---")
-                st.markdown("### 📁 Google Drive")
-                
-                drive_service = autenticar_google_drive_oauth()
-                
-                if drive_service:
-                    # Busca os arquivos
-                    arquivos = buscar_planilha_drive(drive_service)
-                    
-                    if arquivos:
-                        # Seleciona um arquivo
-                        opcoes = {f"{f['name']} ({f['modifiedTime']})": f['id'] for f in arquivos}
-                        arquivo_selecionado = st.selectbox(
-                            "Selecione a planilha:",
-                            options=list(opcoes.keys())
-                        )
-                        
-                        if st.button("📥 Carregar do Drive", use_container_width=True):
-                            file_id = opcoes[arquivo_selecionado]
-                            file_data = baixar_planilha_drive(drive_service, file_id)
-                            if file_data:
-                                st.session_state['drive_file_data'] = file_data
-                                st.session_state['drive_file_name'] = arquivo_selecionado
-                                st.success(f"✅ Planilha carregada: {arquivo_selecionado}")
-                                st.rerun()
-                        
-                        if 'drive_file_data' in st.session_state:
-                            st.info(f"📄 Planilha atual: {st.session_state.get('drive_file_name', '')}")
-                    else:
-                        st.warning("⚠️ Nenhuma planilha encontrada no Drive")
-                else:
-                    st.info("🔑 Autorize o acesso ao Drive para carregar planilhas")
-                
-                st.markdown("---")
+        construtora_selecionada = st.selectbox(
+            "🏗️ Selecione a construtora",
+            options=list(CONSTRUTORAS.keys())
+        )
         
-        # Upload tradicional
-        if not perfil_atual == "gerente" or not usar_drive:
-            construtora_selecionada = st.selectbox(
-                "🏗️ Selecione a construtora",
-                options=list(CONSTRUTORAS.keys())
-            )
-            
-            st.markdown("---")
-            
-            uploaded_file = st.file_uploader(
-                "📤 Envie a planilha",
-                type=['xlsx', 'xls', 'csv', 'pdf']
-            )
-        else:
-            # Se está usando Drive, usa a construtora selecionada abaixo
-            construtora_selecionada = st.selectbox(
-                "🏗️ Selecione a construtora",
-                options=list(CONSTRUTORAS.keys())
-            )
-            uploaded_file = None
-            
-            if 'drive_file_data' in st.session_state:
-                # Cria um objeto parecido com uploaded_file
-                class DriveFile:
-                    def _init_(self, data, name):
-                        self._data = data
-                        self.name = name
-                    def read(self):
-                        return self._data.getvalue() if hasattr(self._data, 'getvalue') else self._data
-                
-                uploaded_file = DriveFile(
-                    st.session_state['drive_file_data'],
-                    st.session_state.get('drive_file_name', 'planilha_drive.xlsx')
-                )
+        st.markdown("---")
+        
+        uploaded_file = st.file_uploader(
+            "📤 Envie a planilha",
+            type=['xlsx', 'xls', 'csv', 'pdf']
+        )
         
         st.markdown("---")
         st.caption("Versão 2.0")
     
-    # --- PROCESSAMENTO DA PLANILHA ---
     if uploaded_file is not None:
         try:
             config = CONSTRUTORAS[construtora_selecionada]
@@ -545,7 +473,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual):
         st.markdown("""
         ### Como usar:
         1. Selecione a *construtora* no menu lateral
-        2. Envie a planilha da construtora (XLSX, CSV ou PDF) ou use o Google Drive
+        2. Envie a planilha da construtora (XLSX, CSV ou PDF)
         3. Ajuste os filtros disponíveis
         4. A IA recomenda o melhor imóvel
         """)
@@ -780,13 +708,85 @@ with st.sidebar:
         st.markdown("### 🔑 Login")
         usuario = st.text_input("Usuário")
         senha = st.text_input("Senha", type="password")
-        if st.button("Entrar", use_container_width=True):
-            if verificar_login(usuario, senha, USUARIOS):
-                st.session_state.usuario_logado = usuario
-                st.success(f"✅ Bem-vindo, {USUARIOS[usuario]['nome']}!")
+        
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("Entrar", use_container_width=True):
+                if verificar_login(usuario, senha, USUARIOS):
+                    st.session_state.usuario_logado = usuario
+                    st.success(f"✅ Bem-vindo, {USUARIOS[usuario]['nome']}!")
+                    st.rerun()
+                else:
+                    st.error("❌ Usuário ou senha inválidos!")
+        
+        with col2:
+            if st.button("🔑 Esqueci a senha", use_container_width=True):
+                st.session_state['recuperando_senha'] = True
                 st.rerun()
-            else:
-                st.error("❌ Usuário ou senha inválidos!")
+        
+        # --- TELA DE RECUPERAÇÃO DE SENHA ---
+        if st.session_state.get('recuperando_senha', False):
+            st.markdown("---")
+            st.markdown("### 🔐 Recuperar senha")
+            
+            email = st.text_input("E-mail cadastrado")
+            
+            if st.button("📧 Enviar código", use_container_width=True):
+                if email:
+                    # Verifica se o e-mail existe no sistema
+                    email_existe = False
+                    for user, dados in USUARIOS.items():
+                        if dados.get("email") == email:
+                            email_existe = True
+                            break
+                    
+                    if not email_existe:
+                        st.warning("⚠️ E-mail não encontrado. Verifique ou contate o administrador.")
+                    else:
+                        token = gerar_token_recuperacao()
+                        salvar_token_recuperacao(email, token)
+                        
+                        if enviar_email_recuperacao(email, token):
+                            st.success("✅ Código enviado para seu e-mail!")
+                            st.session_state['token_enviado'] = True
+                        else:
+                            st.error("❌ Erro ao enviar e-mail")
+            
+            if st.session_state.get('token_enviado', False):
+                codigo = st.text_input("Código de verificação")
+                nova_senha = st.text_input("Nova senha", type="password")
+                confirmar_senha = st.text_input("Confirmar nova senha", type="password")
+                
+                if st.button("✅ Alterar senha", use_container_width=True):
+                    if codigo and nova_senha and confirmar_senha:
+                        if nova_senha != confirmar_senha:
+                            st.error("❌ As senhas não coincidem!")
+                        elif len(nova_senha) < 6:
+                            st.error("❌ A senha deve ter pelo menos 6 caracteres!")
+                        else:
+                            # Valida o token
+                            if validar_token_recuperacao(email, codigo):
+                                # Atualiza a senha
+                                for user, dados in USUARIOS.items():
+                                    if dados.get("email") == email:
+                                        dados["hash"] = hash_senha(nova_senha)
+                                        salvar_usuarios(USUARIOS)
+                                        remover_token_recuperacao(email)
+                                        st.success("✅ Senha alterada com sucesso!")
+                                        st.session_state['recuperando_senha'] = False
+                                        st.session_state['token_enviado'] = False
+                                        st.rerun()
+                                        break
+                            else:
+                                st.error("❌ Código inválido ou expirado!")
+                    else:
+                        st.error("❌ Preencha todos os campos!")
+            
+            if st.button("🔙 Voltar ao login"):
+                st.session_state['recuperando_senha'] = False
+                st.session_state['token_enviado'] = False
+                st.rerun()
+        
         st.stop()
     
     usuario_atual = st.session_state.usuario_logado
@@ -797,8 +797,6 @@ with st.sidebar:
     
     if st.button("🚪 Sair", use_container_width=True):
         st.session_state.usuario_logado = None
-        if "google_token" in st.session_state:
-            del st.session_state.google_token
         st.rerun()
     
     st.markdown("---")
@@ -820,14 +818,12 @@ with st.sidebar:
             st.rerun()
     
     st.markdown("---")
-    st.caption("Versão 2.0")
+    st.caption("Versão 2.0 - Recuperação de senha")
 
 # --- RENDERIZAÇÃO DA PÁGINA SELECIONADA ---
-# Se for corretor, SEMPRE vai para o simulador
 if perfil_atual == "corretor":
     pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual)
 else:
-    # Gerente: usa a navegação normal
     pagina = st.session_state.get("pagina", "Simulador")
     
     if pagina == "Simulador":
