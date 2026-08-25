@@ -831,4 +831,194 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                     st.write(f"{len(config.get('colunas_ordem', []))} colunas")
                 with col3:
                     if st.button(f"✏️ Editar", key=f"edit_{nome}"):
-                        st.session_state
+                        st.session_state['editando'] = nome
+                with col4:
+                    if st.button(f"🗑️ Excluir", key=f"del_{nome}"):
+                        del CONSTRUTORAS[nome]
+                        salvar_construtoras(CONSTRUTORAS)
+                        st.rerun()
+                
+                if st.session_state.get('editando') == nome:
+                    with st.form(f"form_edit_{nome}"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            novo_nome = st.text_input("Novo nome", value=nome)
+                            novo_skiprows = st.number_input("Skiprows", value=config.get("skiprows", 0), step=1)
+                        with col2:
+                            novo_colunas_ordem = st.text_input(
+                                "Colunas para exibir",
+                                value=", ".join(config.get("colunas_ordem", []))
+                            )
+                            novo_colunas_numericas = st.text_input(
+                                "Colunas numéricas",
+                                value=", ".join(config.get("colunas_para_converter", []))
+                            )
+                        
+                        novo_mapeamento = st.text_area(
+                            "Mapeamento",
+                            value=json.dumps(config.get("mapeamento", {}), indent=2, ensure_ascii=False),
+                            height=100
+                        )
+                        
+                        col_btn1, col_btn2 = st.columns(2)
+                        with col_btn1:
+                            if st.form_submit_button("💾 Salvar", use_container_width=True):
+                                try:
+                                    del CONSTRUTORAS[nome]
+                                    CONSTRUTORAS[novo_nome] = {
+                                        "skiprows": novo_skiprows,
+                                        "mapeamento": json.loads(novo_mapeamento),
+                                        "colunas_ordem": [c.strip() for c in novo_colunas_ordem.split(',') if c.strip()],
+                                        "colunas_para_converter": [c.strip() for c in novo_colunas_numericas.split(',') if c.strip()]
+                                    }
+                                    salvar_construtoras(CONSTRUTORAS)
+                                    st.session_state['editando'] = None
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"❌ Erro: {str(e)}")
+                        with col_btn2:
+                            if st.form_submit_button("❌ Cancelar", use_container_width=True):
+                                st.session_state['editando'] = None
+                                st.rerun()
+                
+                st.markdown("---")
+    else:
+        st.info("Nenhuma construtora cadastrada. Adicione a primeira!")
+
+# --- SIDEBAR COM LOGIN E NAVEGAÇÃO ---
+with st.sidebar:
+    st.markdown("### 🏢 Simulador de Crédito")
+    st.markdown("---")
+    
+    USUARIOS = carregar_usuarios()
+    CONSTRUTORAS = carregar_construtoras()
+    
+    if "usuario_logado" not in st.session_state:
+        st.session_state.usuario_logado = None
+    
+    if st.session_state.usuario_logado is None:
+        st.markdown("### 🔑 Login")
+        usuario = st.text_input("Usuário")
+        senha = st.text_input("Senha", type="password")
+        
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("Entrar", use_container_width=True):
+                if verificar_login(usuario, senha, USUARIOS):
+                    st.session_state.usuario_logado = usuario
+                    st.success(f"✅ Bem-vindo, {USUARIOS[usuario]['nome']}!")
+                    st.rerun()
+                else:
+                    st.error("❌ Usuário ou senha inválidos!")
+        
+        with col2:
+            if st.button("🔑 Esqueci a senha", use_container_width=True):
+                st.session_state['recuperando_senha'] = True
+                st.rerun()
+        
+        if st.session_state.get('recuperando_senha', False):
+            st.markdown("---")
+            st.markdown("### 🔐 Recuperar senha")
+            
+            email = st.text_input("E-mail cadastrado")
+            
+            if st.button("📧 Enviar código", use_container_width=True):
+                if email:
+                    email_existe = False
+                    for user, dados in USUARIOS.items():
+                        if dados.get("email") == email:
+                            email_existe = True
+                            break
+                    
+                    if not email_existe:
+                        st.warning("⚠️ E-mail não encontrado. Verifique ou contate o administrador.")
+                    else:
+                        token = gerar_token_recuperacao()
+                        salvar_token_recuperacao(email, token)
+                        
+                        if enviar_email_recuperacao(email, token):
+                            st.success("✅ Código enviado para seu e-mail!")
+                            st.session_state['token_enviado'] = True
+                        else:
+                            st.error("❌ Erro ao enviar e-mail")
+            
+            if st.session_state.get('token_enviado', False):
+                codigo = st.text_input("Código de verificação")
+                nova_senha = st.text_input("Nova senha", type="password")
+                confirmar_senha = st.text_input("Confirmar nova senha", type="password")
+                
+                if st.button("✅ Alterar senha", use_container_width=True):
+                    if codigo and nova_senha and confirmar_senha:
+                        if nova_senha != confirmar_senha:
+                            st.error("❌ As senhas não coincidem!")
+                        elif len(nova_senha) < 6:
+                            st.error("❌ A senha deve ter pelo menos 6 caracteres!")
+                        else:
+                            if validar_token_recuperacao(email, codigo):
+                                for user, dados in USUARIOS.items():
+                                    if dados.get("email") == email:
+                                        dados["hash"] = hash_senha(nova_senha)
+                                        salvar_usuarios(USUARIOS)
+                                        remover_token_recuperacao(email)
+                                        st.success("✅ Senha alterada com sucesso!")
+                                        st.session_state['recuperando_senha'] = False
+                                        st.session_state['token_enviado'] = False
+                                        st.rerun()
+                                        break
+                            else:
+                                st.error("❌ Código inválido ou expirado!")
+                    else:
+                        st.error("❌ Preencha todos os campos!")
+            
+            if st.button("🔙 Voltar ao login"):
+                st.session_state['recuperando_senha'] = False
+                st.session_state['token_enviado'] = False
+                st.rerun()
+        
+        st.stop()
+    
+    usuario_atual = st.session_state.usuario_logado
+    perfil_atual = USUARIOS[usuario_atual]["perfil"]
+    
+    st.write(f"👤 *{USUARIOS[usuario_atual]['nome']}*")
+    st.caption(f"Perfil: {perfil_atual}")
+    
+    if st.button("🚪 Sair", use_container_width=True):
+        st.session_state.usuario_logado = None
+        st.rerun()
+    
+    st.markdown("---")
+    
+    if "pagina" not in st.session_state:
+        st.session_state.pagina = "Simulador"
+    
+    if st.button("📊 Simulador", use_container_width=True):
+        st.session_state.pagina = "Simulador"
+        st.rerun()
+    
+    if perfil_atual == "gerente":
+        if st.button("👥 Gestão de Usuários", use_container_width=True):
+            st.session_state.pagina = "Usuários"
+            st.rerun()
+        
+        if st.button("🏗️ Gestão de Construtoras", use_container_width=True):
+            st.session_state.pagina = "Construtoras"
+            st.rerun()
+    
+    st.markdown("---")
+    st.caption("Versão 2.0 - Recuperação de senha")
+
+# --- RENDERIZAÇÃO DA PÁGINA SELECIONADA ---
+if perfil_atual == "corretor":
+    pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual)
+else:
+    pagina = st.session_state.get("pagina", "Simulador")
+    
+    if pagina == "Simulador":
+        pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual)
+    elif pagina == "Usuários":
+        pagina_gestao_usuarios(USUARIOS)
+    elif pagina == "Construtoras":
+        pagina_gestao_construtoras(CONSTRUTORAS)
+    else:
+        pagina_simulador(CONSTRUTORAS, USUARIOS, perfil_atual)
