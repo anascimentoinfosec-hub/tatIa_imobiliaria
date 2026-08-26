@@ -28,12 +28,16 @@ with st.sidebar:
             st.rerun()
         st.markdown("---")
         
+        # --- MENU PRINCIPAL ---
         if st.button("📊 Simulador", use_container_width=True):
             st.session_state.pagina = "Simulador"
             st.rerun()
+        
+        # --- BOTÃO DA IA (NOVO) ---
         if st.button("💬 IA Imobiliária", use_container_width=True):
             st.session_state.pagina = "ChatIA"
             st.rerun()
+        
         if USUARIOS[usuario]["perfil"] == "gerente":
             if st.button("👥 Usuários", use_container_width=True):
                 st.session_state.pagina = "Usuários"
