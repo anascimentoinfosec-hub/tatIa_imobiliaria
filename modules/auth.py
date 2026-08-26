@@ -9,6 +9,7 @@ from email.mime.multipart import MIMEMultipart
 from modules.utils import hash_senha
 from modules.indicadores import mostrar_indicadores
 
+
 ARQUIVO_USUARIOS = "dados/usuarios.json"
 ARQUIVO_RECUPERACAO = "dados/recuperacao.json"
 
