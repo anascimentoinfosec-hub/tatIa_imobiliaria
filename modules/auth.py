@@ -24,6 +24,10 @@ def carregar_usuarios():
         }
     }
 
+def salvar_usuarios(usuarios):
+    with open(ARQUIVO_USUARIOS, 'w', encoding='utf-8') as f:
+        json.dump(usuarios, f, indent=2, ensure_ascii=False)
+        
 def verificar_login(usuario: str, senha: str, usuarios: dict) -> bool:
     if usuario not in usuarios:
         return False
