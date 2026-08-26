@@ -31,13 +31,30 @@ def salvar_construtoras(construtoras):
 def pagina_gestao_construtoras(CONSTRUTORAS):
     st.title("🏗️ Gestão de Construtoras")
     
-    with st.expander("➕ Adicionar", expanded=True):
+    # --- ADICIONAR ---
+    with st.expander("➕ Adicionar Nova Construtora", expanded=False):
         with st.form("form_nova_construtora"):
-            nome = st.text_input("Nome da Construtora")
-            skiprows = st.number_input("Linhas para pular", min_value=0, value=0, step=1)
-            mapeamento_str = st.text_area("Mapeamento", placeholder='{"0": "UNIDADE", "1": "PREÇO"}', height=80)
-            colunas_ordem_str = st.text_input("Colunas para exibir", placeholder="UNIDADE, PAVTO, PREÇO")
-            colunas_numericas_str = st.text_input("Colunas numéricas", placeholder="PREÇO, M²")
+            col1, col2 = st.columns(2)
+            with col1:
+                nome = st.text_input("Nome da Construtora")
+                skiprows = st.number_input("Linhas para pular (skiprows)", min_value=0, value=0, step=1)
+            with col2:
+                colunas_ordem_str = st.text_input(
+                    "Colunas para exibir (separadas por vírgula)",
+                    placeholder="UNIDADE, PAVTO, PREÇO"
+                )
+                colunas_numericas_str = st.text_input(
+                    "Colunas numéricas (separadas por vírgula)",
+                    placeholder="PREÇO, M², ANDAR"
+                )
+            
+            st.markdown("*Mapeamento de colunas (índice: nome)*")
+            st.caption('Ex: {"0": "UNIDADE", "1": "PAVTO", "2": "PREÇO"}')
+            mapeamento_str = st.text_area(
+                "Digite o mapeamento",
+                placeholder='{"0": "UNIDADE", "1": "PAVTO", "2": "PREÇO"}',
+                height=80
+            )
             
             if st.form_submit_button("➕ Adicionar", use_container_width=True):
                 if nome:
@@ -53,21 +70,81 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                             "colunas_para_converter": colunas_numericas
                         }
                         salvar_construtoras(CONSTRUTORAS)
-                        st.success(f"✅ '{nome}' adicionada!")
+                        st.success(f"✅ Construtora '{nome}' adicionada!")
                         st.rerun()
                     except Exception as e:
                         st.error(f"❌ Erro: {str(e)}")
     
     st.markdown("---")
     st.markdown("### 📋 Construtoras Cadastradas")
-    for nome, config in CONSTRUTORAS.items():
-        col1, col2, col3 = st.columns([3, 2, 1])
-        with col1:
-            st.write(f"*{nome}*")
-        with col2:
-            st.write(f"{len(config.get('colunas_ordem', []))} colunas")
-        with col3:
-            if st.button(f"🗑️ Excluir", key=f"del_{nome}"):
-                del CONSTRUTORAS[nome]
-                salvar_construtoras(CONSTRUTORAS)
-                st.rerun()
+    
+    # --- LISTAR CONSTRUTORAS COM BOTÕES DE EDITAR E EXCLUIR ---
+    if CONSTRUTORAS:
+        for nome, config in CONSTRUTORAS.items():
+            with st.container():
+                col1, col2, col3 = st.columns([3, 1, 1])
+                with col1:
+                    st.write(f"*{nome}*")
+                    st.caption(f"{len(config.get('colunas_ordem', []))} colunas")
+                with col2:
+                    if st.button(f"✏️ Editar", key=f"edit_{nome}"):
+                        st.session_state['editando_construtora'] = nome
+                        st.rerun()
+                with col3:
+                    if st.button(f"🗑️ Excluir", key=f"del_{nome}"):
+                        del CONSTRUTORAS[nome]
+                        salvar_construtoras(CONSTRUTORAS)
+                        st.rerun()
+                
+                # --- FORMULÁRIO DE EDIÇÃO (aparece quando clica em Editar) ---
+                if st.session_state.get('editando_construtora') == nome:
+                    with st.form(f"form_edit_{nome}"):
+                        st.markdown(f"*Editando: {nome}*")
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            novo_nome = st.text_input("Novo nome", value=nome)
+                            novo_skiprows = st.number_input("Skiprows", value=config.get("skiprows", 0), step=1)
+                        with col2:
+                            novo_colunas_ordem = st.text_input(
+                                "Colunas para exibir",
+                                value=", ".join(config.get("colunas_ordem", []))
+                            )
+                            novo_colunas_numericas = st.text_input(
+                                "Colunas numéricas",
+                                value=", ".join(config.get("colunas_para_converter", []))
+                            )
+                        
+                        novo_mapeamento = st.text_area(
+                            "Mapeamento",
+                            value=json.dumps(config.get("mapeamento", {}), indent=2, ensure_ascii=False),
+                            height=100
+                        )
+                        
+                        col_btn1, col_btn2 = st.columns(2)
+                        with col_btn1:
+                            if st.form_submit_button("💾 Salvar alterações", use_container_width=True):
+                                try:
+                                    # Remove a antiga
+                                    del CONSTRUTORAS[nome]
+                                    # Adiciona com o novo nome
+                                    CONSTRUTORAS[novo_nome] = {
+                                        "skiprows": novo_skiprows,
+                                        "mapeamento": json.loads(novo_mapeamento),
+                                        "colunas_ordem": [c.strip() for c in novo_colunas_ordem.split(',') if c.strip()],
+                                        "colunas_para_converter": [c.strip() for c in novo_colunas_numericas.split(',') if c.strip()]
+                                    }
+                                    salvar_construtoras(CONSTRUTORAS)
+                                    st.session_state['editando_construtora'] = None
+                                    st.success("✅ Construtora atualizada!")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"❌ Erro: {str(e)}")
+                        with col_btn2:
+                            if st.form_submit_button("❌ Cancelar", use_container_width=True):
+                                st.session_state['editando_construtora'] = None
+                                st.rerun()
+                
+                st.markdown("---")
+    else:
+        st.info("Nenhuma construtora cadastrada.")
