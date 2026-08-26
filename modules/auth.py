@@ -140,6 +140,90 @@ def enviar_email_recuperacao(email, token):
         st.error(f"❌ Erro ao enviar e-mail: {str(e)}")
         return False
 
+def exibir_login_sidebar(USUARIOS):
+    """Exibe o formulário de login e recuperação de senha na sidebar"""
+    
+    st.markdown("### Login")
+    usuario = st.text_input("Usuário", key="login_usuario")
+    senha = st.text_input("Senha", type="password", key="login_senha")
+    
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("Entrar", use_container_width=True):
+            if verificar_login(usuario, senha, USUARIOS):
+                st.session_state.usuario_logado = usuario
+                st.success(f"✅ Bem-vindo, {USUARIOS[usuario]['nome']}!")
+                st.rerun()
+            else:
+                st.error("❌ Usuário ou senha inválidos!")
+    
+    with col2:
+        if st.button("🔑 Esqueci a senha", use_container_width=True):
+            st.session_state['recuperando_senha'] = True
+            st.rerun()
+    
+    # --- RECUPERAÇÃO DE SENHA ---
+    if st.session_state.get('recuperando_senha', False):
+        st.markdown("---")
+        st.markdown("### 🔐 Recuperar senha")
+        
+        email = st.text_input("E-mail cadastrado", key="email_recuperacao")
+        
+        if st.button("📧 Enviar código", use_container_width=True):
+            if email:
+                email_existe = False
+                for user, dados in USUARIOS.items():
+                    if dados.get("email") == email:
+                        email_existe = True
+                        break
+                
+                if not email_existe:
+                    st.warning("⚠️ E-mail não encontrado. Verifique ou contate o administrador.")
+                else:
+                    token = gerar_token_recuperacao()
+                    salvar_token_recuperacao(email, token)
+                    
+                    if enviar_email_recuperacao(email, token):
+                        st.success("✅ Código enviado para seu e-mail!")
+                        st.session_state['token_enviado'] = True
+                    else:
+                        st.error("❌ Erro ao enviar e-mail")
+            else:
+                st.warning("⚠️ Digite seu e-mail cadastrado.")
+        
+        if st.session_state.get('token_enviado', False):
+            codigo = st.text_input("Código de verificação", key="codigo_recuperacao")
+            nova_senha = st.text_input("Nova senha", type="password", key="nova_senha")
+            confirmar_senha = st.text_input("Confirmar nova senha", type="password", key="confirmar_senha")
+            
+            if st.button("✅ Alterar senha", use_container_width=True):
+                if codigo and nova_senha and confirmar_senha:
+                    if nova_senha != confirmar_senha:
+                        st.error("❌ As senhas não coincidem!")
+                    elif len(nova_senha) < 6:
+                        st.error("❌ A senha deve ter pelo menos 6 caracteres!")
+                    else:
+                        if validar_token_recuperacao(email, codigo):
+                            for user, dados in USUARIOS.items():
+                                if dados.get("email") == email:
+                                    dados["hash"] = hash_senha(nova_senha)
+                                    salvar_usuarios(USUARIOS)
+                                    remover_token_recuperacao(email)
+                                    st.success("✅ Senha alterada com sucesso!")
+                                    st.session_state['recuperando_senha'] = False
+                                    st.session_state['token_enviado'] = False
+                                    st.rerun()
+                                    break
+                        else:
+                            st.error("❌ Código inválido ou expirado!")
+                else:
+                    st.error("❌ Preencha todos os campos!")
+        
+        if st.button("🔙 Voltar ao login"):
+            st.session_state['recuperando_senha'] = False
+            st.session_state['token_enviado'] = False
+            st.rerun()
+
 def pagina_login():
     st.markdown("""
     <style>
