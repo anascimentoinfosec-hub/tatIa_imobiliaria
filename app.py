@@ -1,5 +1,5 @@
 import streamlit as st
-from modules.auth import carregar_usuarios, verificar_login, pagina_login
+from modules.auth import carregar_usuarios, verificar_login, pagina_login, exibir_login_sidebar, salvar_usuarios
 from modules.usuarios import pagina_gestao_usuarios
 from modules.construtoras import carregar_construtoras, pagina_gestao_construtoras
 from modules.simulador import pagina_simulador
@@ -18,16 +18,8 @@ with st.sidebar:
         st.session_state.usuario_logado = None
     
     if st.session_state.usuario_logado is None:
-        st.markdown("### Login")
-        usuario = st.text_input("Usuário")
-        senha = st.text_input("Senha", type="password")
-        if st.button("Entrar", use_container_width=True):
-            if verificar_login(usuario, senha, USUARIOS):
-                st.session_state.usuario_logado = usuario
-                st.success(f"✅ Bem-vindo, {USUARIOS[usuario]['nome']}!")
-                st.rerun()
-            else:
-                st.error("❌ Usuário ou senha inválidos!")
+        # Usa a função completa com "Esqueci a senha"
+        exibir_login_sidebar(USUARIOS)
     else:
         usuario = st.session_state.usuario_logado
         st.write(f"👤 *{USUARIOS[usuario]['nome']}*")
