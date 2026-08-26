@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from modules.utils import hash_senha
+from modules.indicadores import mostrar_indicadores
 
 ARQUIVO_USUARIOS = "dados/usuarios.json"
 ARQUIVO_RECUPERACAO = "dados/recuperacao.json"
@@ -245,17 +246,8 @@ def pagina_login():
     </div>
     """, unsafe_allow_html=True)
     
-    st.markdown("### 📊 Mercado Imobiliário")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Taxa Selic", "10,50%")
-        st.metric("TR", "1,50% a.a.")
-    with col2:
-        st.metric("Taxa SFH", "9,50% a.a.")
-        st.metric("Entrada média", "20-30%")
-    with col3:
-        st.metric("Valor m² (RJ)", "R$ 12.800")
-        st.metric("Prazo máximo", "420 meses")
+    st.markdown("### 📊 Mercado Imobiliário e Indicadores")
+    mostrar_indicadores()
     
     st.markdown("---")
     st.markdown("### 🏗️ Empreendimento em Destaque")
