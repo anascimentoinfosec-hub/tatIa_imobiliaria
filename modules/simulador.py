@@ -60,47 +60,38 @@ def pagina_simulador(CONSTRUTORAS):
             if col in df.columns:
                 df[col] = df[col].apply(converter_para_float)
 
-        # --- CORREÇÃO ESPECÍFICA PARA AVALIAÇÃO (COM DEBUG) ---
+        # --- DEBUG COMPLETO PARA IDENTIFICAR O ÍNDICE CORRETO ---
         st.markdown("---")
-        st.subheader("🔍 DEBUG - Coluna AVALIAÇÃO")
-        
+        st.subheader("🔍 DEBUG COMPLETO - Análise da Planilha")
+
+        # Mostra todas as colunas
+        st.write("*📋 Colunas encontradas:*")
+        st.write(df.columns.tolist())
+
+        # Mostra as primeiras 3 linhas COMPLETAS
+        st.write("*📋 Primeiras 3 linhas da planilha (dados brutos):*")
+        st.dataframe(df.head(3))
+
+        # Mostra cada coluna separadamente com seus valores
+        st.write("*📋 Valores de cada coluna (primeiras 5 linhas):*")
+        for col in df.columns:
+            st.write(f"*Coluna '{col}':* {df[col].head(5).tolist()}")
+
+        # Verifica se AVALIAÇÃO está correta
         if "AVALIAÇÃO" in df.columns:
-            st.success("✅ Coluna 'AVALIAÇÃO' ENCONTRADA na planilha!")
-            
-            # Mostra os valores brutos
-            st.write("*Valores BRUTOS (primeiros 5):*")
-            st.write(df["AVALIAÇÃO"].head(5).tolist())
-            
-            # Converte para string e limpa
-            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].astype(str)
-            
-            # Remove R$, R, espaços
-            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.replace('R$', '', regex=False)
-            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.replace('R', '', regex=False)
-            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.strip()
-            
-            # Substitui ponto de milhar e vírgula decimal
-            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.replace('.', '', regex=False)
-            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.replace(',', '.', regex=False)
-            
-            # Remove tudo que não é número ou ponto
-            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.extract(r'(\d+\.?\d*)')
-            
-            # Converte para float
-            df["AVALIAÇÃO"] = pd.to_numeric(df["AVALIAÇÃO"], errors='coerce')
-            
-            # Preenche NaN com 0
-            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].fillna(0)
-            
-            st.success("✅ Valores CONVERTIDOS (primeiros 5):")
-            st.write(df["AVALIAÇÃO"].head(5).tolist())
-            st.write(f"*Tipo da coluna:* {df['AVALIAÇÃO'].dtype}")
-            
+            st.write(f"*🔍 Valores da coluna 'AVALIAÇÃO':* {df['AVALIAÇÃO'].head(10).tolist()}")
         else:
-            st.error("❌ Coluna 'AVALIAÇÃO' NÃO encontrada na planilha!")
-            st.write("*Colunas disponíveis na planilha:*")
-            st.write(df.columns.tolist())
-        
+            st.warning("⚠️ Coluna 'AVALIAÇÃO' NÃO encontrada!")
+
+        # Verifica se há uma coluna com valores que parecem ser AVALIAÇÃO
+        st.write("*🔍 Procurando coluna com valores que parecem ser AVALIAÇÃO (R$):*")
+        for col in df.columns:
+            sample = df[col].head(3).astype(str).tolist()
+            sample_str = ' '.join(sample)
+            if 'R$' in sample_str or 'R ' in sample_str:
+                st.write(f"*Possível coluna de AVALIAÇÃO: '{col}'*")
+                st.write(f"Valores: {sample}")
+
         st.markdown("---")
         
         # =============================================
