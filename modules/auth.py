@@ -167,12 +167,7 @@ def exibir_login_sidebar(USUARIOS):
     st.markdown("### Login")
     usuario = st.text_input("Usuário", key="login_usuario")
     senha = st.text_input("Senha", type="password", key="login_senha")
-    
-    # MOSTRA AS CREDENCIAIS PARA DEBUG
-    with st.expander("🔑 Credenciais disponíveis"):
-        for user in USUARIOS.keys():
-            st.write(f"- {user}")
-    
+          
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("Entrar", use_container_width=True):
