@@ -1,0 +1,18 @@
+{
+  "superadmin": {
+    "nome": "Administrador do Sistema",
+    "hash": "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+    "perfil": "superadmin",
+    "ativo": true,
+    "email": "anascimento.infosec@gmail.com",
+    "criado_em": "2026-08-26T10:00:00"
+  },
+  "gerente": {
+    "nome": "Gerente Geral",
+    "hash": "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+    "perfil": "gerente",
+    "ativo": true,
+    "email": "tatianacorretora28@gmail.com",
+    "criado_em": "2026-08-26T10:00:00"
+  }
+}
