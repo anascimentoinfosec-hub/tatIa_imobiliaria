@@ -15,7 +15,7 @@ with st.sidebar:
  st.markdown("### Acesso")
  st.markdown("---")
  if "usuario_logado" not in st.session_state:
- st.session_state.usuario_logado = None
+ st.session_state.usuario_logado=None
  if st.session_state.usuario_logado is None:
  exibir_login_sidebar(USUARIOS)
  else:
