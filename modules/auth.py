@@ -7,20 +7,32 @@ from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from modules.utils import hash_senha
-from modules.indicadores import mostrar_indicadores
-
 
 ARQUIVO_USUARIOS = "dados/usuarios.json"
 ARQUIVO_RECUPERACAO = "dados/recuperacao.json"
 
 def carregar_usuarios():
+    """Carrega usuários do arquivo ou cria padrão com Super Admin e Gerente"""
     try:
         if os.path.exists(ARQUIVO_USUARIOS):
             with open(ARQUIVO_USUARIOS, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                usuarios = json.load(f)
+                # Verifica se tem pelo menos o gerente
+                if "gerente" in usuarios:
+                    return usuarios
     except:
         pass
-    return {
+    
+    # CRIA USUÁRIOS PADRÃO (se não existir ou estiver corrompido)
+    usuarios = {
+        "superadmin": {
+            "nome": "Administrador do Sistema",
+            "hash": hash_senha("admin2026"),
+            "perfil": "superadmin",
+            "ativo": True,
+            "email": "admin@email.com",
+            "criado_em": datetime.now().isoformat()
+        },
         "gerente": {
             "nome": "Gerente Geral",
             "hash": hash_senha("gerente2026"),
@@ -30,6 +42,15 @@ def carregar_usuarios():
             "criado_em": datetime.now().isoformat()
         }
     }
+    
+    # Salva o arquivo
+    try:
+        with open(ARQUIVO_USUARIOS, 'w', encoding='utf-8') as f:
+            json.dump(usuarios, f, indent=2, ensure_ascii=False)
+    except:
+        pass
+    
+    return usuarios
 
 def salvar_usuarios(usuarios):
     with open(ARQUIVO_USUARIOS, 'w', encoding='utf-8') as f:
@@ -247,8 +268,17 @@ def pagina_login():
     </div>
     """, unsafe_allow_html=True)
     
-    st.markdown("### 📊 Mercado Imobiliário e Indicadores")
-    mostrar_indicadores()
+    st.markdown("### 📊 Mercado Imobiliário")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Taxa Selic", "10,50%")
+        st.metric("TR", "1,50% a.a.")
+    with col2:
+        st.metric("Taxa SFH", "9,50% a.a.")
+        st.metric("Entrada média", "20-30%")
+    with col3:
+        st.metric("Valor m² (RJ)", "R$ 12.800")
+        st.metric("Prazo máximo", "420 meses")
     
     st.markdown("---")
     st.markdown("### 🏗️ Empreendimento em Destaque")
