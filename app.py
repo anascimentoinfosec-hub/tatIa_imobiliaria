@@ -1,3 +1,5 @@
+#ATUALIZAÇÃO FORÇADA - 27/8/2026
+
 import streamlit as st
 from modules.auth import carregar_usuarios, verificar_login, pagina_login, exibir_login_sidebar
 from modules.usuarios import pagina_gestao_usuarios
