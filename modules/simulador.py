@@ -55,16 +55,53 @@ def pagina_simulador(CONSTRUTORAS):
             st.error("❌ Não foi possível ler a planilha. Verifique o formato e o mapeamento.")
             st.stop()
         
-        # Converte todas as colunas numéricas
+        # --- CONVERSÃO DE COLUNAS NUMÉRICAS ---
         for col in config.get("colunas_para_converter", []):
             if col in df.columns:
                 df[col] = df[col].apply(converter_para_float)
+
+        # --- CORREÇÃO ESPECÍFICA PARA AVALIAÇÃO (COM DEBUG) ---
+        st.markdown("---")
+        st.subheader("🔍 DEBUG - Coluna AVALIAÇÃO")
         
-        # --- CORREÇÃO ESPECÍFICA PARA AVALIAÇÃO ---
         if "AVALIAÇÃO" in df.columns:
-            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].astype(str).str.replace('R$', '').str.replace('R', '').str.strip()
-            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.replace('.', '').str.replace(',', '.')
-            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.extract(r'(\d+\.?\d*)').astype(float)
+            st.success("✅ Coluna 'AVALIAÇÃO' ENCONTRADA na planilha!")
+            
+            # Mostra os valores brutos
+            st.write("*Valores BRUTOS (primeiros 5):*")
+            st.write(df["AVALIAÇÃO"].head(5).tolist())
+            
+            # Converte para string e limpa
+            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].astype(str)
+            
+            # Remove R$, R, espaços
+            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.replace('R$', '', regex=False)
+            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.replace('R', '', regex=False)
+            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.strip()
+            
+            # Substitui ponto de milhar e vírgula decimal
+            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.replace('.', '', regex=False)
+            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.replace(',', '.', regex=False)
+            
+            # Remove tudo que não é número ou ponto
+            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.extract(r'(\d+\.?\d*)')
+            
+            # Converte para float
+            df["AVALIAÇÃO"] = pd.to_numeric(df["AVALIAÇÃO"], errors='coerce')
+            
+            # Preenche NaN com 0
+            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].fillna(0)
+            
+            st.success("✅ Valores CONVERTIDOS (primeiros 5):")
+            st.write(df["AVALIAÇÃO"].head(5).tolist())
+            st.write(f"*Tipo da coluna:* {df['AVALIAÇÃO'].dtype}")
+            
+        else:
+            st.error("❌ Coluna 'AVALIAÇÃO' NÃO encontrada na planilha!")
+            st.write("*Colunas disponíveis na planilha:*")
+            st.write(df.columns.tolist())
+        
+        st.markdown("---")
         
         # =============================================
         # GUARDA O DATAFRAME NA SESSÃO PARA O CHAT
@@ -193,6 +230,8 @@ def pagina_simulador(CONSTRUTORAS):
                     st.write(f"- *Preço:* R$ {melhor[preco_col]:,.2f}")
                 if 'R$/m²' in melhor:
                     st.write(f"- *R$/m²:* R$ {melhor['R$/m²']:.2f}")
+                if 'AVALIAÇÃO' in melhor:
+                    st.write(f"- *Avaliação:* R$ {melhor['AVALIAÇÃO']:,.2f}")
                 if '1ª AVALIAÇÃO OÁSIS II' in melhor:
                     st.write(f"- *Avaliação:* R$ {melhor['1ª AVALIAÇÃO OÁSIS II']:,.2f}")
                 if 'DESCONTO' in melhor:
