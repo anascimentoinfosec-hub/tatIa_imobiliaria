@@ -6,7 +6,6 @@ from modules.auth import salvar_usuarios, carregar_usuarios
 def pagina_gestao_usuarios(USUARIOS):
     st.title("👥 Gestão de Usuários")
     
-    # Verifica o perfil do usuário logado
     usuario_logado = st.session_state.get("usuario_logado")
     perfil_logado = USUARIOS.get(usuario_logado, {}).get("perfil", "corretor")
     
@@ -39,7 +38,6 @@ def pagina_gestao_usuarios(USUARIOS):
                 email = st.text_input("E-mail")
             with col2:
                 senha = st.text_input("Senha", type="password")
-                # Super Admin pode criar qualquer perfil; Gerente só pode criar corretores
                 if perfil_logado == "superadmin":
                     perfil = st.selectbox("Perfil", ["corretor", "gerente", "superadmin"])
                 else:
@@ -73,24 +71,30 @@ def pagina_gestao_usuarios(USUARIOS):
             if usuario_editar:
                 dados = USUARIOS[usuario_editar]
                 
+                # --- BLOQUEIO: Gerente não edita Super Admin ---
+                if perfil_logado == "gerente" and dados["perfil"] == "superadmin":
+                    st.error("❌ Você não tem permissão para editar o Super Admin!")
+                    st.stop()
+                
                 with st.form("form_editar_usuario"):
                     col1, col2 = st.columns(2)
                     with col1:
                         nome = st.text_input("Nome", value=dados["nome"])
                         email = st.text_input("E-mail", value=dados.get("email", ""))
-                        # Super Admin pode editar qualquer perfil; Gerente não pode mudar perfil
+                        
                         if perfil_logado == "superadmin":
                             perfis_disponiveis = ["corretor", "gerente", "superadmin"]
                             idx_atual = perfis_disponiveis.index(dados["perfil"]) if dados["perfil"] in perfis_disponiveis else 0
                             perfil = st.selectbox("Perfil", perfis_disponiveis, index=idx_atual)
                         else:
                             perfil = dados["perfil"]
-                            st.info(f"Perfil atual: {perfil} (não pode ser alterado por um gerente)")
+                            st.info(f"Perfil atual: {perfil}")
+                    
                     with col2:
                         senha = st.text_input("Nova senha (opcional)", type="password")
                         ativo = st.checkbox("Ativo", value=dados["ativo"])
                     
-                    st.caption("💡 Para alterar a senha, digite uma nova senha. Deixe em branco para manter a atual.")
+                    st.caption("💡 Deixe a senha em branco para manter a atual.")
                     
                     col_btn1, col_btn2 = st.columns(2)
                     with col_btn1:
@@ -106,7 +110,7 @@ def pagina_gestao_usuarios(USUARIOS):
                             st.success("✅ Usuário atualizado!")
                             st.rerun()
                     
-                    # Super Admin pode excluir qualquer usuário; Gerente não pode excluir gerentes/superadmins
+                    # --- BLOQUEIO: Gerente não exclui Super Admin ---
                     with col_btn2:
                         pode_excluir = False
                         if perfil_logado == "superadmin":
