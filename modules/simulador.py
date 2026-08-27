@@ -55,9 +55,16 @@ def pagina_simulador(CONSTRUTORAS):
             st.error("❌ Não foi possível ler a planilha. Verifique o formato e o mapeamento.")
             st.stop()
         
+        # Converte todas as colunas numéricas
         for col in config.get("colunas_para_converter", []):
             if col in df.columns:
                 df[col] = df[col].apply(converter_para_float)
+        
+        # --- CORREÇÃO ESPECÍFICA PARA AVALIAÇÃO ---
+        if "AVALIAÇÃO" in df.columns:
+            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].astype(str).str.replace('R$', '').str.replace('R', '').str.strip()
+            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.replace('.', '').str.replace(',', '.')
+            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.extract(r'(\d+\.?\d*)').astype(float)
         
         # =============================================
         # GUARDA O DATAFRAME NA SESSÃO PARA O CHAT
