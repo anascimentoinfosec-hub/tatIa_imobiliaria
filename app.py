@@ -14,10 +14,8 @@ CONSTRUTORAS = carregar_construtoras()
 with st.sidebar:
  st.markdown("### Acesso")
  st.markdown("---")
- 
  if "usuario_logado" not in st.session_state:
  st.session_state.usuario_logado = None
- 
  if st.session_state.usuario_logado is None:
  exibir_login_sidebar(USUARIOS)
  else:
@@ -29,18 +27,13 @@ with st.sidebar:
  st.session_state.usuario_logado = None
  st.rerun()
  st.markdown("---")
- 
- # --- MENU PRINCIPAL (todos os usuários) ---
  if st.button(" Simulador", use_container_width=True):
  st.session_state.pagina = "Simulador"
  st.rerun()
  if st.button(" IA Imobiliária", use_container_width=True):
  st.session_state.pagina = "ChatIA"
  st.rerun()
- 
  st.markdown("---")
- 
- # --- MENU SUPER ADMIN ---
  if perfil == "superadmin":
  st.markdown("### Administração")
  if st.button(" Gerenciar Gerentes", use_container_width=True):
@@ -52,8 +45,6 @@ with st.sidebar:
  if st.button(" Construtoras", use_container_width=True):
  st.session_state.pagina = "Construtoras"
  st.rerun()
- 
- # --- MENU GERENTE ---
  elif perfil == "gerente":
  st.markdown("### Gestão")
  if st.button(" Usuários", use_container_width=True):
@@ -62,8 +53,6 @@ with st.sidebar:
  if st.button(" Construtoras", use_container_width=True):
  st.session_state.pagina = "Construtoras"
  st.rerun()
- 
- # --- MENU CORRETOR ---
  else:
  st.caption(" Corretor - Acesso ao simulador e IA")
 
