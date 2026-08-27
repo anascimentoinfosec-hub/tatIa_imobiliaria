@@ -12,7 +12,6 @@ def salvar_planilha_cache(construtora: str, df: pd.DataFrame):
  if not os.path.exists(PASTA_PLANILHAS):
  os.makedirs(PASTA_PLANILHAS)
  
- # Converte DataFrame para JSON
  arquivo = os.path.join(PASTA_PLANILHAS, f"{construtora}.json")
  dados = {
  "construtora": construtora,
