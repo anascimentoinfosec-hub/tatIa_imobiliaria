@@ -1,5 +1,3 @@
-#ATUALIZAÇÃO FORÇADA - 27/8/2026
-
 import streamlit as st
 from modules.auth import carregar_usuarios, verificar_login, pagina_login, exibir_login_sidebar
 from modules.usuarios import pagina_gestao_usuarios
@@ -18,8 +16,7 @@ with st.sidebar:
  st.markdown("### Acesso")
  st.markdown("---")
  
- if "usuario_logado" not in
- st.session_state:
+ if "usuario_logado" not in st.session_state:
  st.session_state.usuario_logado = None
  
  if st.session_state.usuario_logado is None:
