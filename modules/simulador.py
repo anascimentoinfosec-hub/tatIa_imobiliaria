@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 from modules.planilha import ler_planilha
 from modules.utils import converter_para_float
-from modules.planilha_cache import salvar_planilha_cache, carregar_planilha_cache, tem_planilha_cache
 
 def pagina_simulador(CONSTRUTORAS):
     st.title("📊 Simulador de Crédito")
@@ -50,43 +49,23 @@ def pagina_simulador(CONSTRUTORAS):
     # --- PROCESSAMENTO DA PLANILHA ---
     try:
         config = CONSTRUTORAS[construtora_selecionada]
+        df = ler_planilha(uploaded_file, config)
         
-        # --- VERIFICA SE JÁ EXISTE PLANILHA EM CACHE ---
-        planilha_carregada = False
-        df = None
+        if df is None:
+            st.error("❌ Não foi possível ler a planilha. Verifique o formato e o mapeamento.")
+            st.stop()
         
-        # Se o usuário fez upload, processa e salva em cache
-        if uploaded_file is not None:
-            df = ler_planilha(uploaded_file, config)
-            if df is not None:
-                # Converte colunas numéricas
-                for col in config.get("colunas_para_converter", []):
-                    if col in df.columns:
-                        df[col] = df[col].apply(converter_para_float)
-                
-                # --- CORREÇÃO PARA COLUNA AVALIAÇÃO ---
-                if "AVALIAÇÃO" in df.columns:
-                    df["AVALIAÇÃO"] = df["AVALIAÇÃO"].astype(str).str.replace('RS', '').str.replace('R$', '').str.replace('R', '').str.strip()
-                    df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
-                    df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.extract(r'(\d+\.?\d*)')
-                    df["AVALIAÇÃO"] = pd.to_numeric(df["AVALIAÇÃO"], errors='coerce').fillna(0)
-                
-                # Salva em cache
-                salvar_planilha_cache(construtora_selecionada, df)
-                st.success(f"✅ Planilha '{construtora_selecionada}' carregada e salva em cache!")
-                planilha_carregada = True
+        # Converte colunas numéricas
+        for col in config.get("colunas_para_converter", []):
+            if col in df.columns:
+                df[col] = df[col].apply(converter_para_float)
         
-        # Se não fez upload, tenta carregar do cache
-        elif tem_planilha_cache(construtora_selecionada):
-            df = carregar_planilha_cache(construtora_selecionada)
-            if df is not None:
-                st.info(f"📂 Planilha carregada do cache: {construtora_selecionada} (atualize com novo upload)")
-                planilha_carregada = True
-        
-        # Se não tem cache, mostra mensagem
-        if not planilha_carregada or df is None:
-            st.warning(f"⚠️ Nenhuma planilha disponível para '{construtora_selecionada}'. Faça o upload.")
-            return
+        # --- CORREÇÃO PARA COLUNA AVALIAÇÃO ---
+        if "AVALIAÇÃO" in df.columns:
+            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].astype(str).str.replace('RS', '').str.replace('R$', '').str.replace('R', '').str.strip()
+            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.extract(r'(\d+\.?\d*)')
+            df["AVALIAÇÃO"] = pd.to_numeric(df["AVALIAÇÃO"], errors='coerce').fillna(0)
         
         # =============================================
         # GUARDA O DATAFRAME NA SESSÃO PARA O CHAT
