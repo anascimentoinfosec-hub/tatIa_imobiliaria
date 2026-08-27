@@ -18,20 +18,7 @@ with st.sidebar:
  st.markdown("### Acesso")
  st.markdown("---")
  
- if "usuario_logado" not in st.session_state:
- st.session_state.usuario_logado = None
  
- if st.session_state.usuario_logado is None:
- exibir_login_sidebar(USUARIOS)
- else:
- usuario = st.session_state.usuario_logado
- perfil = USUARIOS[usuario]["perfil"]
- st.write(f" **{USUARIOS[usuario]['nome']}**")
- st.caption(f"Perfil: {perfil}")
- if st.button(" Sair", use_container_width=True):
- st.session_state.usuario_logado = None
- st.rerun()
- st.markdown("---")
  
  # --- MENU PRINCIPAL (todos os usuários) ---
  if st.button(" Simulador", use_container_width=True):
