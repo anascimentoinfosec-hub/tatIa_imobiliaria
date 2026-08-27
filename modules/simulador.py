@@ -59,40 +59,13 @@ def pagina_simulador(CONSTRUTORAS):
         for col in config.get("colunas_para_converter", []):
             if col in df.columns:
                 df[col] = df[col].apply(converter_para_float)
-
-        # --- DEBUG COMPLETO PARA IDENTIFICAR O ÍNDICE CORRETO ---
-        st.markdown("---")
-        st.subheader("🔍 DEBUG COMPLETO - Análise da Planilha")
-
-        # Mostra todas as colunas
-        st.write("*📋 Colunas encontradas:*")
-        st.write(df.columns.tolist())
-
-        # Mostra as primeiras 3 linhas COMPLETAS
-        st.write("*📋 Primeiras 3 linhas da planilha (dados brutos):*")
-        st.dataframe(df.head(3))
-
-        # Mostra cada coluna separadamente com seus valores
-        st.write("*📋 Valores de cada coluna (primeiras 5 linhas):*")
-        for col in df.columns:
-            st.write(f"*Coluna '{col}':* {df[col].head(5).tolist()}")
-
-        # Verifica se AVALIAÇÃO está correta
+        
+        # --- CORREÇÃO PARA COLUNA AVALIAÇÃO (quando o nome for AVALIAÇÃO) ---
         if "AVALIAÇÃO" in df.columns:
-            st.write(f"*🔍 Valores da coluna 'AVALIAÇÃO':* {df['AVALIAÇÃO'].head(10).tolist()}")
-        else:
-            st.warning("⚠️ Coluna 'AVALIAÇÃO' NÃO encontrada!")
-
-        # Verifica se há uma coluna com valores que parecem ser AVALIAÇÃO
-        st.write("*🔍 Procurando coluna com valores que parecem ser AVALIAÇÃO (R$):*")
-        for col in df.columns:
-            sample = df[col].head(3).astype(str).tolist()
-            sample_str = ' '.join(sample)
-            if 'R$' in sample_str or 'R ' in sample_str:
-                st.write(f"*Possível coluna de AVALIAÇÃO: '{col}'*")
-                st.write(f"Valores: {sample}")
-
-        st.markdown("---")
+            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].astype(str).str.replace('RS', '').str.replace('R$', '').str.replace('R', '').str.strip()
+            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.extract(r'(\d+\.?\d*)')
+            df["AVALIAÇÃO"] = pd.to_numeric(df["AVALIAÇÃO"], errors='coerce').fillna(0)
         
         # =============================================
         # GUARDA O DATAFRAME NA SESSÃO PARA O CHAT
