@@ -6,15 +6,24 @@ from datetime import datetime
 
 PASTA_PLANILHAS = "dados/planilhas"
 
-def salvar_planilha_cache(construtora: str, df: pd.DataFrame):
+def _get_arquivo_cache(construtora: str, produto: str = None):
+    """Retorna o caminho do arquivo de cache"""
+    if produto:
+        nome_arquivo = f"{construtora}_{produto}.json"
+    else:
+        nome_arquivo = f"{construtora}.json"
+    return os.path.join(PASTA_PLANILHAS, nome_arquivo)
+
+def salvar_planilha_cache(construtora: str, df: pd.DataFrame, produto: str = None):
     """Salva a planilha em cache para acesso futuro"""
     try:
         if not os.path.exists(PASTA_PLANILHAS):
             os.makedirs(PASTA_PLANILHAS)
         
-        arquivo = os.path.join(PASTA_PLANILHAS, f"{construtora}.json")
+        arquivo = _get_arquivo_cache(construtora, produto)
         dados = {
             "construtora": construtora,
+            "produto": produto,
             "data_upload": datetime.now().isoformat(),
             "colunas": df.columns.tolist(),
             "dados": df.to_dict(orient="records")
@@ -28,10 +37,10 @@ def salvar_planilha_cache(construtora: str, df: pd.DataFrame):
         st.error(f"❌ Erro ao salvar cache: {str(e)}")
         return False
 
-def carregar_planilha_cache(construtora: str):
+def carregar_planilha_cache(construtora: str, produto: str = None):
     """Carrega a planilha do cache"""
     try:
-        arquivo = os.path.join(PASTA_PLANILHAS, f"{construtora}.json")
+        arquivo = _get_arquivo_cache(construtora, produto)
         if not os.path.exists(arquivo):
             return None
         
@@ -45,15 +54,15 @@ def carregar_planilha_cache(construtora: str):
     except Exception as e:
         return None
 
-def tem_planilha_cache(construtora: str) -> bool:
-    """Verifica se existe planilha em cache para a construtora"""
-    arquivo = os.path.join(PASTA_PLANILHAS, f"{construtora}.json")
+def tem_planilha_cache(construtora: str, produto: str = None) -> bool:
+    """Verifica se existe planilha em cache"""
+    arquivo = _get_arquivo_cache(construtora, produto)
     return os.path.exists(arquivo)
 
-def excluir_planilha_cache(construtora: str):
+def excluir_planilha_cache(construtora: str, produto: str = None):
     """Exclui a planilha em cache"""
     try:
-        arquivo = os.path.join(PASTA_PLANILHAS, f"{construtora}.json")
+        arquivo = _get_arquivo_cache(construtora, produto)
         if os.path.exists(arquivo):
             os.remove(arquivo)
             return True

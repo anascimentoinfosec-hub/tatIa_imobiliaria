@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from modules.planilha import ler_planilha
 from modules.utils import converter_para_float
-from modules.planilha_cache import salvar_planilha_cache, carregar_planilha_cache, tem_planilha_cache
+from modules.planilha_cache import salvar_planilha_cache, carregar_planilha_cache, tem_planilha_cache, excluir_planilha_cache
 
 def pagina_simulador(CONSTRUTORAS):
     st.title("📊 Simulador de Crédito")
@@ -10,62 +10,93 @@ def pagina_simulador(CONSTRUTORAS):
     with st.sidebar:
         st.header("⚙️ Configurações")
         
+        # --- SELETOR CONSTRUTORA ---
         construtora_selecionada = st.selectbox(
             "🏗️ Selecione a construtora",
             options=list(CONSTRUTORAS.keys())
         )
         
+        # --- SELETOR PRODUTO ---
+        produtos = CONSTRUTORAS[construtora_selecionada].get("produtos", {})
+        produtos_lista = list(produtos.keys())
+        
+        if produtos_lista:
+            produto_selecionado = st.selectbox(
+                "📦 Selecione o produto",
+                options=produtos_lista
+            )
+        else:
+            st.warning("⚠️ Nenhum produto cadastrado para esta construtora.")
+            produto_selecionado = None
+        
         st.markdown("---")
         
-        uploaded_file = st.file_uploader(
-            "📤 Envie a planilha (gerente)",
-            type=['xlsx', 'xls', 'csv', 'pdf']
-        )
+        # --- UPLOAD ---
+        if produto_selecionado:
+            st.markdown("### 📤 Upload")
+            uploaded_file = st.file_uploader(
+                f"Planilha para {construtora_selecionada} - {produto_selecionado}",
+                type=['xlsx', 'xls', 'csv', 'pdf'],
+                key=f"upload_{construtora_selecionada}_{produto_selecionado}"
+            )
+            
+            if st.button("📥 Carregar", use_container_width=True):
+                if uploaded_file is not None:
+                    config = produtos[produto_selecionado]
+                    df = ler_planilha(uploaded_file, config)
+                    if df is not None:
+                        for col in config.get("colunas_para_converter", []):
+                            if col in df.columns:
+                                df[col] = df[col].apply(converter_para_float)
+                        
+                        if "AVALIAÇÃO" in df.columns:
+                            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].astype(str).str.replace('RS', '').str.replace('R$', '').str.replace('R', '').str.strip()
+                            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+                            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.extract(r'(\d+\.?\d*)')
+                            df["AVALIAÇÃO"] = pd.to_numeric(df["AVALIAÇÃO"], errors='coerce').fillna(0)
+                        
+                        salvar_planilha_cache(construtora_selecionada, df, produto_selecionado)
+                        st.success(f"✅ Planilha '{produto_selecionado}' carregada!")
+                        st.rerun()
+                    else:
+                        st.error("❌ Erro ao ler a planilha")
+                else:
+                    st.warning("⚠️ Selecione uma planilha primeiro!")
+            
+            st.markdown("---")
+            
+            # --- BOTÃO LIMPAR CACHE ---
+            if st.button("🗑️ Limpar cache", use_container_width=True):
+                excluir_planilha_cache(construtora_selecionada, produto_selecionado)
+                st.success(f"✅ Cache de '{produto_selecionado}' removido!")
+                st.rerun()
         
         st.markdown("---")
-        st.caption("Versão 2.0 - Cache persistente")
+        st.caption("Versão 3.0 - Produtos por Construtora")
     
     # --- CORPO PRINCIPAL ---
-    df = None
-    planilha_carregada = False
-    
-    # 1. Se o usuário fez upload, processa e salva em cache
-    if uploaded_file is not None:
-        config = CONSTRUTORAS[construtora_selecionada]
-        df = ler_planilha(uploaded_file, config)
-        if df is not None:
-            # Converte colunas numéricas
-            for col in config.get("colunas_para_converter", []):
-                if col in df.columns:
-                    df[col] = df[col].apply(converter_para_float)
-            
-            # Corrige coluna AVALIAÇÃO
-            if "AVALIAÇÃO" in df.columns:
-                df["AVALIAÇÃO"] = df["AVALIAÇÃO"].astype(str).str.replace('RS', '').str.replace('R$', '').str.replace('R', '').str.strip()
-                df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
-                df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.extract(r'(\d+\.?\d*)')
-                df["AVALIAÇÃO"] = pd.to_numeric(df["AVALIAÇÃO"], errors='coerce').fillna(0)
-            
-            # Salva em cache
-            salvar_planilha_cache(construtora_selecionada, df)
-            st.success(f"✅ Planilha '{construtora_selecionada}' carregada e salva em cache!")
-            planilha_carregada = True
-    
-    # 2. Se não fez upload, tenta carregar do cache
-    elif tem_planilha_cache(construtora_selecionada):
-        df = carregar_planilha_cache(construtora_selecionada)
-        if df is not None:
-            st.info(f"📂 Planilha carregada do cache: {construtora_selecionada}")
-            planilha_carregada = True
-    
-    # 3. Se não tem cache, mostra mensagem
-    if not planilha_carregada or df is None:
-        st.warning(f"⚠️ Nenhuma planilha disponível para '{construtora_selecionada}'. Faça o upload.")
+    if not produto_selecionado:
+        st.warning("⚠️ Selecione um produto para visualizar os dados.")
         return
     
-    # =============================================
-    # GUARDA O DATAFRAME NA SESSÃO PARA O CHAT
-    # =============================================
+    config = produtos[produto_selecionado]
+    df = None
+    
+    if tem_planilha_cache(construtora_selecionada, produto_selecionado):
+        df = carregar_planilha_cache(construtora_selecionada, produto_selecionado)
+        if df is not None:
+            st.info(f"📂 Planilha carregada do cache: {construtora_selecionada} - {produto_selecionado}")
+    
+    if df is None:
+        st.warning(f"⚠️ Nenhuma planilha disponível para '{produto_selecionado}'. Faça o upload.")
+        return
+    
+    # Guarda na sessão para o chat
+    if "df_imoveis_cache" not in st.session_state:
+        st.session_state.df_imoveis_cache = {}
+    
+    chave_cache = f"{construtora_selecionada}_{produto_selecionado}"
+    st.session_state.df_imoveis_cache[chave_cache] = df
     st.session_state.df_imoveis = df
     
     st.markdown("---")
@@ -164,7 +195,8 @@ def pagina_simulador(CONSTRUTORAS):
     
     colunas_ordem = [c for c in colunas_ordem if c in resultado.columns]
     
-    st.subheader(f"🔍 Resultados: {len(resultado)} imóveis encontrados - {construtora_selecionada}")
+    st.subheader(f"🔍 Resultados: {len(resultado)} imóveis encontrados")
+    st.caption(f"📌 {construtora_selecionada} - {produto_selecionado}")
     
     if not resultado.empty:
         if 'R$/m²' in resultado.columns:
