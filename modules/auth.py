@@ -11,50 +11,48 @@ from modules.utils import hash_senha
 ARQUIVO_USUARIOS = "dados/usuarios.json"
 ARQUIVO_RECUPERACAO = "dados/recuperacao.json"
 
-def carregar_usuarios():
-    """Carrega usuários do arquivo ou cria padrão com Super Admin e Gerente"""
-    try:
-        if os.path.exists(ARQUIVO_USUARIOS):
-            with open(ARQUIVO_USUARIOS, 'r', encoding='utf-8') as f:
-                usuarios = json.load(f)
-                # Verifica se tem pelo menos o gerente
-                if "gerente" in usuarios:
-                    return usuarios
-    except:
-        pass
-    
-    # CRIA USUÁRIOS PADRÃO (se não existir ou estiver corrompido)
-    usuarios = {
-        "superadmin": {
-            "nome": "Administrador do Sistema",
-            "hash": hash_senha("admin2026"),
-            "perfil": "superadmin",
-            "ativo": True,
-            "email": "admin@email.com",
-            "criado_em": datetime.now().isoformat()
-        },
-        "gerente": {
-            "nome": "Gerente Geral",
-            "hash": hash_senha("gerente2026"),
-            "perfil": "gerente",
-            "ativo": True,
-            "email": "gerente@email.com",
-            "criado_em": datetime.now().isoformat()
-        }
+# =============================================
+# USUÁRIOS FIXOS (DIRETO NO CÓDIGO - PARA TESTE)
+# =============================================
+USUARIOS_FIXOS = {
+    "superadmin": {
+        "nome": "Administrador do Sistema",
+        "hash": hash_senha("admin2026"),
+        "perfil": "superadmin",
+        "ativo": True,
+        "email": "admin@email.com"
+    },
+    "gerente": {
+        "nome": "Gerente Geral",
+        "hash": hash_senha("gerente2026"),
+        "perfil": "gerente",
+        "ativo": True,
+        "email": "gerente@email.com"
     }
-    
-    # Salva o arquivo
-    try:
-        with open(ARQUIVO_USUARIOS, 'w', encoding='utf-8') as f:
-            json.dump(usuarios, f, indent=2, ensure_ascii=False)
-    except:
-        pass
-    
-    return usuarios
+}
+
+def carregar_usuarios():
+    """Carrega usuários - PRIORIDADE: usuários fixos"""
+    # SEMPRE usa os usuários fixos primeiro
+    return USUARIOS_FIXOS.copy()
 
 def salvar_usuarios(usuarios):
-    with open(ARQUIVO_USUARIOS, 'w', encoding='utf-8') as f:
-        json.dump(usuarios, f, indent=2, ensure_ascii=False)
+    """Salva os usuários (mantém os fixos como base)"""
+    # Atualiza os fixos com as alterações
+    for login, dados in usuarios.items():
+        if login in USUARIOS_FIXOS:
+            USUARIOS_FIXOS[login].update(dados)
+        else:
+            USUARIOS_FIXOS[login] = dados
+    
+    # Tenta salvar no JSON também (opcional)
+    try:
+        with open(ARQUIVO_USUARIOS, 'w', encoding='utf-8') as f:
+            json.dump(USUARIOS_FIXOS, f, indent=2, ensure_ascii=False)
+    except:
+        pass
+    
+    return USUARIOS_FIXOS
 
 def verificar_login(usuario: str, senha: str, usuarios: dict) -> bool:
     if usuario not in usuarios:
@@ -169,6 +167,11 @@ def exibir_login_sidebar(USUARIOS):
     st.markdown("### Login")
     usuario = st.text_input("Usuário", key="login_usuario")
     senha = st.text_input("Senha", type="password", key="login_senha")
+    
+    # MOSTRA AS CREDENCIAIS PARA DEBUG
+    with st.expander("🔑 Credenciais disponíveis"):
+        for user in USUARIOS.keys():
+            st.write(f"- {user}")
     
     col1, col2 = st.columns([1, 1])
     with col1:
