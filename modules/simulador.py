@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from modules.planilha import ler_planilha
 from modules.utils import converter_para_float
-#from modules.planilha_cache import salvar_planilha_cache, carregar_planilha_cache, tem_planilha_cache
+from modules.planilha_cache import salvar_planilha_cache, carregar_planilha_cache, tem_planilha_cache
 
 def pagina_simulador(CONSTRUTORAS):
     st.title(" Simulador de Crédito")
