@@ -11,13 +11,11 @@ def pagina_simulador(CONSTRUTORAS):
     with st.sidebar:
         st.header("⚙️ Configurações")
         
-        # --- SELETOR CONSTRUTORA ---
         construtora_selecionada = st.selectbox(
             "🏗️ Selecione a construtora",
             options=list(CONSTRUTORAS.keys())
         )
         
-        # --- SELETOR PRODUTO ---
         produtos = CONSTRUTORAS[construtora_selecionada].get("produtos", {})
         produtos_lista = list(produtos.keys())
         
@@ -32,7 +30,6 @@ def pagina_simulador(CONSTRUTORAS):
         
         st.markdown("---")
         
-        # --- UPLOAD ---
         if produto_selecionado:
             st.markdown("### 📤 Upload")
             uploaded_file = st.file_uploader(
@@ -66,14 +63,13 @@ def pagina_simulador(CONSTRUTORAS):
             
             st.markdown("---")
             
-            # --- BOTÃO LIMPAR CACHE ---
             if st.button("🗑️ Limpar cache", use_container_width=True):
                 excluir_planilha_cache(construtora_selecionada, produto_selecionado)
                 st.success(f"✅ Cache de '{produto_selecionado}' removido!")
                 st.rerun()
         
         st.markdown("---")
-        st.caption("Versão 3.0 - Área do Cliente")
+        st.caption("Versão 4.0 - Área do Cliente")
     
     # --- CORPO PRINCIPAL ---
     if not produto_selecionado:
@@ -85,12 +81,12 @@ def pagina_simulador(CONSTRUTORAS):
     
     if tem_planilha_cache(construtora_selecionada, produto_selecionado):
         df = carregar_planilha_cache(construtora_selecionada, produto_selecionado)
-        if df is not None:
-            st.info(f"📂 Planilha carregada do cache: {construtora_selecionada} - {produto_selecionado}")
     
     if df is None:
         st.warning(f"⚠️ Nenhuma planilha disponível para '{produto_selecionado}'. Faça o upload.")
         return
+    
+    st.info(f"📂 Planilha carregada do cache: {construtora_selecionada} - {produto_selecionado}")
     
     # Guarda na sessão para o chat
     if "df_imoveis_cache" not in st.session_state:
@@ -216,6 +212,7 @@ def pagina_simulador(CONSTRUTORAS):
     # =========================================================
     # ÁREA DO CLIENTE
     # =========================================================
+    st.write("🔍 DEBUG: Área do Cliente - Versão 4.0")
     st.subheader("🧑 Área do Cliente")
     st.markdown("Preencha os dados abaixo para receber recomendações personalizadas.")
     
@@ -244,14 +241,11 @@ def pagina_simulador(CONSTRUTORAS):
             quartos_preferencia = st.selectbox("🛏️ Quantos quartos?", ["Indiferente", "1", "2", "3", "4+"])
             tipo_preferencia = st.selectbox("🏠 Tipo de imóvel", ["Indiferente", "Apartamento", "Cobertura", "Garden"])
         
-        # Botão para analisar
         if st.button("🔍 Analisar Oportunidades", use_container_width=True):
             if nome_cliente:
                 with st.spinner("Analisando oportunidades para o cliente..."):
-                    # Filtra o DataFrame com base nas preferências
                     df_filtrado = resultado.copy()
                     
-                    # Filtro por quartos
                     if quartos_preferencia != "Indiferente":
                         qtd = int(quartos_preferencia.replace("+", ""))
                         col_quartos = None
@@ -262,14 +256,11 @@ def pagina_simulador(CONSTRUTORAS):
                         if col_quartos:
                             df_filtrado = df_filtrado[df_filtrado[col_quartos].astype(str).str.contains(str(qtd))]
                     
-                    # Filtro por tipo
                     if tipo_preferencia != "Indiferente" and "TIPOLOGIA" in df_filtrado.columns:
                         df_filtrado = df_filtrado[df_filtrado["TIPOLOGIA"].str.contains(tipo_preferencia, case=False, na=False)]
                     
-                    # Cálculo da parcela máxima (30% da renda)
                     parcela_maxima = renda_cliente * 0.3
                     
-                    # Filtra imóveis com parcela estimada <= parcela máxima
                     if preco_col in df_filtrado.columns:
                         df_filtrado["parcela_estimada"] = df_filtrado[preco_col] * 0.005
                         df_filtrado = df_filtrado[df_filtrado["parcela_estimada"] <= parcela_maxima]
@@ -277,7 +268,6 @@ def pagina_simulador(CONSTRUTORAS):
                         if 'R$/m²' in df_filtrado.columns:
                             df_filtrado = df_filtrado.sort_values('R$/m²')
                     
-                    # Top 5 recomendações
                     top_recomendacoes = df_filtrado.head(5)
                     
                     if not top_recomendacoes.empty:
@@ -323,11 +313,9 @@ def pagina_simulador(CONSTRUTORAS):
                                         st.info("💬 Vá até o chat da BIA para perguntar sobre este imóvel!")
                     else:
                         st.warning(f"⚠️ Nenhuma oportunidade encontrada para {nome_cliente} com os critérios informados.")
-                    
             else:
                 st.warning("⚠️ Por favor, informe o nome do cliente.")
         
-        # Área do slider de entrada (geral)
         st.markdown("---")
         st.markdown("### 💰 Ajuste de Entrada")
         st.caption("Ajuste o percentual de entrada para simular diferentes cenários de financiamento.")
@@ -341,7 +329,6 @@ def pagina_simulador(CONSTRUTORAS):
             key="entrada_global"
         )
         
-        # Exibe informações do slider global
         if preco_col in df.columns and not df.empty:
             valor_medio = df[preco_col].mean()
             entrada_media = valor_medio * (entrada_percentual_global / 100)
@@ -357,7 +344,6 @@ def pagina_simulador(CONSTRUTORAS):
             with col_s3:
                 st.metric("📆 Parcela média", f"R$ {parcela_media_global:,.0f}")
         
-        # Botão para perguntar à BIA
         st.markdown("---")
         if st.button("💬 Perguntar à BIA (IA Imobiliária)", use_container_width=True):
             st.session_state.pagina = "ChatIA"
