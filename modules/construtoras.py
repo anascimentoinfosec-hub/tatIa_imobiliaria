@@ -127,7 +127,7 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                 st.markdown("---")
                 st.markdown("#### Adicionar Produto")
                 
-                # Formulário para adicionar produto (FORA DO with st.form)
+                # --- CAMPOS DO FORMULÁRIO ---
                 novo_produto = st.text_input("Nome do Produto", placeholder="Ex: Torre A", key="novo_produto_nome")
                 novo_skiprows = st.number_input("Skiprows", min_value=0, value=2, step=1, key="novo_produto_skiprows")
                 novo_mapeamento = st.text_area(
@@ -147,7 +147,7 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                     key="novo_produto_colunas_numericas"
                 )
                 
-                # BOTÃO SALVAR (FORA DO FORMULÁRIO)
+                # --- BOTÃO SALVAR PRODUTO ---
                 if st.button("💾 Salvar Produto", use_container_width=True, key="btn_salvar_produto"):
                     if novo_produto:
                         try:
