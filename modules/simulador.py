@@ -3,6 +3,7 @@ import pandas as pd
 from modules.planilha import ler_planilha
 from modules.utils import converter_para_float
 from modules.planilha_cache import salvar_planilha_cache, carregar_planilha_cache, tem_planilha_cache, excluir_planilha_cache
+from modules.recomendacoes import recomendar_imoveis
 
 def pagina_simulador(CONSTRUTORAS):
     st.title("📊 Simulador de Crédito")
@@ -72,7 +73,7 @@ def pagina_simulador(CONSTRUTORAS):
                 st.rerun()
         
         st.markdown("---")
-        st.caption("Versão 3.0 - Produtos por Construtora")
+        st.caption("Versão 3.0 - Área do Cliente")
     
     # --- CORPO PRINCIPAL ---
     if not produto_selecionado:
@@ -209,46 +210,158 @@ def pagina_simulador(CONSTRUTORAS):
             use_container_width=True,
             height=400
         )
+    
+    st.markdown("---")
+    
+    # =========================================================
+    # ÁREA DO CLIENTE
+    # =========================================================
+    st.subheader("🧑 Área do Cliente")
+    st.markdown("Preencha os dados abaixo para receber recomendações personalizadas.")
+    
+    with st.container():
+        col_cliente1, col_cliente2 = st.columns(2)
         
-        st.markdown("---")
-        st.subheader("🤖 Recomendação da IA")
+        with col_cliente1:
+            nome_cliente = st.text_input("Nome do Cliente", placeholder="Ex: João Silva")
+            renda_cliente = st.number_input(
+                "💰 Renda líquida mensal (R$)",
+                min_value=0.0,
+                value=5000.0,
+                step=500.0,
+                format="%.2f"
+            )
+            entrada_cliente = st.number_input(
+                "🏦 Valor disponível para entrada (R$)",
+                min_value=0.0,
+                value=100000.0,
+                step=10000.0,
+                format="%.2f"
+            )
         
-        melhor = resultado_ordenado.iloc[0]
+        with col_cliente2:
+            bairro_preferencia = st.text_input("📍 Bairro de preferência", placeholder="Ex: Barra da Tijuca")
+            quartos_preferencia = st.selectbox("🛏️ Quantos quartos?", ["Indiferente", "1", "2", "3", "4+"])
+            tipo_preferencia = st.selectbox("🏠 Tipo de imóvel", ["Indiferente", "Apartamento", "Cobertura", "Garden"])
         
-        col_a, col_b = st.columns([2, 1])
-        
-        with col_a:
-            st.success(f"*Melhor custo-benefício:* Unidade {melhor['UNIDADE']}")
-            if preco_col and preco_col in melhor:
-                st.write(f"- *Preço:* R$ {melhor[preco_col]:,.2f}")
-            if 'R$/m²' in melhor:
-                st.write(f"- *R$/m²:* R$ {melhor['R$/m²']:.2f}")
-            if 'AVALIAÇÃO' in melhor:
-                st.write(f"- *Avaliação:* R$ {melhor['AVALIAÇÃO']:,.2f}")
-            if '1ª AVALIAÇÃO OÁSIS II' in melhor:
-                st.write(f"- *Avaliação:* R$ {melhor['1ª AVALIAÇÃO OÁSIS II']:,.2f}")
-            if 'DESCONTO' in melhor:
-                st.write(f"- *Desconto:* R$ {melhor['DESCONTO']:,.2f}")
-            if tipo_col and tipo_col in melhor:
-                st.write(f"- *Tipo:* {melhor[tipo_col]}")
-        
-        with col_b:
-            if preco_col and preco_col in melhor and melhor[preco_col] > 0:
-                valor = melhor[preco_col]
-                entrada_percentual = st.slider("Entrada (%)", 20, 50, 30)
-                entrada = valor * (entrada_percentual / 100)
-                financiado = valor - entrada
-                juros = 0.10
-                prazo_meses = 420
-                parcela_media = financiado * (1 + juros/12) / prazo_meses
-                
-                st.info(f"*Simulação - Unidade {melhor['UNIDADE']}*")
-                st.write(f"Valor total: R$ {valor:,.2f}")
-                st.write(f"Entrada ({entrada_percentual}%): R$ {entrada:,.2f}")
-                st.write(f"Financiado: R$ {financiado:,.2f}")
-                st.write(f"Parcela estimada: R$ {parcela_media:,.2f}")
-                st.caption(f"Prazo: {prazo_meses} meses (35 anos), juros: {juros*100}% a.a. (SAC)")
+        # Botão para analisar
+        if st.button("🔍 Analisar Oportunidades", use_container_width=True):
+            if nome_cliente:
+                with st.spinner("Analisando oportunidades para o cliente..."):
+                    # Filtra o DataFrame com base nas preferências
+                    df_filtrado = resultado.copy()
+                    
+                    # Filtro por quartos
+                    if quartos_preferencia != "Indiferente":
+                        qtd = int(quartos_preferencia.replace("+", ""))
+                        # Tenta encontrar a coluna de quartos
+                        col_quartos = None
+                        for c in ['QUARTOS', 'DORMITÓRIOS', 'TIPO']:
+                            if c in df_filtrado.columns:
+                                col_quartos = c
+                                break
+                        if col_quartos:
+                            df_filtrado = df_filtrado[df_filtrado[col_quartos].astype(str).str.contains(str(qtd))]
+                    
+                    # Filtro por tipo
+                    if tipo_preferencia != "Indiferente" and "TIPOLOGIA" in df_filtrado.columns:
+                        df_filtrado = df_filtrado[df_filtrado["TIPOLOGIA"].str.contains(tipo_preferencia, case=False, na=False)]
+                    
+                    # Cálculo da parcela máxima (30% da renda)
+                    parcela_maxima = renda_cliente * 0.3
+                    
+                    # Filtra imóveis com parcela estimada <= parcela máxima
+                    if preco_col in df_filtrado.columns:
+                        df_filtrado["parcela_estimada"] = df_filtrado[preco_col] * 0.005  # Simulação
+                        df_filtrado = df_filtrado[df_filtrado["parcela_estimada"] <= parcela_maxima]
+                        
+                        # Ordena por melhor match (menor R$/m²)
+                        if 'R$/m²' in df_filtrado.columns:
+                            df_filtrado = df_filtrado.sort_values('R$/m²')
+                    
+                    # Top 5 recomendações
+                    top_recomendacoes = df_filtrado.head(5)
+                    
+                    if not top_recomendacoes.empty:
+                        st.success(f"✅ *{len(top_recomendacoes)} oportunidades encontradas para {nome_cliente}:*")
+                        
+                        for idx, row in top_recomendacoes.iterrows():
+                            with st.container():
+                                st.markdown("---")
+                                col_a, col_b = st.columns([3, 2])
+                                
+                                with col_a:
+                                    st.markdown(f"*🏢 Unidade {row['UNIDADE']}*")
+                                    if preco_col in row:
+                                        st.write(f"💰 *Preço:* R$ {row[preco_col]:,.2f}")
+                                    if 'R$/m²' in row:
+                                        st.write(f"📊 *R$/m²:* R$ {row['R$/m²']:.2f}")
+                                    if 'parcela_estimada' in row:
+                                        st.write(f"📆 *Parcela estimada:* R$ {row['parcela_estimada']:,.2f}")
+                                    if 'TIPOLOGIA' in row:
+                                        st.write(f"🏠 *Tipo:* {row['TIPOLOGIA']}")
+                                
+                                with col_b:
+                                    # Slider de entrada para este imóvel específico
+                                    entrada_percentual = st.slider(
+                                        f"Entrada (%) - Unidade {row['UNIDADE']}",
+                                        min_value=20,
+                                        max_value=50,
+                                        value=30,
+                                        step=5,
+                                        key=f"entrada_{idx}"
+                                    )
+                                    valor_imovel = row[preco_col] if preco_col in row else 0
+                                    entrada_valor = valor_imovel * (entrada_percentual / 100)
+                                    financiado = valor_imovel - entrada_valor
+                                    parcela_media = financiado * (1 + 0.10/12) / 420
+                                    
+                                    st.write(f"💵 *Entrada:* R$ {entrada_valor:,.2f}")
+                                    st.write(f"🏦 *Financiado:* R$ {financiado:,.2f}")
+                                    st.write(f"📆 *Parcela:* R$ {parcela_media:,.2f}")
+                                    
+                                    if st.button(f"💬 Perguntar sobre esta unidade", key=f"perguntar_{idx}"):
+                                        st.session_state['pergunta_imovel'] = row['UNIDADE']
+                                        st.session_state['pergunta_valor'] = row[preco_col] if preco_col in row else 0
+                                        st.info("💬 Vá até o chat da BIA para perguntar sobre este imóvel!")
+                    else:
+                        st.warning(f"⚠️ Nenhuma oportunidade encontrada para {nome_cliente} com os critérios informados.")
+                    
             else:
-                st.warning("⚠️ Valor do imóvel não disponível para simulação.")
-    else:
-        st.warning("⚠️ Nenhum imóvel encontrado com os filtros atuais.")
+                st.warning("⚠️ Por favor, informe o nome do cliente.")
+        
+        # Área do slider de entrada (geral)
+        st.markdown("---")
+        st.markdown("### 💰 Ajuste de Entrada")
+        st.caption("Ajuste o percentual de entrada para simular diferentes cenários de financiamento.")
+        
+        entrada_percentual_global = st.slider(
+            "Percentual de entrada (%)",
+            min_value=20,
+            max_value=50,
+            value=30,
+            step=5,
+            key="entrada_global"
+        )
+        
+        # Exibe informações do slider global
+        if preco_col in df.columns and not df.empty:
+            valor_medio = df[preco_col].mean()
+            entrada_media = valor_medio * (entrada_percentual_global / 100)
+            financiado_medio = valor_medio - entrada_media
+            parcela_media_global = financiado_medio * (1 + 0.10/12) / 420
+            
+            st.markdown("*📊 Simulação média com base nos imóveis disponíveis:*")
+            col_s1, col_s2, col_s3 = st.columns(3)
+            with col_s1:
+                st.metric("💰 Valor médio", f"R$ {valor_medio:,.0f}")
+            with col_s2:
+                st.metric(f"💵 Entrada ({entrada_percentual_global}%)", f"R$ {entrada_media:,.0f}")
+            with col_s3:
+                st.metric("📆 Parcela média", f"R$ {parcela_media_global:,.0f}")
+        
+        # Botão para perguntar à BIA
+        st.markdown("---")
+        if st.button("💬 Perguntar à BIA (IA Imobiliária)", use_container_width=True):
+            st.session_state.pagina = "ChatIA"
+            st.rerun()

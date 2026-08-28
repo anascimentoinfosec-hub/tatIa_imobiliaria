@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-def recomendar_imoveis(df_imoveis, renda=None, preferencias=None):
+def recomendar_imoveis(df_imoveis, perfil_cliente):
     """
     Recomenda imóveis com base no perfil do cliente
     """
@@ -9,20 +9,31 @@ def recomendar_imoveis(df_imoveis, renda=None, preferencias=None):
         return None
     
     df = df_imoveis.copy()
+    
+    # Filtra apenas disponíveis
     if "DISPONIBILIDADE" in df.columns:
-        df = df[df["DISPONIBILIDADE"] == "LIVRE"]
+        df = df[df["DISPONIBILIDADE"].str.upper() == "LIVRE"]
     
-    if renda:
-        parcela_maxima = renda * 0.4
-        df = df[df["PREÇO"] * 0.005 <= parcela_maxima]
+    # Filtra por tipo
+    if "TIPOLOGIA" in df.columns and perfil_cliente.get("tipo"):
+        df = df[df["TIPOLOGIA"].str.contains(perfil_cliente["tipo"], case=False, na=False)]
     
-    if preferencias:
-        if "TIPOLOGIA" in preferencias and preferencias["TIPOLOGIA"]:
-            df = df[df["TIPOLOGIA"] == preferencias["TIPOLOGIA"]]
-        if "SOL" in preferencias and preferencias["SOL"]:
-            df = df[df["SOL"] == preferencias["SOL"]]
+    # Filtra por quartos
+    if "QUARTOS" in df.columns and perfil_cliente.get("quartos"):
+        try:
+            qtd = int(perfil_cliente["quartos"])
+            df = df[df["QUARTOS"].astype(str).str.contains(str(qtd))]
+        except:
+            pass
     
+    # Filtra por preço máximo baseado na renda
+    if "PREÇO" in df.columns and perfil_cliente.get("renda"):
+        parcela_maxima = perfil_cliente["renda"] * 0.3
+        df["parcela_estimada"] = df["PREÇO"] * 0.005
+        df = df[df["parcela_estimada"] <= parcela_maxima]
+    
+    # Ordena por R$/m²
     if "R$/m²" in df.columns:
         df = df.sort_values("R$/m²")
     
-    return df.head(10) if len(df) > 10 else df
+    return df.head(10)
