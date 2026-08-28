@@ -97,7 +97,7 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
         st.markdown("### Gerenciar Produtos")
         construtoras_lista = list(CONSTRUTORAS.keys())
         if construtoras_lista:
-            construtora_edit = st.selectbox("Selecione a construtora", construtoras_lista)
+            construtora_edit = st.selectbox("Selecione a construtora", construtoras_lista, key="select_construtora_produtos")
             
             if construtora_edit:
                 dados = CONSTRUTORAS[construtora_edit]
@@ -127,48 +127,52 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                 st.markdown("---")
                 st.markdown("#### Adicionar Produto")
                 
-                with st.form("form_novo_produto"):
-                    novo_produto = st.text_input("Nome do Produto", placeholder="Ex: Torre A")
-                    novo_skiprows = st.number_input("Skiprows", min_value=0, value=2, step=1)
-                    novo_mapeamento = st.text_area(
-                        "Mapeamento (índice: nome)",
-                        placeholder='{"0": "UNIDADE", "1": "PAVTO", "2": "PREÇO"}',
-                        height=80
-                    )
-                    novo_colunas_ordem = st.text_input(
-                        "Colunas para exibir (separadas por vírgula)",
-                        placeholder="UNIDADE, PAVTO, PREÇO"
-                    )
-                    novo_colunas_numericas = st.text_input(
-                        "Colunas numéricas (separadas por vírgula)",
-                        placeholder="PREÇO, M², ANDAR"
-                    )
-                    
-                    if st.form_submit_button("➕ Adicionar Produto", use_container_width=True):
-                        if novo_produto:
-                            try:
-                                mapeamento = json.loads(novo_mapeamento) if novo_mapeamento else {}
-                                colunas_ordem = [c.strip() for c in novo_colunas_ordem.split(',') if c.strip()]
-                                colunas_numericas = [c.strip() for c in novo_colunas_numericas.split(',') if c.strip()]
-                                
-                                if novo_produto in produtos:
-                                    st.error(f"❌ Produto '{novo_produto}' já existe!")
-                                else:
-                                    produtos[novo_produto] = {
-                                        "skiprows": novo_skiprows,
-                                        "mapeamento": {str(k): v for k, v in mapeamento.items()},
-                                        "colunas_ordem": colunas_ordem,
-                                        "colunas_para_converter": colunas_numericas
-                                    }
-                                    salvar_construtoras(CONSTRUTORAS)
-                                    st.success(f"✅ Produto '{novo_produto}' adicionado com sucesso!")
-                                    st.rerun()
-                            except json.JSONDecodeError:
-                                st.error("❌ Erro no mapeamento: formato JSON inválido!")
-                            except Exception as e:
-                                st.error(f"❌ Erro ao adicionar produto: {str(e)}")
-                        else:
-                            st.error("❌ Digite o nome do produto!")
+                # Formulário para adicionar produto (FORA DO with st.form)
+                novo_produto = st.text_input("Nome do Produto", placeholder="Ex: Torre A", key="novo_produto_nome")
+                novo_skiprows = st.number_input("Skiprows", min_value=0, value=2, step=1, key="novo_produto_skiprows")
+                novo_mapeamento = st.text_area(
+                    "Mapeamento (índice: nome)",
+                    placeholder='{"0": "UNIDADE", "1": "PAVTO", "2": "PREÇO"}',
+                    height=80,
+                    key="novo_produto_mapeamento"
+                )
+                novo_colunas_ordem = st.text_input(
+                    "Colunas para exibir (separadas por vírgula)",
+                    placeholder="UNIDADE, PAVTO, PREÇO",
+                    key="novo_produto_colunas_ordem"
+                )
+                novo_colunas_numericas = st.text_input(
+                    "Colunas numéricas (separadas por vírgula)",
+                    placeholder="PREÇO, M², ANDAR",
+                    key="novo_produto_colunas_numericas"
+                )
+                
+                # BOTÃO SALVAR (FORA DO FORMULÁRIO)
+                if st.button("💾 Salvar Produto", use_container_width=True, key="btn_salvar_produto"):
+                    if novo_produto:
+                        try:
+                            mapeamento = json.loads(novo_mapeamento) if novo_mapeamento else {}
+                            colunas_ordem = [c.strip() for c in novo_colunas_ordem.split(',') if c.strip()]
+                            colunas_numericas = [c.strip() for c in novo_colunas_numericas.split(',') if c.strip()]
+                            
+                            if novo_produto in produtos:
+                                st.error(f"❌ Produto '{novo_produto}' já existe!")
+                            else:
+                                produtos[novo_produto] = {
+                                    "skiprows": novo_skiprows,
+                                    "mapeamento": {str(k): v for k, v in mapeamento.items()},
+                                    "colunas_ordem": colunas_ordem,
+                                    "colunas_para_converter": colunas_numericas
+                                }
+                                salvar_construtoras(CONSTRUTORAS)
+                                st.success(f"✅ Produto '{novo_produto}' adicionado com sucesso!")
+                                st.rerun()
+                        except json.JSONDecodeError:
+                            st.error("❌ Erro no mapeamento: formato JSON inválido!")
+                        except Exception as e:
+                            st.error(f"❌ Erro ao adicionar produto: {str(e)}")
+                    else:
+                        st.error("❌ Digite o nome do produto!")
                 
                 # --- EDIÇÃO DE PRODUTO ---
                 if st.session_state.get('editando_produto'):
