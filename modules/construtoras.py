@@ -35,6 +35,10 @@ def salvar_construtoras(construtoras):
 def pagina_gestao_construtoras(CONSTRUTORAS):
     st.title("🏗️ Gestão de Construtoras e Produtos")
     
+    # Inicializa estado para reset do formulário
+    if "reset_form_produto" not in st.session_state:
+        st.session_state.reset_form_produto = False
+    
     tabs = st.tabs(["📋 Listar", "➕ Adicionar Construtora", "📦 Gerenciar Produtos"])
     
     # --- LISTAR ---
@@ -127,24 +131,37 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                 st.markdown("---")
                 st.markdown("#### Adicionar Produto")
                 
-                # --- CAMPOS DO FORMULÁRIO ---
-                novo_produto = st.text_input("Nome do Produto", placeholder="Ex: Torre A", key="novo_produto_nome")
-                novo_skiprows = st.number_input("Skiprows", min_value=0, value=2, step=1, key="novo_produto_skiprows")
+                # --- CAMPOS DO FORMULÁRIO (COM RESET) ---
+                # Usa chaves únicas que mudam após o salvamento para forçar o reset
+                reset_key = "_resetado" if st.session_state.get("reset_form_produto", False) else ""
+                
+                novo_produto = st.text_input(
+                    "Nome do Produto",
+                    placeholder="Ex: Torre A",
+                    key=f"novo_produto_nome{reset_key}"
+                )
+                novo_skiprows = st.number_input(
+                    "Skiprows",
+                    min_value=0,
+                    value=2,
+                    step=1,
+                    key=f"novo_produto_skiprows{reset_key}"
+                )
                 novo_mapeamento = st.text_area(
                     "Mapeamento (índice: nome)",
                     placeholder='{"0": "UNIDADE", "1": "PAVTO", "2": "PREÇO"}',
                     height=80,
-                    key="novo_produto_mapeamento"
+                    key=f"novo_produto_mapeamento{reset_key}"
                 )
                 novo_colunas_ordem = st.text_input(
                     "Colunas para exibir (separadas por vírgula)",
                     placeholder="UNIDADE, PAVTO, PREÇO",
-                    key="novo_produto_colunas_ordem"
+                    key=f"novo_produto_colunas_ordem{reset_key}"
                 )
                 novo_colunas_numericas = st.text_input(
                     "Colunas numéricas (separadas por vírgula)",
                     placeholder="PREÇO, M², ANDAR",
-                    key="novo_produto_colunas_numericas"
+                    key=f"novo_produto_colunas_numericas{reset_key}"
                 )
                 
                 # --- BOTÃO SALVAR PRODUTO ---
@@ -158,6 +175,7 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                             if novo_produto in produtos:
                                 st.error(f"❌ Produto '{novo_produto}' já existe!")
                             else:
+                                # Salva o produto
                                 produtos[novo_produto] = {
                                     "skiprows": novo_skiprows,
                                     "mapeamento": {str(k): v for k, v in mapeamento.items()},
@@ -165,6 +183,10 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                                     "colunas_para_converter": colunas_numericas
                                 }
                                 salvar_construtoras(CONSTRUTORAS)
+                                
+                                # Reseta o formulário
+                                st.session_state.reset_form_produto = not st.session_state.get("reset_form_produto", False)
+                                
                                 st.success(f"✅ Produto '{novo_produto}' adicionado com sucesso!")
                                 st.rerun()
                         except json.JSONDecodeError:
