@@ -254,7 +254,6 @@ def pagina_simulador(CONSTRUTORAS):
                     # Filtro por quartos
                     if quartos_preferencia != "Indiferente":
                         qtd = int(quartos_preferencia.replace("+", ""))
-                        # Tenta encontrar a coluna de quartos
                         col_quartos = None
                         for c in ['QUARTOS', 'DORMITÓRIOS', 'TIPO']:
                             if c in df_filtrado.columns:
@@ -272,10 +271,9 @@ def pagina_simulador(CONSTRUTORAS):
                     
                     # Filtra imóveis com parcela estimada <= parcela máxima
                     if preco_col in df_filtrado.columns:
-                        df_filtrado["parcela_estimada"] = df_filtrado[preco_col] * 0.005  # Simulação
+                        df_filtrado["parcela_estimada"] = df_filtrado[preco_col] * 0.005
                         df_filtrado = df_filtrado[df_filtrado["parcela_estimada"] <= parcela_maxima]
                         
-                        # Ordena por melhor match (menor R$/m²)
                         if 'R$/m²' in df_filtrado.columns:
                             df_filtrado = df_filtrado.sort_values('R$/m²')
                     
@@ -302,7 +300,6 @@ def pagina_simulador(CONSTRUTORAS):
                                         st.write(f"🏠 *Tipo:* {row['TIPOLOGIA']}")
                                 
                                 with col_b:
-                                    # Slider de entrada para este imóvel específico
                                     entrada_percentual = st.slider(
                                         f"Entrada (%) - Unidade {row['UNIDADE']}",
                                         min_value=20,
