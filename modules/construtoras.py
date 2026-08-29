@@ -134,7 +134,6 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                                 st.rerun()
                         with col3:
                             if st.button(f"🗑️ Excluir", key=f"del_prod_{produto}"):
-                                # Recarrega para garantir dados atuais
                                 dados_atuais = carregar_construtoras()
                                 if construtora_edit in dados_atuais:
                                     if produto in dados_atuais[construtora_edit]["produtos"]:
@@ -168,11 +167,10 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                     key="novo_produto_colunas_numericas"
                 )
                 
-                # --- BOTÃO SALVAR PRODUTO ---
+                # --- BOTÃO SALVAR PRODUTO (RESTAURADO) ---
                 if st.button("💾 Salvar Produto", use_container_width=True, key="btn_salvar_produto"):
                     if novo_produto:
                         try:
-                            # Recarrega dados atualizados
                             dados_atuais = carregar_construtoras()
                             if construtora_edit not in dados_atuais:
                                 dados_atuais[construtora_edit] = {"produtos": {}}
@@ -208,7 +206,6 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                 if st.session_state.get('editando_produto'):
                     produto_edit = st.session_state['editando_produto']
                     
-                    # Recarrega dados atualizados
                     dados_atuais = carregar_construtoras()
                     if construtora_edit in dados_atuais:
                         produtos_atuais = dados_atuais[construtora_edit].get("produtos", {})
@@ -240,7 +237,6 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                                 with col1:
                                     if st.form_submit_button("💾 Salvar", use_container_width=True):
                                         try:
-                                            # Recarrega dados novamente para evitar conflitos
                                             dados_atuais = carregar_construtoras()
                                             produtos_atuais = dados_atuais[construtora_edit].get("produtos", {})
                                             
