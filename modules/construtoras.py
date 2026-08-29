@@ -3,7 +3,50 @@ import json
 import os
 
 ARQUIVO_CONFIG = "dados/construtoras.json"
+ARQUIVO_CIDADES = "dados/cidades.json"
 
+# =========================================================
+# FUNÇÕES DE CIDADES
+# =========================================================
+def carregar_cidades():
+    """Carrega a lista de cidades do arquivo JSON"""
+    try:
+        if os.path.exists(ARQUIVO_CIDADES):
+            with open(ARQUIVO_CIDADES, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except:
+        pass
+    # Lista padrão
+    return [
+        "Barra da Tijuca",
+        "Recreio dos Bandeirantes",
+        "Jacarepaguá",
+        "Rio de Janeiro (Capital)",
+        "Niterói",
+        "São Gonçalo",
+        "Duque de Caxias",
+        "Nova Iguaçu",
+        "Campos dos Goytacazes",
+        "Petrópolis",
+        "Teresópolis"
+    ]
+
+def salvar_cidades(cidades):
+    """Salva a lista de cidades no arquivo JSON"""
+    with open(ARQUIVO_CIDADES, 'w', encoding='utf-8') as f:
+        json.dump(cidades, f, indent=2, ensure_ascii=False)
+
+def cidade_esta_em_uso(cidade, construtoras):
+    """Verifica se a cidade está sendo usada em algum produto"""
+    for construtora, dados in construtoras.items():
+        for produto, config in dados.get("produtos", {}).items():
+            if config.get("cidade") == cidade:
+                return True
+    return False
+
+# =========================================================
+# FUNÇÕES DE CONSTRUTORAS
+# =========================================================
 def carregar_construtoras():
     try:
         if os.path.exists(ARQUIVO_CONFIG):
@@ -15,6 +58,7 @@ def carregar_construtoras():
         "Oásis II": {
             "produtos": {
                 "Torre A": {
+                    "cidade": "Barra da Tijuca",
                     "skiprows": 2,
                     "mapeamento": {
                         "0": "UNIDADE", "1": "PAVTO", "2": "COLUNA", "3": "M²",
@@ -32,10 +76,26 @@ def salvar_construtoras(construtoras):
     with open(ARQUIVO_CONFIG, 'w', encoding='utf-8') as f:
         json.dump(construtoras, f, indent=2, ensure_ascii=False)
 
+def obter_cidades_em_uso(construtoras):
+    """Retorna um set com todas as cidades em uso nos produtos"""
+    cidades = set()
+    for construtora, dados in construtoras.items():
+        for produto, config in dados.get("produtos", {}).items():
+            cidade = config.get("cidade")
+            if cidade:
+                cidades.add(cidade)
+    return cidades
+
+# =========================================================
+# PÁGINA DE GESTÃO
+# =========================================================
 def pagina_gestao_construtoras(CONSTRUTORAS):
     st.title("🏗️ Gestão de Construtoras e Produtos")
     
-    tabs = st.tabs(["📋 Listar", "➕ Adicionar Construtora", "📦 Gerenciar Produtos"])
+    # Carrega cidades
+    cidades = carregar_cidades()
+    
+    tabs = st.tabs(["📋 Listar", "➕ Adicionar Construtora", "📦 Gerenciar Produtos", "📍 Gerenciar Cidades"])
     
     # --- LISTAR ---
     with tabs[0]:
@@ -46,7 +106,8 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                     produtos = dados.get("produtos", {})
                     if produtos:
                         for produto, config in produtos.items():
-                            st.write(f"  📄 *{produto}*")
+                            cidade = config.get("cidade", "Não definida")
+                            st.write(f"  📄 *{produto}* - 📍 {cidade}")
                             st.caption(f"     {len(config.get('colunas_ordem', []))} colunas")
                     else:
                         st.caption("  ⚠️ Nenhum produto cadastrado")
@@ -61,6 +122,11 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
             
             st.markdown("#### Produto Inicial (opcional)")
             produto_nome = st.text_input("Nome do Produto", placeholder="Ex: Torre A")
+            
+            # Selectbox com cidades
+            opcoes_cidade = [""] + cidades
+            cidade_selecionada = st.selectbox("📍 Cidade", opcoes_cidade)
+            
             skiprows = st.number_input("Linhas para pular", min_value=0, value=2, step=1)
             mapeamento_str = st.text_area("Mapeamento", placeholder='{"0": "UNIDADE", "1": "PREÇO"}', height=80)
             colunas_ordem_str = st.text_input("Colunas para exibir", placeholder="UNIDADE, PAVTO, PREÇO")
@@ -71,12 +137,13 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                     try:
                         nova_construtora = {"produtos": {}}
                         
-                        if produto_nome:
+                        if produto_nome and cidade_selecionada:
                             mapeamento = json.loads(mapeamento_str) if mapeamento_str else {}
                             colunas_ordem = [c.strip() for c in colunas_ordem_str.split(',') if c.strip()]
                             colunas_numericas = [c.strip() for c in colunas_numericas_str.split(',') if c.strip()]
                             
                             nova_construtora["produtos"][produto_nome] = {
+                                "cidade": cidade_selecionada,
                                 "skiprows": skiprows,
                                 "mapeamento": {str(k): v for k, v in mapeamento.items()},
                                 "colunas_ordem": colunas_ordem,
@@ -96,17 +163,15 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
     with tabs[2]:
         st.markdown("### Gerenciar Produtos")
         
-        # Recarrega os dados para garantir que estão atualizados
         CONSTRUTORAS_ATUALIZADO = carregar_construtoras()
+        cidades_atualizadas = carregar_cidades()
         
         construtoras_lista = list(CONSTRUTORAS_ATUALIZADO.keys())
         if construtoras_lista:
             
-            # Mantém a construtora selecionada no estado
             if "construtora_edit" not in st.session_state or st.session_state.construtora_edit not in construtoras_lista:
                 st.session_state.construtora_edit = construtoras_lista[0]
             
-            # Atualiza a construtora quando o usuário mudar
             construtora_edit = st.selectbox(
                 "Selecione a construtora",
                 construtoras_lista,
@@ -121,18 +186,19 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                 
                 st.markdown(f"#### Produtos de *{construtora_edit}*")
                 
-                # Listar produtos
                 if produtos:
                     for produto, config in produtos.items():
-                        col1, col2, col3 = st.columns([3, 1, 1])
+                        col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
                         with col1:
                             st.write(f"📄 *{produto}*")
-                            st.caption(f"     {len(config.get('colunas_ordem', []))} colunas")
                         with col2:
+                            cidade = config.get("cidade", "Não definida")
+                            st.write(f"📍 {cidade}")
+                        with col3:
                             if st.button(f"✏️ Editar", key=f"edit_prod_{produto}"):
                                 st.session_state['editando_produto'] = produto
                                 st.rerun()
-                        with col3:
+                        with col4:
                             if st.button(f"🗑️ Excluir", key=f"del_prod_{produto}"):
                                 dados_atuais = carregar_construtoras()
                                 if construtora_edit in dados_atuais:
@@ -147,8 +213,12 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                 st.markdown("---")
                 st.markdown("#### Adicionar Produto")
                 
-                # --- CAMPOS DO FORMULÁRIO ---
                 novo_produto = st.text_input("Nome do Produto", placeholder="Ex: Torre A", key="novo_produto_nome")
+                
+                # Selectbox com cidades
+                opcoes_cidade = [""] + cidades_atualizadas
+                nova_cidade = st.selectbox("📍 Cidade", opcoes_cidade, key="nova_cidade_produto")
+                
                 novo_skiprows = st.number_input("Skiprows", min_value=0, value=2, step=1, key="novo_produto_skiprows")
                 novo_mapeamento = st.text_area(
                     "Mapeamento (índice: nome)",
@@ -167,7 +237,6 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                     key="novo_produto_colunas_numericas"
                 )
                 
-                # --- BOTÃO SALVAR PRODUTO (RESTAURADO) ---
                 if st.button("💾 Salvar Produto", use_container_width=True, key="btn_salvar_produto"):
                     if novo_produto:
                         try:
@@ -185,6 +254,7 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                                 st.error(f"❌ Produto '{novo_produto}' já existe!")
                             else:
                                 produtos_atuais[novo_produto] = {
+                                    "cidade": nova_cidade,
                                     "skiprows": novo_skiprows,
                                     "mapeamento": {str(k): v for k, v in mapeamento.items()},
                                     "colunas_ordem": colunas_ordem,
@@ -212,25 +282,35 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                         
                         if produto_edit in produtos_atuais:
                             config = produtos_atuais[produto_edit]
+                            cidade_atual = config.get("cidade", "")
                             
                             st.markdown("---")
                             st.markdown(f"#### Editando: *{produto_edit}*")
                             
                             with st.form("form_editar_produto"):
                                 novo_nome = st.text_input("Novo nome do produto", value=produto_edit)
-                                novo_skiprows = st.number_input("Skiprows", value=config.get("skiprows", 2), step=1)
+                                
+                                # Selectbox com cidades
+                                opcoes_cidade = [""] + cidades_atualizadas
+                                idx_cidade = opcoes_cidade.index(cidade_atual) if cidade_atual in opcoes_cidade else 0
+                                cidade_edit = st.selectbox("📍 Cidade", opcoes_cidade, index=idx_cidade, key="edit_cidade_produto")
+                                
+                                novo_skiprows = st.number_input("Skiprows", value=config.get("skiprows", 2), step=1, key="edit_skiprows")
                                 novo_mapeamento = st.text_area(
                                     "Mapeamento",
                                     value=json.dumps(config.get("mapeamento", {}), indent=2, ensure_ascii=False),
-                                    height=100
+                                    height=100,
+                                    key="edit_mapeamento"
                                 )
                                 novo_colunas_ordem = st.text_input(
                                     "Colunas para exibir",
-                                    value=", ".join(config.get("colunas_ordem", []))
+                                    value=", ".join(config.get("colunas_ordem", [])),
+                                    key="edit_colunas_ordem"
                                 )
                                 novo_colunas_numericas = st.text_input(
                                     "Colunas numéricas",
-                                    value=", ".join(config.get("colunas_para_converter", []))
+                                    value=", ".join(config.get("colunas_para_converter", [])),
+                                    key="edit_colunas_numericas"
                                 )
                                 
                                 col1, col2 = st.columns(2)
@@ -248,6 +328,7 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                                             colunas_numericas = [c.strip() for c in novo_colunas_numericas.split(',') if c.strip()]
                                             
                                             produtos_atuais[novo_nome] = {
+                                                "cidade": cidade_edit,
                                                 "skiprows": novo_skiprows,
                                                 "mapeamento": {str(k): v for k, v in mapeamento.items()},
                                                 "colunas_ordem": colunas_ordem,
@@ -268,3 +349,57 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                                         st.rerun()
         else:
             st.warning("Nenhuma construtora cadastrada.")
+    
+    # --- GERENCIAR CIDADES ---
+    with tabs[3]:
+        st.markdown("### 📍 Gerenciar Cidades")
+        st.markdown("Gerencie a lista de cidades disponíveis para os produtos.")
+        
+        # Recarrega dados atualizados
+        cidades_atual = carregar_cidades()
+        construtoras_atual = carregar_construtoras()
+        cidades_em_uso = obter_cidades_em_uso(construtoras_atual)
+        
+        # --- ADICIONAR CIDADE ---
+        col_add1, col_add2 = st.columns([3, 1])
+        with col_add1:
+            nova_cidade_input = st.text_input("Digite o nome da nova cidade", placeholder="Ex: Belford Roxo", key="nova_cidade_input")
+        with col_add2:
+            if st.button("➕ Adicionar Cidade", use_container_width=True):
+                if nova_cidade_input:
+                    cidade_limpa = nova_cidade_input.strip()
+                    if cidade_limpa in cidades_atual:
+                        st.warning(f"⚠️ Cidade '{cidade_limpa}' já existe!")
+                    else:
+                        cidades_atual.append(cidade_limpa)
+                        salvar_cidades(cidades_atual)
+                        st.success(f"✅ Cidade '{cidade_limpa}' adicionada!")
+                        st.rerun()
+                else:
+                    st.warning("⚠️ Digite o nome da cidade!")
+        
+        st.markdown("---")
+        
+        # --- LISTA DE CIDADES ---
+        st.markdown("#### Lista de Cidades Cadastradas")
+        
+        if cidades_atual:
+            for cidade in cidades_atual:
+                col1, col2, col3 = st.columns([3, 1, 1])
+                with col1:
+                    st.write(f"📍 {cidade}")
+                with col2:
+                    if cidade in cidades_em_uso:
+                        st.caption("🔒 Em uso")
+                    else:
+                        st.caption("")
+                with col3:
+                    if cidade in cidades_em_uso:
+                        st.button("🗑️", key=f"del_cidade_{cidade}", disabled=True, help="Cidade em uso por um produto")
+                    else:
+                        if st.button("🗑️ Remover", key=f"del_cidade_{cidade}"):
+                            cidades_atual.remove(cidade)
+                            salvar_cidades(cidades_atual)
+                            st.rerun()
+        else:
+            st.info("Nenhuma cidade cadastrada.")
