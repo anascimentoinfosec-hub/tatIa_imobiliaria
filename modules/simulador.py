@@ -201,10 +201,51 @@ def pagina_simulador(CONSTRUTORAS):
         else:
             resultado_ordenado = resultado
         
+        # =========================================================
+        # FORMATAÇÃO DAS COLUNAS MONETÁRIAS
+        # =========================================================
+        column_config = {}
+        
+        # Formata PREÇO
+        if preco_col in resultado_ordenado.columns:
+            column_config[preco_col] = st.column_config.NumberColumn(
+                "Preço",
+                format="R$ %,.2f"
+            )
+        
+        # Formata AVALIAÇÃO
+        if "AVALIAÇÃO" in resultado_ordenado.columns:
+            column_config["AVALIAÇÃO"] = st.column_config.NumberColumn(
+                "Avaliação",
+                format="R$ %,.2f"
+            )
+        
+        # Formata DESCONTO
+        if "DESCONTO" in resultado_ordenado.columns:
+            column_config["DESCONTO"] = st.column_config.NumberColumn(
+                "Desconto",
+                format="R$ %,.2f"
+            )
+        
+        # Formata 1ª AVALIAÇÃO OÁSIS II (se existir)
+        if "1ª AVALIAÇÃO OÁSIS II" in resultado_ordenado.columns:
+            column_config["1ª AVALIAÇÃO OÁSIS II"] = st.column_config.NumberColumn(
+                "Avaliação",
+                format="R$ %,.2f"
+            )
+        
+        # Formata R$/m²
+        if "R$/m²" in resultado_ordenado.columns:
+            column_config["R$/m²"] = st.column_config.NumberColumn(
+                "R$/m²",
+                format="R$ %,.2f"
+            )
+        
         st.dataframe(
             resultado_ordenado[colunas_ordem],
             use_container_width=True,
-            height=400
+            height=400,
+            column_config=column_config
         )
     
     st.markdown("---")
