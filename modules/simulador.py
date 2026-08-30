@@ -4,6 +4,7 @@ from modules.planilha import ler_planilha
 from modules.utils import converter_para_float
 from modules.planilha_cache import salvar_planilha_cache, carregar_planilha_cache, tem_planilha_cache, excluir_planilha_cache
 from modules.recomendacoes import recomendar_imoveis
+from modules.construtoras import carregar_cidades  # <-- IMPORT ADICIONADO
 
 def pagina_simulador(CONSTRUTORAS):
     st.title("📊 Simulador de Crédito")
@@ -44,28 +45,20 @@ def pagina_simulador(CONSTRUTORAS):
                     df = ler_planilha(uploaded_file, config)
                     if df is not None:
                         # =============================================
-                        # CONVERSÃO DE COLUNAS MONETÁRIAS (CORRIGIDA)
+                        # CONVERSÃO DE COLUNAS MONETÁRIAS
                         # =============================================
                         colunas_monetarias = ['AVALIAÇÃO', 'PREÇO', 'VALOR', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
                         for col in colunas_monetarias:
                             if col in df.columns:
-                                # Remove RS, R$, R e espaços
                                 df[col] = df[col].astype(str).str.replace('RS', '', regex=False)
                                 df[col] = df[col].str.replace('R$', '', regex=False)
                                 df[col] = df[col].str.replace('R', '', regex=False)
                                 df[col] = df[col].str.strip()
-                                
-                                # Remove ponto de milhar e substitui vírgula por ponto
                                 df[col] = df[col].str.replace('.', '', regex=False)
                                 df[col] = df[col].str.replace(',', '.', regex=False)
-                                
-                                # Extrai apenas números
                                 df[col] = df[col].str.extract(r'(\d+\.?\d*)')
-                                
-                                # Converte para float
                                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
                         
-                        # Também converte as colunas da configuração
                         for col in config.get("colunas_para_converter", []):
                             if col in df.columns and col not in colunas_monetarias:
                                 df[col] = df[col].apply(converter_para_float)
@@ -259,7 +252,7 @@ def pagina_simulador(CONSTRUTORAS):
     st.markdown("---")
     
     # =========================================================
-    # ÁREA DO CLIENTE
+    # ÁREA DO CLIENTE (CORRIGIDA)
     # =========================================================
     st.subheader("🧑 Área do Cliente")
     st.markdown("Preencha os dados abaixo para receber recomendações personalizadas.")
@@ -285,7 +278,13 @@ def pagina_simulador(CONSTRUTORAS):
             )
         
         with col_cliente2:
-            bairro_preferencia = st.text_input("📍 Bairro de preferência", placeholder="Ex: Barra da Tijuca")
+            # =============================================
+            # CAMPO BAIRRO CORRIGIDO (SELECTBOX COM CIDADES)
+            # =============================================
+            cidades_disponiveis = carregar_cidades()
+            opcoes_bairro = [""] + cidades_disponiveis
+            bairro_preferencia = st.selectbox("📍 Bairro de preferência", opcoes_bairro)
+            
             quartos_preferencia = st.selectbox("🛏️ Quantos quartos?", ["Indiferente", "1", "2", "3", "4+"])
             tipo_preferencia = st.selectbox("🏠 Tipo de imóvel", ["Indiferente", "Apartamento", "Cobertura", "Garden"])
         
@@ -304,8 +303,17 @@ def pagina_simulador(CONSTRUTORAS):
                         if col_quartos:
                             df_filtrado = df_filtrado[df_filtrado[col_quartos].astype(str).str.contains(str(qtd))]
                     
+                    # =============================================
+                    # FILTRO DE TIPOLOGIA CORRIGIDO
+                    # =============================================
                     if tipo_preferencia != "Indiferente" and "TIPOLOGIA" in df_filtrado.columns:
-                        df_filtrado = df_filtrado[df_filtrado["TIPOLOGIA"].str.contains(tipo_preferencia, case=False, na=False)]
+                        df_filtrado = df_filtrado[df_filtrado["TIPOLOGIA"].astype(str).str.contains(tipo_preferencia, case=False, na=False)]
+                    
+                    # Filtro por bairro (se selecionado)
+                    if bairro_preferencia:
+                        # Aqui você pode adicionar lógica de filtro por bairro se tiver essa coluna na planilha
+                        # Ex: df_filtrado = df_filtrado[df_filtrado["BAIRRO"] == bairro_preferencia]
+                        pass
                     
                     parcela_maxima = renda_cliente * 0.3
                     
