@@ -11,48 +11,47 @@ from modules.utils import hash_senha
 ARQUIVO_USUARIOS = "dados/usuarios.json"
 ARQUIVO_RECUPERACAO = "dados/recuperacao.json"
 
-# =============================================
-# USUÁRIOS FIXOS (DIRETO NO CÓDIGO - PARA TESTE)
-# =============================================
-USUARIOS_FIXOS = {
-    "superadmin": {
-        "nome": "Administrador do Sistema",
-        "hash": hash_senha("admin2026"),
-        "perfil": "superadmin",
-        "ativo": True,
-        "email": "admin@email.com"
-    },
-    "gerente": {
-        "nome": "Gerente Geral",
-        "hash": hash_senha("gerente2026"),
-        "perfil": "gerente",
-        "ativo": True,
-        "email": "gerente@email.com"
-    }
-}
-
+# =========================================================
+# FUNÇÃO CORRIGIDA: NUNCA SOBRESCREVE O ARQUIVO EXISTENTE
+# =========================================================
 def carregar_usuarios():
-    """Carrega usuários - PRIORIDADE: usuários fixos"""
-    # SEMPRE usa os usuários fixos primeiro
-    return USUARIOS_FIXOS.copy()
-
-def salvar_usuarios(usuarios):
-    """Salva os usuários (mantém os fixos como base)"""
-    # Atualiza os fixos com as alterações
-    for login, dados in usuarios.items():
-        if login in USUARIOS_FIXOS:
-            USUARIOS_FIXOS[login].update(dados)
-        else:
-            USUARIOS_FIXOS[login] = dados
-    
-    # Tenta salvar no JSON também (opcional)
+    """Carrega usuários do arquivo JSON. Se não existir, cria com padrão."""
     try:
-        with open(ARQUIVO_USUARIOS, 'w', encoding='utf-8') as f:
-            json.dump(USUARIOS_FIXOS, f, indent=2, ensure_ascii=False)
+        if os.path.exists(ARQUIVO_USUARIOS):
+            with open(ARQUIVO_USUARIOS, 'r', encoding='utf-8') as f:
+                return json.load(f)
     except:
         pass
     
-    return USUARIOS_FIXOS
+    # Se o arquivo não existe, cria com usuários padrão
+    usuarios = {
+        "superadmin": {
+            "nome": "Administrador do Sistema",
+            "hash": hash_senha("admin2026"),
+            "perfil": "superadmin",
+            "ativo": True,
+            "email": "admin@email.com",
+            "criado_em": datetime.now().isoformat()
+        },
+        "gerente": {
+            "nome": "Gerente Geral",
+            "hash": hash_senha("gerente2026"),
+            "perfil": "gerente",
+            "ativo": True,
+            "email": "gerente@email.com",
+            "criado_em": datetime.now().isoformat()
+        }
+    }
+    
+    # Salva o arquivo
+    with open(ARQUIVO_USUARIOS, 'w', encoding='utf-8') as f:
+        json.dump(usuarios, f, indent=2, ensure_ascii=False)
+    
+    return usuarios
+
+def salvar_usuarios(usuarios):
+    with open(ARQUIVO_USUARIOS, 'w', encoding='utf-8') as f:
+        json.dump(usuarios, f, indent=2, ensure_ascii=False)
 
 def verificar_login(usuario: str, senha: str, usuarios: dict) -> bool:
     if usuario not in usuarios:
@@ -162,12 +161,10 @@ def enviar_email_recuperacao(email, token):
         return False
 
 def exibir_login_sidebar(USUARIOS):
-    """Exibe o formulário de login e recuperação de senha na sidebar"""
-    
     st.markdown("### Login")
-    usuario = st.text_input("Usuário", key="login_usuario")
-    senha = st.text_input("Senha", type="password", key="login_senha")
-          
+    usuario = st.text_input("Usuário")
+    senha = st.text_input("Senha", type="password")
+    
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("Entrar", use_container_width=True):
@@ -183,12 +180,11 @@ def exibir_login_sidebar(USUARIOS):
             st.session_state['recuperando_senha'] = True
             st.rerun()
     
-    # --- RECUPERAÇÃO DE SENHA ---
     if st.session_state.get('recuperando_senha', False):
         st.markdown("---")
         st.markdown("### 🔐 Recuperar senha")
         
-        email = st.text_input("E-mail cadastrado", key="email_recuperacao")
+        email = st.text_input("E-mail cadastrado")
         
         if st.button("📧 Enviar código", use_container_width=True):
             if email:
@@ -213,9 +209,9 @@ def exibir_login_sidebar(USUARIOS):
                 st.warning("⚠️ Digite seu e-mail cadastrado.")
         
         if st.session_state.get('token_enviado', False):
-            codigo = st.text_input("Código de verificação", key="codigo_recuperacao")
-            nova_senha = st.text_input("Nova senha", type="password", key="nova_senha")
-            confirmar_senha = st.text_input("Confirmar nova senha", type="password", key="confirmar_senha")
+            codigo = st.text_input("Código de verificação")
+            nova_senha = st.text_input("Nova senha", type="password")
+            confirmar_senha = st.text_input("Confirmar nova senha", type="password")
             
             if st.button("✅ Alterar senha", use_container_width=True):
                 if codigo and nova_senha and confirmar_senha:
