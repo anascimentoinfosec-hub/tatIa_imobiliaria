@@ -69,7 +69,7 @@ def pagina_simulador(CONSTRUTORAS):
                 st.rerun()
         
         st.markdown("---")
-        st.caption("Versão 4.0 - Área do Cliente")
+        st.caption("Versão 4.1 - Formatação de valores")
     
     # --- CORPO PRINCIPAL ---
     if not produto_selecionado:
@@ -85,6 +85,12 @@ def pagina_simulador(CONSTRUTORAS):
     if df is None:
         st.warning(f"⚠️ Nenhuma planilha disponível para '{produto_selecionado}'. Faça o upload.")
         return
+    
+    # --- FORÇA CONVERSÃO PARA FLOAT DAS COLUNAS MONETÁRIAS ---
+    colunas_para_converter = ['PREÇO', 'VALOR', 'AVALIAÇÃO', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
+    for col in colunas_para_converter:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
     
     st.info(f"📂 Planilha carregada do cache: {construtora_selecionada} - {produto_selecionado}")
     
@@ -202,43 +208,38 @@ def pagina_simulador(CONSTRUTORAS):
             resultado_ordenado = resultado
         
         # =========================================================
-        # FORMATAÇÃO DAS COLUNAS MONETÁRIAS
+        # FORMATAÇÃO DAS COLUNAS MONETÁRIAS (FORÇADA)
         # =========================================================
+        # Converte colunas para float (garantia)
+        for col in resultado_ordenado.select_dtypes(include=['object']).columns:
+            try:
+                resultado_ordenado[col] = pd.to_numeric(resultado_ordenado[col], errors='coerce')
+            except:
+                pass
+        
         column_config = {}
         
-        # Formata PREÇO
-        if preco_col in resultado_ordenado.columns:
-            column_config[preco_col] = st.column_config.NumberColumn(
-                "Preço",
-                format="R$ %,.2f"
-            )
-        
-        # Formata AVALIAÇÃO
-        if "AVALIAÇÃO" in resultado_ordenado.columns:
-            column_config["AVALIAÇÃO"] = st.column_config.NumberColumn(
-                "Avaliação",
-                format="R$ %,.2f"
-            )
-        
-        # Formata DESCONTO
-        if "DESCONTO" in resultado_ordenado.columns:
-            column_config["DESCONTO"] = st.column_config.NumberColumn(
-                "Desconto",
-                format="R$ %,.2f"
-            )
-        
-        # Formata 1ª AVALIAÇÃO OÁSIS II (se existir)
-        if "1ª AVALIAÇÃO OÁSIS II" in resultado_ordenado.columns:
-            column_config["1ª AVALIAÇÃO OÁSIS II"] = st.column_config.NumberColumn(
-                "Avaliação",
-                format="R$ %,.2f"
-            )
+        # Lista de colunas monetárias
+        colunas_monetarias = ['PREÇO', 'VALOR', 'AVALIAÇÃO', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
+        for col in colunas_monetarias:
+            if col in resultado_ordenado.columns:
+                column_config[col] = st.column_config.NumberColumn(
+                    col,
+                    format="R$ %,.2f"
+                )
         
         # Formata R$/m²
         if "R$/m²" in resultado_ordenado.columns:
             column_config["R$/m²"] = st.column_config.NumberColumn(
                 "R$/m²",
                 format="R$ %,.2f"
+            )
+        
+        # Formata M² (se for numérico)
+        if "M²" in resultado_ordenado.columns:
+            column_config["M²"] = st.column_config.NumberColumn(
+                "M²",
+                format="%.2f"
             )
         
         st.dataframe(
@@ -253,7 +254,6 @@ def pagina_simulador(CONSTRUTORAS):
     # =========================================================
     # ÁREA DO CLIENTE
     # =========================================================
-    st.write("🔍 DEBUG: Área do Cliente - Versão 4.0")
     st.subheader("🧑 Área do Cliente")
     st.markdown("Preencha os dados abaixo para receber recomendações personalizadas.")
     
