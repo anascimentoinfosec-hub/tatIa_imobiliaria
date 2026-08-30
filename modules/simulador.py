@@ -1,3 +1,5 @@
+st.write(" VERSÃO CORRIGIDA 30/08/2026)
+
 import streamlit as st
 import pandas as pd
 from modules.planilha import ler_planilha
