@@ -3,6 +3,7 @@ import pandas as pd
 from modules.planilha import ler_planilha
 from modules.utils import converter_para_float
 from modules.planilha_cache import salvar_planilha_cache, carregar_planilha_cache, tem_planilha_cache, excluir_planilha_cache
+from modules.recomendacoes import recomendar_imoveis
 
 def pagina_simulador(CONSTRUTORAS):
     st.title("📊 Simulador de Crédito")
@@ -43,29 +44,28 @@ def pagina_simulador(CONSTRUTORAS):
                     df = ler_planilha(uploaded_file, config)
                     if df is not None:
                         # =============================================
-                        # CONVERSÃO CORRIGIDA PARA TODAS AS COLUNAS MONETÁRIAS
-                        # Usa a mesma lógica que funciona para AVALIAÇÃO
+                        # CONVERSÃO DE COLUNAS MONETÁRIAS (CORRIGIDA)
                         # =============================================
                         colunas_monetarias = ['AVALIAÇÃO', 'PREÇO', 'VALOR', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
                         for col in colunas_monetarias:
                             if col in df.columns:
-                                # Passo 1: Remove RS, R$, R e espaços
+                                # Remove RS, R$, R e espaços
                                 df[col] = df[col].astype(str).str.replace('RS', '', regex=False)
                                 df[col] = df[col].str.replace('R$', '', regex=False)
                                 df[col] = df[col].str.replace('R', '', regex=False)
                                 df[col] = df[col].str.strip()
                                 
-                                # Passo 2: Remove ponto de milhar e substitui vírgula por ponto
+                                # Remove ponto de milhar e substitui vírgula por ponto
                                 df[col] = df[col].str.replace('.', '', regex=False)
                                 df[col] = df[col].str.replace(',', '.', regex=False)
                                 
-                                # Passo 3: Extrai apenas números (inteiros ou decimais)
+                                # Extrai apenas números
                                 df[col] = df[col].str.extract(r'(\d+\.?\d*)')
                                 
-                                # Passo 4: Converte para float (preenche NaN com 0)
+                                # Converte para float
                                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
                         
-                        # Também converte as colunas da configuração (compatibilidade)
+                        # Também converte as colunas da configuração
                         for col in config.get("colunas_para_converter", []):
                             if col in df.columns and col not in colunas_monetarias:
                                 df[col] = df[col].apply(converter_para_float)
