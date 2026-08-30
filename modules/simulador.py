@@ -1,5 +1,3 @@
-#ATUALIZAÇÃO EM 30/08/26 14:29
-
 import streamlit as st
 import pandas as pd
 from modules.planilha import ler_planilha
@@ -11,7 +9,6 @@ from modules.construtoras import carregar_cidades
 def pagina_simulador(CONSTRUTORAS, USUARIOS):
     st.title("📊 Simulador de Crédito")
     
-    # Obtém o perfil do usuário logado a partir dos dados passados
     usuario_logado = st.session_state.get("usuario_logado")
     if usuario_logado and usuario_logado in USUARIOS:
         perfil_usuario = USUARIOS[usuario_logado].get("perfil", "corretor")
@@ -58,7 +55,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                         df = ler_planilha(uploaded_file, config)
                         if df is not None:
                             # =============================================
-                            # CONVERSÃO DE COLUNAS MONETÁRIAS
+                            # CONVERSÃO DE COLUNAS MONETÁRIAS (INDENTAÇÃO CORRIGIDA)
                             # =============================================
                             colunas_monetarias = ['AVALIAÇÃO', 'PREÇO', 'VALOR', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
                             for col in colunas_monetarias:
