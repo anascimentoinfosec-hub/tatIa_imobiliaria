@@ -43,15 +43,19 @@ def pagina_simulador(CONSTRUTORAS):
                     config = produtos[produto_selecionado]
                     df = ler_planilha(uploaded_file, config)
                     if df is not None:
+                        # Converte colunas monetárias com a mesma lógica
                         for col in config.get("colunas_para_converter", []):
                             if col in df.columns:
                                 df[col] = df[col].apply(converter_para_float)
                         
-                        if "AVALIAÇÃO" in df.columns:
-                            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].astype(str).str.replace('RS', '').str.replace('R$', '').str.replace('R', '').str.strip()
-                            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
-                            df["AVALIAÇÃO"] = df["AVALIAÇÃO"].str.extract(r'(\d+\.?\d*)')
-                            df["AVALIAÇÃO"] = pd.to_numeric(df["AVALIAÇÃO"], errors='coerce').fillna(0)
+                        # --- CORREÇÃO PARA TODAS AS COLUNAS MONETÁRIAS ---
+                        colunas_monetarias = ['AVALIAÇÃO', 'PREÇO', 'VALOR', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
+                        for col in colunas_monetarias:
+                            if col in df.columns:
+                                df[col] = df[col].astype(str).str.replace('RS', '').str.replace('R$', '').str.replace('R', '').str.strip()
+                                df[col] = df[col].str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+                                df[col] = df[col].str.extract(r'(\d+\.?\d*)')
+                                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
                         
                         salvar_planilha_cache(construtora_selecionada, df, produto_selecionado)
                         st.success(f"✅ Planilha '{produto_selecionado}' carregada!")
@@ -86,9 +90,9 @@ def pagina_simulador(CONSTRUTORAS):
         st.warning(f"⚠️ Nenhuma planilha disponível para '{produto_selecionado}'. Faça o upload.")
         return
     
-    # --- FORÇA CONVERSÃO PARA FLOAT DAS COLUNAS MONETÁRIAS ---
-    colunas_para_converter = ['PREÇO', 'VALOR', 'AVALIAÇÃO', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
-    for col in colunas_para_converter:
+    # --- FORÇA CONVERSÃO PARA FLOAT DAS COLUNAS MONETÁRIAS (garantia) ---
+    colunas_monetarias = ['PREÇO', 'VALOR', 'AVALIAÇÃO', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
+    for col in colunas_monetarias:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
     
@@ -208,18 +212,10 @@ def pagina_simulador(CONSTRUTORAS):
             resultado_ordenado = resultado
         
         # =========================================================
-        # FORMATAÇÃO DAS COLUNAS MONETÁRIAS (FORÇADA)
+        # FORMATAÇÃO DAS COLUNAS MONETÁRIAS
         # =========================================================
-        # Converte colunas para float (garantia)
-        for col in resultado_ordenado.select_dtypes(include=['object']).columns:
-            try:
-                resultado_ordenado[col] = pd.to_numeric(resultado_ordenado[col], errors='coerce')
-            except:
-                pass
-        
         column_config = {}
         
-        # Lista de colunas monetárias
         colunas_monetarias = ['PREÇO', 'VALOR', 'AVALIAÇÃO', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
         for col in colunas_monetarias:
             if col in resultado_ordenado.columns:
@@ -228,14 +224,12 @@ def pagina_simulador(CONSTRUTORAS):
                     format="R$ %,.2f"
                 )
         
-        # Formata R$/m²
         if "R$/m²" in resultado_ordenado.columns:
             column_config["R$/m²"] = st.column_config.NumberColumn(
                 "R$/m²",
                 format="R$ %,.2f"
             )
         
-        # Formata M² (se for numérico)
         if "M²" in resultado_ordenado.columns:
             column_config["M²"] = st.column_config.NumberColumn(
                 "M²",
