@@ -4,10 +4,15 @@ from modules.planilha import ler_planilha
 from modules.utils import converter_para_float
 from modules.planilha_cache import salvar_planilha_cache, carregar_planilha_cache, tem_planilha_cache, excluir_planilha_cache
 from modules.recomendacoes import recomendar_imoveis
-from modules.construtoras import carregar_cidades  # <-- IMPORT CORRIGIDO
+from modules.construtoras import carregar_cidades
 
 def pagina_simulador(CONSTRUTORAS):
     st.title("📊 Simulador de Crédito")
+    
+    # Recupera o perfil do usuário logado para controle de permissões
+    usuario_logado = st.session_state.get("usuario_logado")
+    USUARIOS = st.session_state.get("USUARIOS", {})
+    perfil_usuario = USUARIOS.get(usuario_logado, {}).get("perfil", "corretor") if USUARIOS else "corretor"
     
     with st.sidebar:
         st.header("⚙️ Configurações")
@@ -50,9 +55,6 @@ def pagina_simulador(CONSTRUTORAS):
                         colunas_monetarias = ['AVALIAÇÃO', 'PREÇO', 'VALOR', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
                         for col in colunas_monetarias:
                             if col in df.columns:
-                                # DEBUG
-                                st.write(f"🔍 DEBUG - Coluna {col} - Valores brutos (primeiros 3):", df[col].head(3).tolist())
-                                
                                 # Limpeza inicial
                                 df[col] = df[col].astype(str).str.replace('RS', '', regex=False)
                                 df[col] = df[col].str.replace('R$', '', regex=False)
@@ -70,10 +72,8 @@ def pagina_simulador(CONSTRUTORAS):
                                     df[col] = df[col].str.replace(',', '.', regex=False)
                                     df[col] = df[col].str.extract(r'(\d+\.?\d*)')
                                     df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
-                                
-                                st.write(f"🔍 DEBUG - Coluna {col} - Valores convertidos (primeiros 3):", df[col].head(3).tolist())
                         
-                        # Converte outras colunas da configuração (se houver)
+                        # Converte outras colunas da configuração
                         for col in config.get("colunas_para_converter", []):
                             if col in df.columns and col not in colunas_monetarias:
                                 df[col] = df[col].apply(converter_para_float)
@@ -88,10 +88,17 @@ def pagina_simulador(CONSTRUTORAS):
             
             st.markdown("---")
             
-            if st.button("🗑️ Limpar cache", use_container_width=True):
-                excluir_planilha_cache(construtora_selecionada, produto_selecionado)
-                st.success(f"✅ Cache de '{produto_selecionado}' removido!")
-                st.rerun()
+            # =========================================================
+            # BOTÃO LIMPAR CACHE - RESTRITO A GERENTE/SUPERADMIN
+            # =========================================================
+            if perfil_usuario in ["gerente", "superadmin"]:
+                if st.button("🗑️ Limpar cache", use_container_width=True):
+                    excluir_planilha_cache(construtora_selecionada, produto_selecionado)
+                    st.success(f"✅ Cache de '{produto_selecionado}' removido!")
+                    st.rerun()
+            else:
+                # Opcional: mostra uma mensagem sutil para o corretor
+                st.caption("🔒 Apenas gerentes podem limpar o cache.")
         
         st.markdown("---")
         st.caption("Versão 4.2 - Correção PREÇO e Bairro")
@@ -294,7 +301,7 @@ def pagina_simulador(CONSTRUTORAS):
         
         with col_cliente2:
             # =============================================
-            # CAMPO BAIRRO CORRIGIDO (SELECTBOX)
+            # CAMPO BAIRRO (SELECTBOX COM CIDADES)
             # =============================================
             cidades_disponiveis = carregar_cidades()
             opcoes_bairro = [""] + cidades_disponiveis
