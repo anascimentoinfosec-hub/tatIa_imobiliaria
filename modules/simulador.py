@@ -1,3 +1,5 @@
+#ATUALIZAÇÃO EM 30/08/26 14:29
+
 import streamlit as st
 import pandas as pd
 from modules.planilha import ler_planilha
