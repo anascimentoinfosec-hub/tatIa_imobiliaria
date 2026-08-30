@@ -4,7 +4,7 @@ from modules.planilha import ler_planilha
 from modules.utils import converter_para_float
 from modules.planilha_cache import salvar_planilha_cache, carregar_planilha_cache, tem_planilha_cache, excluir_planilha_cache
 from modules.recomendacoes import recomendar_imoveis
-from modules.construtoras import carregar_cidades  # <-- IMPORT ADICIONADO
+from modules.construtoras import carregar_cidades  # <-- IMPORT CORRIGIDO
 
 def pagina_simulador(CONSTRUTORAS):
     st.title("📊 Simulador de Crédito")
@@ -45,20 +45,35 @@ def pagina_simulador(CONSTRUTORAS):
                     df = ler_planilha(uploaded_file, config)
                     if df is not None:
                         # =============================================
-                        # CONVERSÃO DE COLUNAS MONETÁRIAS
+                        # CONVERSÃO DE COLUNAS MONETÁRIAS (CORRIGIDA)
                         # =============================================
                         colunas_monetarias = ['AVALIAÇÃO', 'PREÇO', 'VALOR', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
                         for col in colunas_monetarias:
                             if col in df.columns:
+                                # DEBUG
+                                st.write(f"🔍 DEBUG - Coluna {col} - Valores brutos (primeiros 3):", df[col].head(3).tolist())
+                                
+                                # Limpeza inicial
                                 df[col] = df[col].astype(str).str.replace('RS', '', regex=False)
                                 df[col] = df[col].str.replace('R$', '', regex=False)
                                 df[col] = df[col].str.replace('R', '', regex=False)
                                 df[col] = df[col].str.strip()
-                                df[col] = df[col].str.replace('.', '', regex=False)
-                                df[col] = df[col].str.replace(',', '.', regex=False)
-                                df[col] = df[col].str.extract(r'(\d+\.?\d*)')
-                                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                                
+                                # Tratamento especial para PREÇO
+                                if col == 'PREÇO':
+                                    df[col] = df[col].str.replace('.', '', regex=False)
+                                    df[col] = df[col].str.replace(',', '.', regex=False)
+                                    df[col] = df[col].str.extract(r'(\d+\.?\d*)')
+                                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                                else:
+                                    df[col] = df[col].str.replace('.', '', regex=False)
+                                    df[col] = df[col].str.replace(',', '.', regex=False)
+                                    df[col] = df[col].str.extract(r'(\d+\.?\d*)')
+                                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                                
+                                st.write(f"🔍 DEBUG - Coluna {col} - Valores convertidos (primeiros 3):", df[col].head(3).tolist())
                         
+                        # Converte outras colunas da configuração (se houver)
                         for col in config.get("colunas_para_converter", []):
                             if col in df.columns and col not in colunas_monetarias:
                                 df[col] = df[col].apply(converter_para_float)
@@ -79,7 +94,7 @@ def pagina_simulador(CONSTRUTORAS):
                 st.rerun()
         
         st.markdown("---")
-        st.caption("Versão 4.1 - Formatação de valores")
+        st.caption("Versão 4.2 - Correção PREÇO e Bairro")
     
     # --- CORPO PRINCIPAL ---
     if not produto_selecionado:
@@ -96,7 +111,7 @@ def pagina_simulador(CONSTRUTORAS):
         st.warning(f"⚠️ Nenhuma planilha disponível para '{produto_selecionado}'. Faça o upload.")
         return
     
-    # --- GARANTIA: Reaplica a conversão (caso o cache tenha dados antigos) ---
+    # --- GARANTIA DE CONVERSÃO (caso cache antigo) ---
     colunas_monetarias = ['AVALIAÇÃO', 'PREÇO', 'VALOR', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
     for col in colunas_monetarias:
         if col in df.columns:
@@ -252,7 +267,7 @@ def pagina_simulador(CONSTRUTORAS):
     st.markdown("---")
     
     # =========================================================
-    # ÁREA DO CLIENTE (CORRIGIDA)
+    # ÁREA DO CLIENTE (COM BAIRRO SELECTBOX)
     # =========================================================
     st.subheader("🧑 Área do Cliente")
     st.markdown("Preencha os dados abaixo para receber recomendações personalizadas.")
@@ -279,7 +294,7 @@ def pagina_simulador(CONSTRUTORAS):
         
         with col_cliente2:
             # =============================================
-            # CAMPO BAIRRO CORRIGIDO (SELECTBOX COM CIDADES)
+            # CAMPO BAIRRO CORRIGIDO (SELECTBOX)
             # =============================================
             cidades_disponiveis = carregar_cidades()
             opcoes_bairro = [""] + cidades_disponiveis
@@ -303,17 +318,8 @@ def pagina_simulador(CONSTRUTORAS):
                         if col_quartos:
                             df_filtrado = df_filtrado[df_filtrado[col_quartos].astype(str).str.contains(str(qtd))]
                     
-                    # =============================================
-                    # FILTRO DE TIPOLOGIA CORRIGIDO
-                    # =============================================
                     if tipo_preferencia != "Indiferente" and "TIPOLOGIA" in df_filtrado.columns:
                         df_filtrado = df_filtrado[df_filtrado["TIPOLOGIA"].astype(str).str.contains(tipo_preferencia, case=False, na=False)]
-                    
-                    # Filtro por bairro (se selecionado)
-                    if bairro_preferencia:
-                        # Aqui você pode adicionar lógica de filtro por bairro se tiver essa coluna na planilha
-                        # Ex: df_filtrado = df_filtrado[df_filtrado["BAIRRO"] == bairro_preferencia]
-                        pass
                     
                     parcela_maxima = renda_cliente * 0.3
                     
