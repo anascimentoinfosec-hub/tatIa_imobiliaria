@@ -6,13 +6,15 @@ from modules.planilha_cache import salvar_planilha_cache, carregar_planilha_cach
 from modules.recomendacoes import recomendar_imoveis
 from modules.construtoras import carregar_cidades
 
-def pagina_simulador(CONSTRUTORAS):
+def pagina_simulador(CONSTRUTORAS, USUARIOS):
     st.title("📊 Simulador de Crédito")
     
-    # Recupera o perfil do usuário logado para controle de permissões
+    # Obtém o perfil do usuário logado a partir dos dados passados
     usuario_logado = st.session_state.get("usuario_logado")
-    USUARIOS = st.session_state.get("USUARIOS", {})
-    perfil_usuario = USUARIOS.get(usuario_logado, {}).get("perfil", "corretor") if USUARIOS else "corretor"
+    if usuario_logado and usuario_logado in USUARIOS:
+        perfil_usuario = USUARIOS[usuario_logado].get("perfil", "corretor")
+    else:
+        perfil_usuario = "corretor"
     
     with st.sidebar:
         st.header("⚙️ Configurações")
@@ -100,7 +102,6 @@ def pagina_simulador(CONSTRUTORAS):
                     st.success(f"✅ Cache de '{produto_selecionado}' removido!")
                     st.rerun()
         else:
-            # Mensagem para corretores
             st.info("🔒 As planilhas são gerenciadas pelo gerente. Você está visualizando a versão mais recente disponível.")
         
         st.markdown("---")

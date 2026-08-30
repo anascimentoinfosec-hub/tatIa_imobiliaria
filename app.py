@@ -1,4 +1,3 @@
-# Atualizada e funcional após erro de identação - 27/08/26 17:09#
 import streamlit as st
 from modules.auth import carregar_usuarios, pagina_login, exibir_login_sidebar
 from modules.usuarios import pagina_gestao_usuarios
@@ -43,7 +42,6 @@ with st.sidebar:
         
         st.markdown("---")
         
-        # --- MENU SUPER ADMIN (somente se perfil for superadmin) ---
         if perfil == "superadmin":
             st.markdown("### 👑 Administração")
             if st.button("👥 Gerenciar Gerentes", use_container_width=True):
@@ -56,7 +54,6 @@ with st.sidebar:
                 st.session_state.pagina = "Construtoras"
                 st.rerun()
         
-        # --- MENU GERENTE (somente se perfil for gerente) ---
         elif perfil == "gerente":
             st.markdown("### ⚙️ Gestão")
             if st.button("👥 Usuários", use_container_width=True):
@@ -66,17 +63,15 @@ with st.sidebar:
                 st.session_state.pagina = "Construtoras"
                 st.rerun()
         
-        # --- MENU CORRETOR ---
         else:
             st.caption("👤 Corretor - Acesso ao simulador e IA")
 
-# --- CONTEÚDO PRINCIPAL ---
 if st.session_state.usuario_logado is None:
     pagina_login()
 else:
     pagina = st.session_state.get("pagina", "Simulador")
     if pagina == "Simulador":
-        pagina_simulador(CONSTRUTORAS)
+        pagina_simulador(CONSTRUTORAS, USUARIOS)   # <-- PASSANDO USUARIOS
     elif pagina == "ChatIA":
         pagina_chat()
     elif pagina == "SuperAdmin":
@@ -86,4 +81,4 @@ else:
     elif pagina == "Construtoras":
         pagina_gestao_construtoras(CONSTRUTORAS)
     else:
-        pagina_simulador(CONSTRUTORAS)
+        pagina_simulador(CONSTRUTORAS, USUARIOS)
