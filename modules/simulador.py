@@ -36,69 +36,72 @@ def pagina_simulador(CONSTRUTORAS):
         
         st.markdown("---")
         
-        if produto_selecionado:
-            st.markdown("### 📤 Upload")
-            uploaded_file = st.file_uploader(
-                f"Planilha para {construtora_selecionada} - {produto_selecionado}",
-                type=['xlsx', 'xls', 'csv', 'pdf'],
-                key=f"upload_{construtora_selecionada}_{produto_selecionado}"
-            )
-            
-            if st.button("📥 Carregar", use_container_width=True):
-                if uploaded_file is not None:
-                    config = produtos[produto_selecionado]
-                    df = ler_planilha(uploaded_file, config)
-                    if df is not None:
-                        # =============================================
-                        # CONVERSÃO DE COLUNAS MONETÁRIAS (CORRIGIDA)
-                        # =============================================
-                        colunas_monetarias = ['AVALIAÇÃO', 'PREÇO', 'VALOR', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
-                        for col in colunas_monetarias:
-                            if col in df.columns:
-                                # Limpeza inicial
-                                df[col] = df[col].astype(str).str.replace('RS', '', regex=False)
-                                df[col] = df[col].str.replace('R$', '', regex=False)
-                                df[col] = df[col].str.replace('R', '', regex=False)
-                                df[col] = df[col].str.strip()
-                                
-                                # Tratamento especial para PREÇO
-                                if col == 'PREÇO':
-                                    df[col] = df[col].str.replace('.', '', regex=False)
-                                    df[col] = df[col].str.replace(',', '.', regex=False)
-                                    df[col] = df[col].str.extract(r'(\d+\.?\d*)')
-                                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
-                                else:
-                                    df[col] = df[col].str.replace('.', '', regex=False)
-                                    df[col] = df[col].str.replace(',', '.', regex=False)
-                                    df[col] = df[col].str.extract(r'(\d+\.?\d*)')
-                                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
-                        
-                        # Converte outras colunas da configuração
-                        for col in config.get("colunas_para_converter", []):
-                            if col in df.columns and col not in colunas_monetarias:
-                                df[col] = df[col].apply(converter_para_float)
-                        
-                        salvar_planilha_cache(construtora_selecionada, df, produto_selecionado)
-                        st.success(f"✅ Planilha '{produto_selecionado}' carregada!")
-                        st.rerun()
+        # =========================================================
+        # UPLOAD DE PLANILHA (APENAS PARA GERENTE/SUPERADMIN)
+        # =========================================================
+        if perfil_usuario in ["gerente", "superadmin"]:
+            if produto_selecionado:
+                st.markdown("### 📤 Upload")
+                uploaded_file = st.file_uploader(
+                    f"Planilha para {construtora_selecionada} - {produto_selecionado}",
+                    type=['xlsx', 'xls', 'csv', 'pdf'],
+                    key=f"upload_{construtora_selecionada}_{produto_selecionado}"
+                )
+                
+                if st.button("📥 Carregar", use_container_width=True):
+                    if uploaded_file is not None:
+                        config = produtos[produto_selecionado]
+                        df = ler_planilha(uploaded_file, config)
+                        if df is not None:
+                            # =============================================
+                            # CONVERSÃO DE COLUNAS MONETÁRIAS
+                            # =============================================
+                            colunas_monetarias = ['AVALIAÇÃO', 'PREÇO', 'VALOR', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
+                            for col in colunas_monetarias:
+                                if col in df.columns:
+                                    # Limpeza inicial
+                                    df[col] = df[col].astype(str).str.replace('RS', '', regex=False)
+                                    df[col] = df[col].str.replace('R$', '', regex=False)
+                                    df[col] = df[col].str.replace('R', '', regex=False)
+                                    df[col] = df[col].str.strip()
+                                    
+                                    # Tratamento especial para PREÇO
+                                    if col == 'PREÇO':
+                                        df[col] = df[col].str.replace('.', '', regex=False)
+                                        df[col] = df[col].str.replace(',', '.', regex=False)
+                                        df[col] = df[col].str.extract(r'(\d+\.?\d*)')
+                                        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                                    else:
+                                        df[col] = df[col].str.replace('.', '', regex=False)
+                                        df[col] = df[col].str.replace(',', '.', regex=False)
+                                        df[col] = df[col].str.extract(r'(\d+\.?\d*)')
+                                        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                            
+                            # Converte outras colunas da configuração
+                            for col in config.get("colunas_para_converter", []):
+                                if col in df.columns and col not in colunas_monetarias:
+                                    df[col] = df[col].apply(converter_para_float)
+                            
+                            salvar_planilha_cache(construtora_selecionada, df, produto_selecionado)
+                            st.success(f"✅ Planilha '{produto_selecionado}' carregada!")
+                            st.rerun()
+                        else:
+                            st.error("❌ Erro ao ler a planilha")
                     else:
-                        st.error("❌ Erro ao ler a planilha")
-                else:
-                    st.warning("⚠️ Selecione uma planilha primeiro!")
-            
-            st.markdown("---")
-            
-            # =========================================================
-            # BOTÃO LIMPAR CACHE - RESTRITO A GERENTE/SUPERADMIN
-            # =========================================================
-            if perfil_usuario in ["gerente", "superadmin"]:
+                        st.warning("⚠️ Selecione uma planilha primeiro!")
+                
+                st.markdown("---")
+                
+                # =========================================================
+                # BOTÃO LIMPAR CACHE (APENAS PARA GERENTE/SUPERADMIN)
+                # =========================================================
                 if st.button("🗑️ Limpar cache", use_container_width=True):
                     excluir_planilha_cache(construtora_selecionada, produto_selecionado)
                     st.success(f"✅ Cache de '{produto_selecionado}' removido!")
                     st.rerun()
-            else:
-                # Opcional: mostra uma mensagem sutil para o corretor
-                st.caption("🔒 Apenas gerentes podem limpar o cache.")
+        else:
+            # Mensagem para corretores
+            st.info("🔒 As planilhas são gerenciadas pelo gerente. Você está visualizando a versão mais recente disponível.")
         
         st.markdown("---")
         st.caption("Versão 4.2 - Correção PREÇO e Bairro")
