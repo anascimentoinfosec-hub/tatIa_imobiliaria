@@ -1,0 +1,7 @@
+# Dados locais (NUNCA versionar)
+dados/usuarios.json
+dados/recuperacao.json
+dados/planilhas/
+*.log
+*.pyc
+_pycache_/
