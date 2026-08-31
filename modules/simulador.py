@@ -6,6 +6,16 @@ from modules.planilha_cache import salvar_planilha_cache, carregar_planilha_cach
 from modules.recomendacoes import recomendar_imoveis
 from modules.construtoras import carregar_cidades
 
+def formatar_valor_br(valor):
+    """Formata um float no padrão BR: R$ 1.234,56"""
+    if valor is None or pd.isna(valor):
+        return "R$ 0,00"
+    # Formata no padrão US (vírgula milhar, ponto decimal)
+    us = f"{valor:,.2f}"
+    # Troca vírgula por ponto e ponto por vírgula
+    br = us.replace(',', 'X').replace('.', ',').replace('X', '.')
+    return f"R$ {br}"
+
 def pagina_simulador(CONSTRUTORAS, USUARIOS):
     st.title("📊 Simulador de Crédito")
     
@@ -92,7 +102,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
             st.info("🔒 As planilhas são gerenciadas pelo gerente. Você está visualizando a versão mais recente disponível.")
         
         st.markdown("---")
-        st.caption("Versão 4.2 - Correção PREÇO e Bairro")
+        st.caption("Versão 4.3 - Formatação BR")
     
     if not produto_selecionado:
         st.warning("⚠️ Selecione um produto para visualizar os dados.")
@@ -226,37 +236,32 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         else:
             resultado_ordenado = resultado
         
-        column_config = {}
+        # =========================================================
+        # FORMATAÇÃO BR - CRIA DATAFRAME DE EXIBIÇÃO
+        # =========================================================
+        df_exibicao = resultado_ordenado.copy()
         
-        colunas_monetarias = ['PREÇO', 'VALOR', 'AVALIAÇÃO', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
+        # Aplica formatação BR nas colunas monetárias
+        colunas_monetarias = ['PREÇO', 'VALOR', 'AVALIAÇÃO', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II', 'R$/m²']
         for col in colunas_monetarias:
-            if col in resultado_ordenado.columns:
-                column_config[col] = st.column_config.NumberColumn(
-                    col,
-                    format="R$ %,.2f"
-                )
+            if col in df_exibicao.columns:
+                df_exibicao[col] = df_exibicao[col].apply(formatar_valor_br)
         
-        if "R$/m²" in resultado_ordenado.columns:
-            column_config["R$/m²"] = st.column_config.NumberColumn(
-                "R$/m²",
-                format="R$ %,.2f"
-            )
-        
-        if "M²" in resultado_ordenado.columns:
-            column_config["M²"] = st.column_config.NumberColumn(
-                "M²",
-                format="%.2f"
-            )
+        # Formata M² (se existir) com 2 casas decimais e vírgula
+        if "M²" in df_exibicao.columns:
+            df_exibicao["M²"] = df_exibicao["M²"].apply(lambda x: f"{x:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.') if not pd.isna(x) else "")
         
         st.dataframe(
-            resultado_ordenado[colunas_ordem],
+            df_exibicao[colunas_ordem],
             use_container_width=True,
-            height=400,
-            column_config=column_config
+            height=400
         )
     
     st.markdown("---")
     
+    # =========================================================
+    # ÁREA DO CLIENTE
+    # =========================================================
     st.subheader("🧑 Área do Cliente")
     st.markdown("Preencha os dados abaixo para receber recomendações personalizadas.")
     
@@ -328,11 +333,11 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                                 with col_a:
                                     st.markdown(f"*🏢 Unidade {row['UNIDADE']}*")
                                     if preco_col in row:
-                                        st.write(f"💰 *Preço:* R$ {row[preco_col]:,.2f}")
+                                        st.write(f"💰 *Preço:* {formatar_valor_br(row[preco_col])}")
                                     if 'R$/m²' in row:
-                                        st.write(f"📊 *R$/m²:* R$ {row['R$/m²']:.2f}")
+                                        st.write(f"📊 *R$/m²:* {formatar_valor_br(row['R$/m²'])}")
                                     if 'parcela_estimada' in row:
-                                        st.write(f"📆 *Parcela estimada:* R$ {row['parcela_estimada']:,.2f}")
+                                        st.write(f"📆 *Parcela estimada:* {formatar_valor_br(row['parcela_estimada'])}")
                                     if 'TIPOLOGIA' in row:
                                         st.write(f"🏠 *Tipo:* {row['TIPOLOGIA']}")
                                 
@@ -350,9 +355,9 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                                     financiado = valor_imovel - entrada_valor
                                     parcela_media = financiado * (1 + 0.10/12) / 420
                                     
-                                    st.write(f"💵 *Entrada:* R$ {entrada_valor:,.2f}")
-                                    st.write(f"🏦 *Financiado:* R$ {financiado:,.2f}")
-                                    st.write(f"📆 *Parcela:* R$ {parcela_media:,.2f}")
+                                    st.write(f"💵 *Entrada:* {formatar_valor_br(entrada_valor)}")
+                                    st.write(f"🏦 *Financiado:* {formatar_valor_br(financiado)}")
+                                    st.write(f"📆 *Parcela:* {formatar_valor_br(parcela_media)}")
                                     
                                     if st.button(f"💬 Perguntar sobre esta unidade", key=f"perguntar_{idx}"):
                                         st.session_state['pergunta_imovel'] = row['UNIDADE']
@@ -385,11 +390,11 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
             st.markdown("*📊 Simulação média com base nos imóveis disponíveis:*")
             col_s1, col_s2, col_s3 = st.columns(3)
             with col_s1:
-                st.metric("💰 Valor médio", f"R$ {valor_medio:,.0f}")
+                st.metric("💰 Valor médio", formatar_valor_br(valor_medio))
             with col_s2:
-                st.metric(f"💵 Entrada ({entrada_percentual_global}%)", f"R$ {entrada_media:,.0f}")
+                st.metric(f"💵 Entrada ({entrada_percentual_global}%)", formatar_valor_br(entrada_media))
             with col_s3:
-                st.metric("📆 Parcela média", f"R$ {parcela_media_global:,.0f}")
+                st.metric("📆 Parcela média", formatar_valor_br(parcela_media_global))
         
         st.markdown("---")
         if st.button("💬 Perguntar à BIA (IA Imobiliária)", use_container_width=True):
