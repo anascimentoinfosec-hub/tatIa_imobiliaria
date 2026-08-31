@@ -7,34 +7,28 @@ def pagina_bia():
     st.title("💬 BIA - IA Imobiliária")
     st.markdown("---")
     
-    # Verifica se há planilha carregada
     if "df_imoveis" not in st.session_state or st.session_state.df_imoveis is None:
         st.warning("⚠️ Nenhuma planilha disponível. Carregue uma planilha no Simulador primeiro.")
         return
     
     df = st.session_state.df_imoveis.copy()
     
-    # Inicializa histórico da conversa
     if "hist_bia" not in st.session_state:
         st.session_state.hist_bia = [
             {"role": "assistant", "content": "Olá! Sou a BIA, sua assistente imobiliária. Pergunte sobre os imóveis disponíveis ou informe o perfil do cliente para recomendações."}
         ]
     
-    # Exibe histórico
     for msg in st.session_state.hist_bia:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
     
-    # Input do gerente
     pergunta = st.chat_input("Digite sua pergunta para a BIA...")
     
     if pergunta:
-        # Adiciona pergunta ao histórico
         st.session_state.hist_bia.append({"role": "user", "content": pergunta})
         with st.chat_message("user"):
             st.markdown(pergunta)
         
-        # Processa a pergunta
         with st.chat_message("assistant"):
             with st.spinner("Analisando..."):
                 resposta = processar_pergunta(pergunta, df)
@@ -42,9 +36,6 @@ def pagina_bia():
                 st.session_state.hist_bia.append({"role": "assistant", "content": resposta})
 
 def processar_pergunta(pergunta, df):
-    """
-    Processa a pergunta do usuário e retorna uma resposta baseada nos dados dos imóveis.
-    """
     pergunta_lower = pergunta.lower()
     resposta = []
     
@@ -52,15 +43,25 @@ def processar_pergunta(pergunta, df):
     if "cliente" in pergunta_lower or "renda" in pergunta_lower or "recomenda" in pergunta_lower:
         # Extrai renda da pergunta
         renda = None
-        match = re.search(r'(\d+[\.,]?\d*)', pergunta)
+        # Procura padrões como R$ 10.000,00 ou 10.000 ou 10,000
+        match = re.search(r'R?\$?\s*(\d{1,3}(?:\.\d{3})*|\d+)(?:,\d{2})?', pergunta)
         if match:
             raw = match.group(1)
-            # CORREÇÃO: Remove pontos de milhar (ex: 10.000 -> 10000)
-            if '.' in raw and ',' not in raw:
+            # Remove pontos de milhar
+            if '.' in raw:
                 raw = raw.replace('.', '')
-            # Substitui vírgula por ponto (ex: 10,50 -> 10.50)
-            raw = raw.replace(',', '.')
-            renda = float(raw)
+            # Substitui vírgula por ponto (se for decimal, mas vamos ignorar centavos)
+            renda = float(raw.replace(',', '.'))
+        
+        # Se não encontrou com o padrão acima, tenta um mais simples
+        if renda is None:
+            match = re.search(r'(\d+[\.,]?\d*)', pergunta)
+            if match:
+                raw = match.group(1)
+                if '.' in raw and ',' not in raw:
+                    raw = raw.replace('.', '')
+                raw = raw.replace(',', '.')
+                renda = float(raw)
         
         # Extrai preferências (quartos, tipo, bairro) – simplificado
         preferencias = {}
@@ -77,14 +78,19 @@ def processar_pergunta(pergunta, df):
         elif "garden" in pergunta_lower:
             preferencias["tipo"] = "Garden"
         
-        # Monta o perfil do cliente para a função de recomendação
         perfil_cliente = {}
         if renda:
             perfil_cliente["renda"] = renda
         if preferencias:
             perfil_cliente.update(preferencias)
         
-        # Chama função de recomendação com o dicionário correto
+        # ---------- DEBUG ----------
+        if renda:
+            resposta.append(f"💰 *Renda identificada:* R$ {renda:,.2f}")
+        else:
+            resposta.append("⚠️ *Nenhuma renda identificada na pergunta.*")
+        # --------------------------
+        
         recomendados = recomendar_imoveis(df, perfil_cliente=perfil_cliente)
         
         if recomendados is not None and not recomendados.empty:
