@@ -54,7 +54,13 @@ def processar_pergunta(pergunta, df):
         renda = None
         match = re.search(r'(\d+[\.,]?\d*)', pergunta)
         if match:
-            renda = float(match.group(1).replace(',', '.'))
+            raw = match.group(1)
+            # CORREÇÃO: Remove pontos de milhar (ex: 10.000 -> 10000)
+            if '.' in raw and ',' not in raw:
+                raw = raw.replace('.', '')
+            # Substitui vírgula por ponto (ex: 10,50 -> 10.50)
+            raw = raw.replace(',', '.')
+            renda = float(raw)
         
         # Extrai preferências (quartos, tipo, bairro) – simplificado
         preferencias = {}
