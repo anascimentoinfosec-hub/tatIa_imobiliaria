@@ -4,6 +4,7 @@ from modules.usuarios import pagina_gestao_usuarios
 from modules.construtoras import carregar_construtoras, pagina_gestao_construtoras
 from modules.simulador import pagina_simulador
 from modules.chat_ia import pagina_chat
+from modules.bia import pagina_bia
 from modules.superadmin import pagina_superadmin
 
 st.set_page_config(page_title="Simulador de Crédito", layout="wide")
