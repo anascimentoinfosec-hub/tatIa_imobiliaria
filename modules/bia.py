@@ -44,34 +44,35 @@ def processar_pergunta(pergunta, df):
         # --- EXTRAÇÃO DE RENDA (CORRIGIDA) ---
         renda = None
         
-        # Remove espaços e R$ para facilitar
-        pergunta_limpa = pergunta.replace('R$', '').replace('R', '').strip()
+        # Remove R$ e espaços extras
+        pergunta_limpa = re.sub(r'R\$?\s*', '', pergunta).strip()
         
-        # Procura padrões com separadores: 15.000,00 ou 15.000 ou 15000
-        # Primeiro tenta capturar com vírgula decimal (ex: 15.000,00)
+        # Tenta capturar valores com ponto de milhar e vírgula decimal (ex: 15.000,00)
         match = re.search(r'(\d{1,3}(?:\.\d{3})*,\d{2})', pergunta_limpa)
         if match:
             raw = match.group(1)
-            # Remove pontos de milhar e troca vírgula por ponto
             raw = raw.replace('.', '').replace(',', '.')
             renda = float(raw)
         else:
-            # Tenta capturar sem vírgula decimal (ex: 15.000 ou 15000)
-            match = re.search(r'(\d{1,3}(?:\.\d{3})*|\d+)', pergunta_limpa)
+            # Tenta capturar valores com ponto de milhar sem decimais (ex: 15.000)
+            match = re.search(r'(\d{1,3}(?:\.\d{3})*)', pergunta_limpa)
             if match:
                 raw = match.group(1)
-                # Remove pontos de milhar
-                if '.' in raw:
-                    raw = raw.replace('.', '')
+                raw = raw.replace('.', '')
                 renda = float(raw)
+            else:
+                # Tenta capturar valores simples (ex: 15000 ou 15)
+                match = re.search(r'(\d+)', pergunta_limpa)
+                if match:
+                    renda = float(match.group(1))
         
-        # DEBUG: mostra a renda identificada
+        # Mostra a renda identificada (DEBUG)
         if renda:
             resposta.append(f"💰 *Renda identificada:* R$ {renda:,.2f}")
         else:
             resposta.append("⚠️ *Nenhuma renda identificada na pergunta.*")
         
-        # Extrai preferências (quartos, tipo, bairro)
+        # Extrai preferências
         preferencias = {}
         if "2 quartos" in pergunta_lower:
             preferencias["quartos"] = "2"
@@ -92,7 +93,6 @@ def processar_pergunta(pergunta, df):
         if preferencias:
             perfil_cliente.update(preferencias)
         
-        # Chama função de recomendação
         recomendados = recomendar_imoveis(df, perfil_cliente=perfil_cliente)
         
         if recomendados is not None and not recomendados.empty:
