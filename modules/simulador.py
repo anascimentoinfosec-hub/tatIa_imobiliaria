@@ -1,5 +1,3 @@
-st.write(" VERSÃO CORRIGIDA 30/08/2026)
-
 import streamlit as st
 import pandas as pd
 from modules.planilha import ler_planilha
@@ -39,9 +37,6 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         
         st.markdown("---")
         
-        # =========================================================
-        # UPLOAD DE PLANILHA (APENAS PARA GERENTE/SUPERADMIN)
-        # =========================================================
         if perfil_usuario in ["gerente", "superadmin"]:
             if produto_selecionado:
                 st.markdown("### 📤 Upload")
@@ -56,19 +51,14 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                         config = produtos[produto_selecionado]
                         df = ler_planilha(uploaded_file, config)
                         if df is not None:
-                            # =============================================
-                            # CONVERSÃO DE COLUNAS MONETÁRIAS (INDENTAÇÃO CORRIGIDA)
-                            # =============================================
                             colunas_monetarias = ['AVALIAÇÃO', 'PREÇO', 'VALOR', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
                             for col in colunas_monetarias:
                                 if col in df.columns:
-                                    # Limpeza inicial
                                     df[col] = df[col].astype(str).str.replace('RS', '', regex=False)
                                     df[col] = df[col].str.replace('R$', '', regex=False)
                                     df[col] = df[col].str.replace('R', '', regex=False)
                                     df[col] = df[col].str.strip()
                                     
-                                    # Tratamento especial para PREÇO
                                     if col == 'PREÇO':
                                         df[col] = df[col].str.replace('.', '', regex=False)
                                         df[col] = df[col].str.replace(',', '.', regex=False)
@@ -80,7 +70,6 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                                         df[col] = df[col].str.extract(r'(\d+\.?\d*)')
                                         df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
                             
-                            # Converte outras colunas da configuração
                             for col in config.get("colunas_para_converter", []):
                                 if col in df.columns and col not in colunas_monetarias:
                                     df[col] = df[col].apply(converter_para_float)
@@ -95,9 +84,6 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                 
                 st.markdown("---")
                 
-                # =========================================================
-                # BOTÃO LIMPAR CACHE (APENAS PARA GERENTE/SUPERADMIN)
-                # =========================================================
                 if st.button("🗑️ Limpar cache", use_container_width=True):
                     excluir_planilha_cache(construtora_selecionada, produto_selecionado)
                     st.success(f"✅ Cache de '{produto_selecionado}' removido!")
@@ -108,7 +94,6 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         st.markdown("---")
         st.caption("Versão 4.2 - Correção PREÇO e Bairro")
     
-    # --- CORPO PRINCIPAL ---
     if not produto_selecionado:
         st.warning("⚠️ Selecione um produto para visualizar os dados.")
         return
@@ -123,7 +108,6 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         st.warning(f"⚠️ Nenhuma planilha disponível para '{produto_selecionado}'. Faça o upload.")
         return
     
-    # --- GARANTIA DE CONVERSÃO (caso cache antigo) ---
     colunas_monetarias = ['AVALIAÇÃO', 'PREÇO', 'VALOR', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
     for col in colunas_monetarias:
         if col in df.columns:
@@ -131,7 +115,6 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
     
     st.info(f"📂 Planilha carregada do cache: {construtora_selecionada} - {produto_selecionado}")
     
-    # Guarda na sessão para o chat
     if "df_imoveis_cache" not in st.session_state:
         st.session_state.df_imoveis_cache = {}
     
@@ -141,7 +124,6 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
     
     st.markdown("---")
     
-    # --- FILTROS ---
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -244,9 +226,6 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         else:
             resultado_ordenado = resultado
         
-        # =========================================================
-        # FORMATAÇÃO DAS COLUNAS MONETÁRIAS
-        # =========================================================
         column_config = {}
         
         colunas_monetarias = ['PREÇO', 'VALOR', 'AVALIAÇÃO', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
@@ -278,9 +257,6 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
     
     st.markdown("---")
     
-    # =========================================================
-    # ÁREA DO CLIENTE (COM BAIRRO SELECTBOX)
-    # =========================================================
     st.subheader("🧑 Área do Cliente")
     st.markdown("Preencha os dados abaixo para receber recomendações personalizadas.")
     
@@ -305,9 +281,6 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
             )
         
         with col_cliente2:
-            # =============================================
-            # CAMPO BAIRRO (SELECTBOX COM CIDADES)
-            # =============================================
             cidades_disponiveis = carregar_cidades()
             opcoes_bairro = [""] + cidades_disponiveis
             bairro_preferencia = st.selectbox("📍 Bairro de preferência", opcoes_bairro)
