@@ -37,28 +37,35 @@ def pagina_bia():
 
 def extrair_renda(texto):
     """
-    Extrai o valor da renda de um texto, reconhecendo formatos BR com tolerância a zeros extras.
-    Ex: R$ 5.0000,00 -> 5000.00
+    Extrai o valor da renda de um texto, reconhecendo formatos BR.
+    Ex: R$ 10.000,00 -> 10000.00
+        R$ 10000,00 -> 10000.00
+        R$ 10000 -> 10000.00
     """
-    # Remove R$ e espaços
-    texto_limpo = re.sub(r'R\$?\s*', '', texto)
-    # Encontra padrão com vírgula decimal e ponto de milhar (flexível)
-    # Ex: 5.0000,00 ou 10.0000,00 ou 5.000,00
-    match = re.search(r'(\d{1,3}(?:\.\d{3,})*,\d{2})', texto_limpo)
+    # Remove R$ e espaços extras
+    texto_limpo = re.sub(r'R\$?\s*', '', texto).strip()
+    
+    # Primeiro, tenta padrão com vírgula decimal (ex: 10.000,00 ou 10000,00)
+    match = re.search(r'(\d{1,3}(?:\.\d{3})*,\d{2})', texto_limpo)
     if match:
         raw = match.group(1)
-        # Remove todos os pontos (milhar) e converte vírgula para ponto
-        raw = raw.replace('.', '').replace(',', '.')
+        # Remove pontos de milhar
+        raw = raw.replace('.', '')
+        # Substitui vírgula decimal por ponto
+        raw = raw.replace(',', '.')
         return float(raw)
-    # Tenta capturar números com vírgula decimal (ex: 5000,00)
+    
+    # Tenta padrão com vírgula decimal sem ponto (ex: 10000,00)
     match = re.search(r'(\d+,\d{2})', texto_limpo)
     if match:
         raw = match.group(1).replace(',', '.')
         return float(raw)
-    # Tenta capturar números inteiros (ex: 5000)
+    
+    # Tenta capturar número inteiro (ex: 10000)
     match = re.search(r'(\d+)', texto_limpo)
     if match:
         return float(match.group(1))
+    
     return None
 
 def formatar_valor_br(valor):
@@ -104,8 +111,8 @@ def processar_pergunta(pergunta, df):
         if preferencias:
             perfil_cliente.update(preferencias)
         
-        # Debug do perfil
-        resposta.append(f"📋 *Perfil montado:* {perfil_cliente}")
+        if perfil_cliente:
+            resposta.append(f"📋 *Perfil montado:* {perfil_cliente}")
         
         recomendados = recomendar_imoveis(df, perfil_cliente=perfil_cliente)
         
