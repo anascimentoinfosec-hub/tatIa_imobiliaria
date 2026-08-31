@@ -50,7 +50,7 @@ def processar_pergunta(pergunta, df):
     
     # 1. Recomendações por perfil (renda, preferências)
     if "cliente" in pergunta_lower or "renda" in pergunta_lower or "recomenda" in pergunta_lower:
-        # Extrai renda da pergunta (ex: "cliente com renda de R$ 8.000")
+        # Extrai renda da pergunta
         renda = None
         match = re.search(r'(\d+[\.,]?\d*)', pergunta)
         if match:
@@ -62,17 +62,35 @@ def processar_pergunta(pergunta, df):
             preferencias["quartos"] = "2"
         elif "3 quartos" in pergunta_lower:
             preferencias["quartos"] = "3"
-        # Adicionar outros filtros conforme necessário
+        elif "4 quartos" in pergunta_lower:
+            preferencias["quartos"] = "4"
+        if "apartamento" in pergunta_lower:
+            preferencias["tipo"] = "Apartamento"
+        elif "cobertura" in pergunta_lower:
+            preferencias["tipo"] = "Cobertura"
+        elif "garden" in pergunta_lower:
+            preferencias["tipo"] = "Garden"
         
-        # Chama função de recomendação
-        recomendados = recomendar_imoveis(df, renda=renda, preferencias=preferencias)
+        # Monta o perfil do cliente para a função de recomendação
+        perfil_cliente = {}
+        if renda:
+            perfil_cliente["renda"] = renda
+        if preferencias:
+            perfil_cliente.update(preferencias)
+        
+        # Chama função de recomendação com o dicionário correto
+        recomendados = recomendar_imoveis(df, perfil_cliente=perfil_cliente)
+        
         if recomendados is not None and not recomendados.empty:
             resposta.append(f"🔍 *Encontrei {len(recomendados)} oportunidades para o perfil informado:*")
             for idx, row in recomendados.iterrows():
                 parcela = row.get("PREÇO", 0) * 0.005
-                resposta.append(f"- *Unidade {row.get('UNIDADE', 'N/A')}* - R$ {row.get('PREÇO', 0):,.2f} | Parcela estimada: R$ {parcela:,.2f} | R$/m²: R$ {row.get('R$/m²', 0):.2f}")
+                unidade = row.get('UNIDADE', 'N/A')
+                preco = row.get('PREÇO', 0)
+                r_m2 = row.get('R$/m²', 0)
+                resposta.append(f"- *Unidade {unidade}* - R$ {preco:,.2f} | Parcela estimada: R$ {parcela:,.2f} | R$/m²: R$ {r_m2:.2f}")
         else:
-            resposta.append("⚠️ Nenhum imóvel encontrado para o perfil informado. Tente ajustar os critérios.")
+            resposta.append("⚠️ Nenhum imóvel encontrado para o perfil informado. Tente ajustar a renda ou as preferências.")
     
     # 2. Pergunta sobre o melhor custo-benefício
     elif "melhor" in pergunta_lower or "custo-benefício" in pergunta_lower:
