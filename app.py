@@ -3,9 +3,9 @@ from modules.auth import carregar_usuarios, pagina_login, exibir_login_sidebar
 from modules.usuarios import pagina_gestao_usuarios
 from modules.construtoras import carregar_construtoras, pagina_gestao_construtoras
 from modules.simulador import pagina_simulador
-from modules.chat_ia import pagina_chat
 from modules.bia import pagina_bia
 from modules.superadmin import pagina_superadmin
+from modules.creditos import pagina_creditos
 
 st.set_page_config(page_title="Simulador de Crédito", layout="wide")
 
@@ -54,6 +54,10 @@ with st.sidebar:
             if st.button("🏗️ Construtoras", use_container_width=True):
                 st.session_state.pagina = "Construtoras"
                 st.rerun()
+            # --- BOTÃO DE CRÉDITOS (NOVO) ---
+            if st.button("💰 Créditos OpenAI", use_container_width=True):
+                st.session_state.pagina = "Creditos"
+                st.rerun()
         
         elif perfil == "gerente":
             st.markdown("### ⚙️ Gestão")
@@ -72,14 +76,16 @@ if st.session_state.usuario_logado is None:
 else:
     pagina = st.session_state.get("pagina", "Simulador")
     if pagina == "Simulador":
-        pagina_simulador(CONSTRUTORAS, USUARIOS)   # <-- PASSANDO USUARIOS
+        pagina_simulador(CONSTRUTORAS, USUARIOS)
     elif pagina == "ChatIA":
-        pagina_chat()
+        pagina_bia()
     elif pagina == "SuperAdmin":
         pagina_superadmin(USUARIOS)
     elif pagina == "Usuários":
         pagina_gestao_usuarios(USUARIOS)
     elif pagina == "Construtoras":
         pagina_gestao_construtoras(CONSTRUTORAS)
+    elif pagina == "Creditos":
+        pagina_creditos()
     else:
         pagina_simulador(CONSTRUTORAS, USUARIOS)
