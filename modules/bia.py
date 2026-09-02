@@ -62,7 +62,7 @@ def processar_com_chatgpt(pergunta, dados_imoveis):
         Responda de forma clara, profissional, usando padrão brasileiro (R$ 1.234,56).
         """
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-40-mini",
             messages=[
                 {"role": "system", "content": "Você é um assistente imobiliário especializado."},
                 {"role": "user", "content": prompt}
