@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import openai
+from openai import OpenAI
 
 def pagina_bia():
     st.title("💬 BIA - IA Imobiliária")
@@ -14,7 +14,9 @@ def pagina_bia():
         st.error("❌ Chave da OpenAI não configurada. Configure em Settings → Secrets do Streamlit.")
         return
     
-    openai.api_key = st.secrets["OPENAI_API_KEY"]
+    # Inicializa o cliente OpenAI (nova sintaxe)
+    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+    
     df = st.session_state.df_imoveis.copy()
     dados_resumidos = df.to_string(index=False)
     
@@ -36,11 +38,11 @@ def pagina_bia():
         
         with st.chat_message("assistant"):
             with st.spinner("Pensando..."):
-                resposta = processar_com_chatgpt(pergunta, dados_resumidos)
+                resposta = processar_com_chatgpt(client, pergunta, dados_resumidos)
                 st.markdown(resposta)
                 st.session_state.hist_bia.append({"role": "assistant", "content": resposta})
 
-def processar_com_chatgpt(pergunta, dados_imoveis):
+def processar_com_chatgpt(client, pergunta, dados_imoveis):
     try:
         prompt = f"""
 Você é a BIA, uma assistente imobiliária especializada.
@@ -51,7 +53,7 @@ Pergunta: "{pergunta}"
 
 Responda de forma clara, profissional, usando padrão brasileiro (R$ 1.234,56).
 """
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "Você é um assistente imobiliário especializado."},
