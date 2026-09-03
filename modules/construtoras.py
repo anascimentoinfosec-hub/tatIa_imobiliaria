@@ -93,7 +93,7 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                             }
                         CONSTRUTORAS[nome] = nova_construtora
                         salvar_construtoras(CONSTRUTORAS)
-                        st.toast(f"✅ Construtora '{nome}' adicionada!", icon="✅")
+                        st.success(f"✅ Construtora '{nome}' adicionada com sucesso!")
                         st.rerun()
                     except Exception as e:
                         st.error(f"❌ Erro: {str(e)}")
@@ -140,7 +140,7 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                             if construtora_edit in dados_atuais and produto in dados_atuais[construtora_edit]["produtos"]:
                                 del dados_atuais[construtora_edit]["produtos"][produto]
                                 salvar_construtoras(dados_atuais)
-                                st.toast(f"✅ Produto '{produto}' excluído!", icon="🗑️")
+                                st.success(f"✅ Produto '{produto}' excluído com sucesso!")
                                 st.rerun()
                         except Exception as e:
                             st.error(f"❌ Erro ao excluir: {str(e)}")
@@ -190,7 +190,7 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                             if key in st.session_state:
                                 del st.session_state[key]
                         
-                        st.toast(f"✅ Produto '{novo_produto}' adicionado com sucesso!", icon="✅")
+                        st.success(f"✅ Produto '{novo_produto}' adicionado com sucesso!")
                         st.rerun()
                 except json.JSONDecodeError:
                     st.error("❌ Erro no mapeamento: formato JSON inválido!")
@@ -240,7 +240,7 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                                     salvar_construtoras(dados_atuais)
                                     
                                     st.session_state['editando_produto'] = None
-                                    st.toast(f"✅ Produto '{novo_nome}' atualizado com sucesso!", icon="✅")
+                                    st.success(f"✅ Produto '{novo_nome}' atualizado com sucesso!")
                                     st.rerun()
                                 except Exception as e:
                                     st.error(f"❌ Erro ao atualizar: {str(e)}")
@@ -270,7 +270,7 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                     else:
                         cidades_atual.append(cidade_limpa)
                         salvar_cidades(cidades_atual)
-                        st.toast(f"✅ Cidade '{cidade_limpa}' adicionada!", icon="✅")
+                        st.success(f"✅ Cidade '{cidade_limpa}' adicionada com sucesso!")
                         st.rerun()
         
         st.markdown("---")
@@ -292,7 +292,7 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                         if st.button("🗑️ Remover", key=f"del_cidade_{cidade}"):
                             cidades_atual.remove(cidade)
                             salvar_cidades(cidades_atual)
-                            st.toast(f"✅ Cidade '{cidade}' removida!", icon="🗑️")
+                            st.success(f"✅ Cidade '{cidade}' removida com sucesso!")
                             st.rerun()
         else:
             st.info("Nenhuma cidade cadastrada.")

@@ -90,7 +90,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                                         df[col] = df[col].apply(converter_para_float)
                                 
                                 salvar_planilha_cache(construtora_selecionada, df, produto_selecionado)
-                                st.toast(f"✅ Planilha '{produto_selecionado}' carregada com sucesso!", icon="✅")
+                                st.success(f"✅ Planilha '{produto_selecionado}' carregada com sucesso!")
                                 st.rerun()
                         except Exception as e:
                             st.error(f"❌ Erro ao carregar a planilha: {str(e)}")
@@ -99,7 +99,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                 
                 if st.button("🗑️ Limpar cache", use_container_width=True):
                     excluir_planilha_cache(construtora_selecionada, produto_selecionado)
-                    st.toast(f"✅ Cache de '{produto_selecionado}' removido!", icon="🗑️")
+                    st.success(f"✅ Cache de '{produto_selecionado}' removido!")
                     st.rerun()
         else:
             st.info("🔒 As planilhas são gerenciadas pelo gerente. Você está visualizando a versão mais recente disponível.")
@@ -324,8 +324,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                         top_recomendacoes = df_filtrado.head(5)
                         
                         if not top_recomendacoes.empty:
-                            st.toast(f"✅ {len(top_recomendacoes)} oportunidades encontradas!", icon="🎯")
-                            st.success(f"✅ *{len(top_recomendacoes)} oportunidades encontradas para {nome_cliente}:*")
+                            st.success(f"✅ {len(top_recomendacoes)} oportunidades encontradas para {nome_cliente}:")
                             
                             for idx, row in top_recomendacoes.iterrows():
                                 with st.container():
