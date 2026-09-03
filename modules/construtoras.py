@@ -41,6 +41,17 @@ def obter_cidades_em_uso(construtoras):
     return cidades
 
 def pagina_gestao_construtoras(CONSTRUTORAS):
+    # Exibe mensagem persistente se houver
+    if 'mensagem' in st.session_state:
+        tipo, texto = st.session_state['mensagem']
+        if tipo == 'success':
+            st.success(texto)
+        elif tipo == 'error':
+            st.error(texto)
+        elif tipo == 'warning':
+            st.warning(texto)
+        del st.session_state['mensagem']
+
     st.title("🏗️ Gestão de Construtoras e Produtos")
     
     cidades = carregar_cidades()
@@ -70,13 +81,14 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
             opcoes_cidade = [""] + cidades
             cidade_selecionada = st.selectbox("📍 Cidade", opcoes_cidade)
             skiprows = st.number_input("Linhas para pular", min_value=0, value=2, step=1)
-            mapeamento_str = st.text_area("Mapeamento", placeholder='{"0": "UNIDADE", "1": "PREÇO"}', height=80)
+            mapeamento_str = st.text_area("Mapeamento (índice: nome)", placeholder='{"0": "UNIDADE", "1": "PREÇO"}', height=80)
             colunas_ordem_str = st.text_input("Colunas para exibir", placeholder="UNIDADE, PAVTO, PREÇO")
-            colunas_numericas_str = st.text_input("Colunas numéricas", placeholder="PREÇO, M²")
+            colunas_numericas_str = st.text_input("Colunas numéricas (apenas valores monetários)", placeholder="PREÇO, M²")
             
             if st.form_submit_button("➕ Adicionar Construtora", use_container_width=True):
                 if not nome:
-                    st.warning("⚠️ Digite o nome da construtora!")
+                    st.session_state['mensagem'] = ("warning", "⚠️ Digite o nome da construtora!")
+                    st.rerun()
                 else:
                     try:
                         nova_construtora = {"produtos": {}}
@@ -93,10 +105,11 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                             }
                         CONSTRUTORAS[nome] = nova_construtora
                         salvar_construtoras(CONSTRUTORAS)
-                        st.success(f"✅ Construtora '{nome}' adicionada com sucesso!")
+                        st.session_state['mensagem'] = ("success", f"✅ Construtora '{nome}' adicionada com sucesso!")
                         st.rerun()
                     except Exception as e:
-                        st.error(f"❌ Erro: {str(e)}")
+                        st.session_state['mensagem'] = ("error", f"❌ Erro: {str(e)}")
+                        st.rerun()
     
     with tabs[2]:
         st.markdown("### Gerenciar Produtos")
@@ -140,26 +153,62 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                             if construtora_edit in dados_atuais and produto in dados_atuais[construtora_edit]["produtos"]:
                                 del dados_atuais[construtora_edit]["produtos"][produto]
                                 salvar_construtoras(dados_atuais)
-                                st.success(f"✅ Produto '{produto}' excluído com sucesso!")
+                                st.session_state['mensagem'] = ("success", f"✅ Produto '{produto}' excluído com sucesso!")
                                 st.rerun()
                         except Exception as e:
-                            st.error(f"❌ Erro ao excluir: {str(e)}")
+                            st.session_state['mensagem'] = ("error", f"❌ Erro ao excluir: {str(e)}")
+                            st.rerun()
         else:
             st.info("Nenhum produto cadastrado para esta construtora.")
         
         st.markdown("---")
         st.markdown("#### Adicionar Produto")
         
-        novo_produto = st.text_input("Nome do Produto", placeholder="Ex: Torre A", key="novo_produto_nome")
-        nova_cidade = st.selectbox("📍 Cidade", [""] + cidades, key="nova_cidade_produto")
-        novo_skiprows = st.number_input("Skiprows", min_value=0, value=2, step=1, key="novo_produto_skiprows")
-        novo_mapeamento = st.text_area("Mapeamento (índice: nome)", placeholder='{"0": "UNIDADE", "1": "PAVTO", "2": "PREÇO"}', height=80, key="novo_produto_mapeamento")
-        novo_colunas_ordem = st.text_input("Colunas para exibir (separadas por vírgula)", placeholder="UNIDADE, PAVTO, PREÇO", key="novo_produto_colunas_ordem")
-        novo_colunas_numericas = st.text_input("Colunas numéricas (separadas por vírgula)", placeholder="PREÇO, M², ANDAR", key="novo_produto_colunas_numericas")
+        # Campos com placeholders e dicas
+        novo_produto = st.text_input(
+            "Nome do Produto",
+            placeholder="Ex: Torre A (sem caracteres especiais: / \\ : * ?)",
+            key="novo_produto_nome",
+            help="Use apenas letras, números e underline. Evite espaços e barras."
+        )
+        nova_cidade = st.selectbox(
+            "📍 Cidade",
+            [""] + cidades,
+            key="nova_cidade_produto",
+            help="Selecione a cidade onde o produto está localizado."
+        )
+        novo_skiprows = st.number_input(
+            "Skiprows (linhas para pular)",
+            min_value=0,
+            value=2,
+            step=1,
+            key="novo_produto_skiprows",
+            help="Número de linhas do cabeçalho que devem ser ignoradas na planilha."
+        )
+        novo_mapeamento = st.text_area(
+            "Mapeamento (índice: nome da coluna)",
+            placeholder='{"0": "UNIDADE", "1": "PAVTO", "2": "PREÇO"}',
+            height=80,
+            key="novo_produto_mapeamento",
+            help="Mapeie cada coluna da planilha (índice começando em 0) para o nome da coluna."
+        )
+        novo_colunas_ordem = st.text_input(
+            "Colunas para exibir (separadas por vírgula)",
+            placeholder="UNIDADE, PAVTO, PREÇO",
+            key="novo_produto_colunas_ordem",
+            help="Digite os nomes das colunas que deseja mostrar na tabela, na ordem desejada."
+        )
+        novo_colunas_numericas = st.text_input(
+            "Colunas numéricas (separadas por vírgula)",
+            placeholder="PREÇO, M², ANDAR",
+            key="novo_produto_colunas_numericas",
+            help="Informe apenas colunas que contenham valores numéricos (ex: PREÇO, AVALIAÇÃO, M²)."
+        )
         
         if st.button("💾 Salvar Produto", use_container_width=True, key="btn_salvar_produto"):
             if not novo_produto:
-                st.warning("⚠️ Digite o nome do produto!")
+                st.session_state['mensagem'] = ("warning", "⚠️ Digite o nome do produto!")
+                st.rerun()
             else:
                 try:
                     dados_atuais = carregar_construtoras()
@@ -172,7 +221,8 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                     colunas_numericas = [c.strip() for c in novo_colunas_numericas.split(',') if c.strip()]
                     
                     if novo_produto in produtos_atuais:
-                        st.error(f"❌ Produto '{novo_produto}' já existe!")
+                        st.session_state['mensagem'] = ("error", f"❌ Produto '{novo_produto}' já existe!")
+                        st.rerun()
                     else:
                         produtos_atuais[novo_produto] = {
                             "cidade": nova_cidade,
@@ -190,12 +240,14 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                             if key in st.session_state:
                                 del st.session_state[key]
                         
-                        st.success(f"✅ Produto '{novo_produto}' adicionado com sucesso!")
+                        st.session_state['mensagem'] = ("success", f"✅ Produto '{novo_produto}' adicionado com sucesso!")
                         st.rerun()
                 except json.JSONDecodeError:
-                    st.error("❌ Erro no mapeamento: formato JSON inválido!")
+                    st.session_state['mensagem'] = ("error", "❌ Erro no mapeamento: formato JSON inválido!")
+                    st.rerun()
                 except Exception as e:
-                    st.error(f"❌ Erro ao adicionar produto: {str(e)}")
+                    st.session_state['mensagem'] = ("error", f"❌ Erro ao adicionar produto: {str(e)}")
+                    st.rerun()
         
         if st.session_state.get('editando_produto'):
             produto_edit = st.session_state['editando_produto']
@@ -240,10 +292,11 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                                     salvar_construtoras(dados_atuais)
                                     
                                     st.session_state['editando_produto'] = None
-                                    st.success(f"✅ Produto '{novo_nome}' atualizado com sucesso!")
+                                    st.session_state['mensagem'] = ("success", f"✅ Produto '{novo_nome}' atualizado com sucesso!")
                                     st.rerun()
                                 except Exception as e:
-                                    st.error(f"❌ Erro ao atualizar: {str(e)}")
+                                    st.session_state['mensagem'] = ("error", f"❌ Erro ao atualizar: {str(e)}")
+                                    st.rerun()
                         with col2:
                             if st.form_submit_button("❌ Cancelar", use_container_width=True):
                                 st.session_state['editando_produto'] = None
@@ -262,15 +315,17 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
         with col_add2:
             if st.button("➕ Adicionar Cidade", use_container_width=True):
                 if not nova_cidade_input:
-                    st.warning("⚠️ Digite o nome da cidade!")
+                    st.session_state['mensagem'] = ("warning", "⚠️ Digite o nome da cidade!")
+                    st.rerun()
                 else:
                     cidade_limpa = nova_cidade_input.strip()
                     if cidade_limpa in cidades_atual:
-                        st.warning(f"⚠️ Cidade '{cidade_limpa}' já existe!")
+                        st.session_state['mensagem'] = ("warning", f"⚠️ Cidade '{cidade_limpa}' já existe!")
+                        st.rerun()
                     else:
                         cidades_atual.append(cidade_limpa)
                         salvar_cidades(cidades_atual)
-                        st.success(f"✅ Cidade '{cidade_limpa}' adicionada com sucesso!")
+                        st.session_state['mensagem'] = ("success", f"✅ Cidade '{cidade_limpa}' adicionada com sucesso!")
                         st.rerun()
         
         st.markdown("---")
@@ -292,7 +347,7 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                         if st.button("🗑️ Remover", key=f"del_cidade_{cidade}"):
                             cidades_atual.remove(cidade)
                             salvar_cidades(cidades_atual)
-                            st.success(f"✅ Cidade '{cidade}' removida com sucesso!")
+                            st.session_state['mensagem'] = ("success", f"✅ Cidade '{cidade}' removida com sucesso!")
                             st.rerun()
         else:
             st.info("Nenhuma cidade cadastrada.")
