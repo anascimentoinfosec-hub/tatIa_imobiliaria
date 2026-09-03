@@ -10,9 +10,7 @@ def formatar_valor_br(valor):
     """Formata um float no padrão BR: R$ 1.234,56"""
     if valor is None or pd.isna(valor):
         return "R$ 0,00"
-    # Formata no padrão US (vírgula milhar, ponto decimal)
     us = f"{valor:,.2f}"
-    # Troca vírgula por ponto e ponto por vírgula
     br = us.replace(',', 'X').replace('.', ',').replace('X', '.')
     return f"R$ {br}"
 
@@ -57,46 +55,51 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                 )
                 
                 if st.button("📥 Carregar", use_container_width=True):
-                    if uploaded_file is not None:
-                        config = produtos[produto_selecionado]
-                        df = ler_planilha(uploaded_file, config)
-                        if df is not None:
-                            colunas_monetarias = ['AVALIAÇÃO', 'PREÇO', 'VALOR', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
-                            for col in colunas_monetarias:
-                                if col in df.columns:
-                                    df[col] = df[col].astype(str).str.replace('RS', '', regex=False)
-                                    df[col] = df[col].str.replace('R$', '', regex=False)
-                                    df[col] = df[col].str.replace('R', '', regex=False)
-                                    df[col] = df[col].str.strip()
-                                    
-                                    if col == 'PREÇO':
-                                        df[col] = df[col].str.replace('.', '', regex=False)
-                                        df[col] = df[col].str.replace(',', '.', regex=False)
-                                        df[col] = df[col].str.extract(r'(\d+\.?\d*)')
-                                        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
-                                    else:
-                                        df[col] = df[col].str.replace('.', '', regex=False)
-                                        df[col] = df[col].str.replace(',', '.', regex=False)
-                                        df[col] = df[col].str.extract(r'(\d+\.?\d*)')
-                                        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
-                            
-                            for col in config.get("colunas_para_converter", []):
-                                if col in df.columns and col not in colunas_monetarias:
-                                    df[col] = df[col].apply(converter_para_float)
-                            
-                            salvar_planilha_cache(construtora_selecionada, df, produto_selecionado)
-                            st.success(f"✅ Planilha '{produto_selecionado}' carregada!")
-                            st.rerun()
-                        else:
-                            st.error("❌ Erro ao ler a planilha")
+                    if uploaded_file is None:
+                        st.warning("⚠️ Selecione um arquivo primeiro!")
                     else:
-                        st.warning("⚠️ Selecione uma planilha primeiro!")
+                        try:
+                            config = produtos[produto_selecionado]
+                            df = ler_planilha(uploaded_file, config)
+                            
+                            if df is None:
+                                st.error("❌ Erro ao ler a planilha. Verifique o formato e o mapeamento.")
+                            else:
+                                # Converte colunas monetárias
+                                colunas_monetarias = ['AVALIAÇÃO', 'PREÇO', 'VALOR', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
+                                for col in colunas_monetarias:
+                                    if col in df.columns:
+                                        df[col] = df[col].astype(str).str.replace('RS', '', regex=False)
+                                        df[col] = df[col].str.replace('R$', '', regex=False)
+                                        df[col] = df[col].str.replace('R', '', regex=False)
+                                        df[col] = df[col].str.strip()
+                                        
+                                        if col == 'PREÇO':
+                                            df[col] = df[col].str.replace('.', '', regex=False)
+                                            df[col] = df[col].str.replace(',', '.', regex=False)
+                                            df[col] = df[col].str.extract(r'(\d+\.?\d*)')
+                                            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                                        else:
+                                            df[col] = df[col].str.replace('.', '', regex=False)
+                                            df[col] = df[col].str.replace(',', '.', regex=False)
+                                            df[col] = df[col].str.extract(r'(\d+\.?\d*)')
+                                            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                                
+                                for col in config.get("colunas_para_converter", []):
+                                    if col in df.columns and col not in colunas_monetarias:
+                                        df[col] = df[col].apply(converter_para_float)
+                                
+                                salvar_planilha_cache(construtora_selecionada, df, produto_selecionado)
+                                st.toast(f"✅ Planilha '{produto_selecionado}' carregada com sucesso!", icon="✅")
+                                st.rerun()
+                        except Exception as e:
+                            st.error(f"❌ Erro ao carregar a planilha: {str(e)}")
                 
                 st.markdown("---")
                 
                 if st.button("🗑️ Limpar cache", use_container_width=True):
                     excluir_planilha_cache(construtora_selecionada, produto_selecionado)
-                    st.success(f"✅ Cache de '{produto_selecionado}' removido!")
+                    st.toast(f"✅ Cache de '{produto_selecionado}' removido!", icon="🗑️")
                     st.rerun()
         else:
             st.info("🔒 As planilhas são gerenciadas pelo gerente. Você está visualizando a versão mais recente disponível.")
@@ -236,18 +239,13 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         else:
             resultado_ordenado = resultado
         
-        # =========================================================
-        # FORMATAÇÃO BR - CRIA DATAFRAME DE EXIBIÇÃO
-        # =========================================================
         df_exibicao = resultado_ordenado.copy()
         
-        # Aplica formatação BR nas colunas monetárias
-        colunas_monetarias = ['PREÇO', 'VALOR', 'AVALIAÇÃO', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II', 'R$/m²']
-        for col in colunas_monetarias:
+        colunas_monetarias_exibicao = ['PREÇO', 'VALOR', 'AVALIAÇÃO', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II', 'R$/m²']
+        for col in colunas_monetarias_exibicao:
             if col in df_exibicao.columns:
                 df_exibicao[col] = df_exibicao[col].apply(formatar_valor_br)
         
-        # Formata M² (se existir) com 2 casas decimais e vírgula
         if "M²" in df_exibicao.columns:
             df_exibicao["M²"] = df_exibicao["M²"].apply(lambda x: f"{x:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.') if not pd.isna(x) else "")
         
@@ -294,79 +292,83 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
             tipo_preferencia = st.selectbox("🏠 Tipo de imóvel", ["Indiferente", "Apartamento", "Cobertura", "Garden"])
         
         if st.button("🔍 Analisar Oportunidades", use_container_width=True):
-            if nome_cliente:
-                with st.spinner("Analisando oportunidades para o cliente..."):
-                    df_filtrado = resultado.copy()
-                    
-                    if quartos_preferencia != "Indiferente":
-                        qtd = int(quartos_preferencia.replace("+", ""))
-                        col_quartos = None
-                        for c in ['QUARTOS', 'DORMITÓRIOS', 'TIPO']:
-                            if c in df_filtrado.columns:
-                                col_quartos = c
-                                break
-                        if col_quartos:
-                            df_filtrado = df_filtrado[df_filtrado[col_quartos].astype(str).str.contains(str(qtd))]
-                    
-                    if tipo_preferencia != "Indiferente" and "TIPOLOGIA" in df_filtrado.columns:
-                        df_filtrado = df_filtrado[df_filtrado["TIPOLOGIA"].astype(str).str.contains(tipo_preferencia, case=False, na=False)]
-                    
-                    parcela_maxima = renda_cliente * 0.3
-                    
-                    if preco_col in df_filtrado.columns:
-                        df_filtrado["parcela_estimada"] = df_filtrado[preco_col] * 0.005
-                        df_filtrado = df_filtrado[df_filtrado["parcela_estimada"] <= parcela_maxima]
-                        
-                        if 'R$/m²' in df_filtrado.columns:
-                            df_filtrado = df_filtrado.sort_values('R$/m²')
-                    
-                    top_recomendacoes = df_filtrado.head(5)
-                    
-                    if not top_recomendacoes.empty:
-                        st.success(f"✅ *{len(top_recomendacoes)} oportunidades encontradas para {nome_cliente}:*")
-                        
-                        for idx, row in top_recomendacoes.iterrows():
-                            with st.container():
-                                st.markdown("---")
-                                col_a, col_b = st.columns([3, 2])
-                                
-                                with col_a:
-                                    st.markdown(f"*🏢 Unidade {row['UNIDADE']}*")
-                                    if preco_col in row:
-                                        st.write(f"💰 *Preço:* {formatar_valor_br(row[preco_col])}")
-                                    if 'R$/m²' in row:
-                                        st.write(f"📊 *R$/m²:* {formatar_valor_br(row['R$/m²'])}")
-                                    if 'parcela_estimada' in row:
-                                        st.write(f"📆 *Parcela estimada:* {formatar_valor_br(row['parcela_estimada'])}")
-                                    if 'TIPOLOGIA' in row:
-                                        st.write(f"🏠 *Tipo:* {row['TIPOLOGIA']}")
-                                
-                                with col_b:
-                                    entrada_percentual = st.slider(
-                                        f"Entrada (%) - Unidade {row['UNIDADE']}",
-                                        min_value=20,
-                                        max_value=50,
-                                        value=30,
-                                        step=5,
-                                        key=f"entrada_{idx}"
-                                    )
-                                    valor_imovel = row[preco_col] if preco_col in row else 0
-                                    entrada_valor = valor_imovel * (entrada_percentual / 100)
-                                    financiado = valor_imovel - entrada_valor
-                                    parcela_media = financiado * (1 + 0.10/12) / 420
-                                    
-                                    st.write(f"💵 *Entrada:* {formatar_valor_br(entrada_valor)}")
-                                    st.write(f"🏦 *Financiado:* {formatar_valor_br(financiado)}")
-                                    st.write(f"📆 *Parcela:* {formatar_valor_br(parcela_media)}")
-                                    
-                                    if st.button(f"💬 Perguntar sobre esta unidade", key=f"perguntar_{idx}"):
-                                        st.session_state['pergunta_imovel'] = row['UNIDADE']
-                                        st.session_state['pergunta_valor'] = row[preco_col] if preco_col in row else 0
-                                        st.info("💬 Vá até o chat da BIA para perguntar sobre este imóvel!")
-                    else:
-                        st.warning(f"⚠️ Nenhuma oportunidade encontrada para {nome_cliente} com os critérios informados.")
-            else:
+            if not nome_cliente:
                 st.warning("⚠️ Por favor, informe o nome do cliente.")
+            else:
+                with st.spinner("Analisando oportunidades para o cliente..."):
+                    try:
+                        df_filtrado = resultado.copy()
+                        
+                        if quartos_preferencia != "Indiferente":
+                            qtd = int(quartos_preferencia.replace("+", ""))
+                            col_quartos = None
+                            for c in ['QUARTOS', 'DORMITÓRIOS', 'TIPO']:
+                                if c in df_filtrado.columns:
+                                    col_quartos = c
+                                    break
+                            if col_quartos:
+                                df_filtrado = df_filtrado[df_filtrado[col_quartos].astype(str).str.contains(str(qtd))]
+                        
+                        if tipo_preferencia != "Indiferente" and "TIPOLOGIA" in df_filtrado.columns:
+                            df_filtrado = df_filtrado[df_filtrado["TIPOLOGIA"].astype(str).str.contains(tipo_preferencia, case=False, na=False)]
+                        
+                        parcela_maxima = renda_cliente * 0.3
+                        
+                        if preco_col in df_filtrado.columns:
+                            df_filtrado["parcela_estimada"] = df_filtrado[preco_col] * 0.005
+                            df_filtrado = df_filtrado[df_filtrado["parcela_estimada"] <= parcela_maxima]
+                            
+                            if 'R$/m²' in df_filtrado.columns:
+                                df_filtrado = df_filtrado.sort_values('R$/m²')
+                        
+                        top_recomendacoes = df_filtrado.head(5)
+                        
+                        if not top_recomendacoes.empty:
+                            st.toast(f"✅ {len(top_recomendacoes)} oportunidades encontradas!", icon="🎯")
+                            st.success(f"✅ *{len(top_recomendacoes)} oportunidades encontradas para {nome_cliente}:*")
+                            
+                            for idx, row in top_recomendacoes.iterrows():
+                                with st.container():
+                                    st.markdown("---")
+                                    col_a, col_b = st.columns([3, 2])
+                                    
+                                    with col_a:
+                                        st.markdown(f"*🏢 Unidade {row['UNIDADE']}*")
+                                        if preco_col in row:
+                                            st.write(f"💰 *Preço:* {formatar_valor_br(row[preco_col])}")
+                                        if 'R$/m²' in row:
+                                            st.write(f"📊 *R$/m²:* {formatar_valor_br(row['R$/m²'])}")
+                                        if 'parcela_estimada' in row:
+                                            st.write(f"📆 *Parcela estimada:* {formatar_valor_br(row['parcela_estimada'])}")
+                                        if 'TIPOLOGIA' in row:
+                                            st.write(f"🏠 *Tipo:* {row['TIPOLOGIA']}")
+                                    
+                                    with col_b:
+                                        entrada_percentual = st.slider(
+                                            f"Entrada (%) - Unidade {row['UNIDADE']}",
+                                            min_value=20,
+                                            max_value=50,
+                                            value=30,
+                                            step=5,
+                                            key=f"entrada_{idx}"
+                                        )
+                                        valor_imovel = row[preco_col] if preco_col in row else 0
+                                        entrada_valor = valor_imovel * (entrada_percentual / 100)
+                                        financiado = valor_imovel - entrada_valor
+                                        parcela_media = financiado * (1 + 0.10/12) / 420
+                                        
+                                        st.write(f"💵 *Entrada:* {formatar_valor_br(entrada_valor)}")
+                                        st.write(f"🏦 *Financiado:* {formatar_valor_br(financiado)}")
+                                        st.write(f"📆 *Parcela:* {formatar_valor_br(parcela_media)}")
+                                        
+                                        if st.button(f"💬 Perguntar sobre esta unidade", key=f"perguntar_{idx}"):
+                                            st.session_state['pergunta_imovel'] = row['UNIDADE']
+                                            st.session_state['pergunta_valor'] = row[preco_col] if preco_col in row else 0
+                                            st.info("💬 Vá até o chat da BIA para perguntar sobre este imóvel!")
+                        else:
+                            st.warning(f"⚠️ Nenhuma oportunidade encontrada para {nome_cliente} com os critérios informados.")
+                    except Exception as e:
+                        st.error(f"❌ Erro ao analisar oportunidades: {str(e)}")
         
         st.markdown("---")
         st.markdown("### 💰 Ajuste de Entrada")
