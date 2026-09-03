@@ -9,7 +9,6 @@ PASTA_PLANILHAS = "dados/planilhas"
 
 def _get_arquivo_cache(construtora: str, produto: str = None):
     """Retorna o caminho do arquivo de cache com nome seguro"""
-    # Substitui caracteres problemáticos por underline
     construtora_limpa = re.sub(r'[\\/*?:"<>|]', '_', construtora)
     if produto:
         produto_limpo = re.sub(r'[\\/*?:"<>|]', '_', produto)

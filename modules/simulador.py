@@ -7,7 +7,6 @@ from modules.recomendacoes import recomendar_imoveis
 from modules.construtoras import carregar_cidades
 
 def formatar_valor_br(valor):
-    """Formata um float no padrão BR: R$ 1.234,56"""
     if valor is None or pd.isna(valor):
         return "R$ 0,00"
     us = f"{valor:,.2f}"
@@ -15,17 +14,6 @@ def formatar_valor_br(valor):
     return f"R$ {br}"
 
 def pagina_simulador(CONSTRUTORAS, USUARIOS):
-    # Exibe mensagem persistente se houver (após rerun)
-    if 'mensagem' in st.session_state:
-        tipo, texto = st.session_state['mensagem']
-        if tipo == 'success':
-            st.success(texto)
-        elif tipo == 'error':
-            st.error(texto)
-        elif tipo == 'warning':
-            st.warning(texto)
-        del st.session_state['mensagem']
-
     st.title("📊 Simulador de Crédito")
     
     usuario_logado = st.session_state.get("usuario_logado")
@@ -67,16 +55,14 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                 
                 if st.button("📥 Carregar", use_container_width=True):
                     if uploaded_file is None:
-                        st.session_state['mensagem'] = ("warning", "⚠️ Selecione um arquivo primeiro!")
-                        st.rerun()
+                        st.warning("⚠️ Selecione um arquivo primeiro!")
                     else:
                         try:
                             config = produtos[produto_selecionado]
                             df = ler_planilha(uploaded_file, config)
                             
                             if df is None:
-                                st.session_state['mensagem'] = ("error", "❌ Erro ao ler a planilha. Verifique o formato e o mapeamento.")
-                                st.rerun()
+                                st.error("❌ Erro ao ler a planilha. Verifique o formato e o mapeamento.")
                             else:
                                 # Converte colunas monetárias
                                 colunas_monetarias = ['AVALIAÇÃO', 'PREÇO', 'VALOR', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
@@ -103,18 +89,15 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                                         df[col] = df[col].apply(converter_para_float)
                                 
                                 salvar_planilha_cache(construtora_selecionada, df, produto_selecionado)
-                                st.session_state['mensagem'] = ("success", f"✅ Planilha '{produto_selecionado}' carregada com sucesso!")
-                                st.rerun()
+                                st.success(f"✅ Planilha '{produto_selecionado}' carregada com sucesso!")
                         except Exception as e:
-                            st.session_state['mensagem'] = ("error", f"❌ Erro ao carregar a planilha: {str(e)}")
-                            st.rerun()
+                            st.error(f"❌ Erro ao carregar a planilha: {str(e)}")
                 
                 st.markdown("---")
                 
                 if st.button("🗑️ Limpar cache", use_container_width=True):
                     excluir_planilha_cache(construtora_selecionada, produto_selecionado)
-                    st.session_state['mensagem'] = ("success", f"✅ Cache de '{produto_selecionado}' removido!")
-                    st.rerun()
+                    st.success(f"✅ Cache de '{produto_selecionado}' removido!")
         else:
             st.info("🔒 As planilhas são gerenciadas pelo gerente. Você está visualizando a versão mais recente disponível.")
         
@@ -287,16 +270,14 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                 min_value=0.0,
                 value=5000.0,
                 step=500.0,
-                format="%.2f",
-                help="Informe a renda líquida mensal do cliente."
+                format="%.2f"
             )
             entrada_cliente = st.number_input(
                 "🏦 Valor disponível para entrada (R$)",
                 min_value=0.0,
                 value=100000.0,
                 step=10000.0,
-                format="%.2f",
-                help="Valor que o cliente pode dar de entrada."
+                format="%.2f"
             )
         
         with col_cliente2:
@@ -309,10 +290,9 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         
         if st.button("🔍 Analisar Oportunidades", use_container_width=True):
             if not nome_cliente:
-                st.session_state['mensagem'] = ("warning", "⚠️ Por favor, informe o nome do cliente.")
-                st.rerun()
+                st.warning("⚠️ Por favor, informe o nome do cliente.")
             else:
-                with st.spinner("Analisando oportunidades para o cliente..."):
+                with st.spinner("Analisando oportunidades..."):
                     try:
                         df_filtrado = resultado.copy()
                         
@@ -334,33 +314,51 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                         if preco_col in df_filtrado.columns:
                             df_filtrado["parcela_estimada"] = df_filtrado[preco_col] * 0.005
                             df_filtrado = df_filtrado[df_filtrado["parcela_estimada"] <= parcela_maxima]
-                            
                             if 'R$/m²' in df_filtrado.columns:
                                 df_filtrado = df_filtrado.sort_values('R$/m²')
                         
                         top_recomendacoes = df_filtrado.head(5)
                         
                         if not top_recomendacoes.empty:
-                            st.session_state['mensagem'] = ("success", f"✅ {len(top_recomendacoes)} oportunidades encontradas para {nome_cliente}!")
-                            st.rerun()
+                            st.success(f"✅ {len(top_recomendacoes)} oportunidades encontradas para {nome_cliente}!")
+                            for idx, row in top_recomendacoes.iterrows():
+                                with st.container():
+                                    st.markdown("---")
+                                    col_a, col_b = st.columns([3, 2])
+                                    with col_a:
+                                        st.markdown(f"*🏢 Unidade {row['UNIDADE']}*")
+                                        if preco_col in row:
+                                            st.write(f"💰 *Preço:* {formatar_valor_br(row[preco_col])}")
+                                        if 'R$/m²' in row:
+                                            st.write(f"📊 *R$/m²:* {formatar_valor_br(row['R$/m²'])}")
+                                        if 'parcela_estimada' in row:
+                                            st.write(f"📆 *Parcela estimada:* {formatar_valor_br(row['parcela_estimada'])}")
+                                        if 'TIPOLOGIA' in row:
+                                            st.write(f"🏠 *Tipo:* {row['TIPOLOGIA']}")
+                                    with col_b:
+                                        entrada_percentual = st.slider(
+                                            f"Entrada (%) - Unidade {row['UNIDADE']}",
+                                            min_value=20, max_value=50, value=30, step=5, key=f"entrada_{idx}"
+                                        )
+                                        valor_imovel = row[preco_col] if preco_col in row else 0
+                                        entrada_valor = valor_imovel * (entrada_percentual / 100)
+                                        financiado = valor_imovel - entrada_valor
+                                        parcela_media = financiado * (1 + 0.10/12) / 420
+                                        st.write(f"💵 *Entrada:* {formatar_valor_br(entrada_valor)}")
+                                        st.write(f"🏦 *Financiado:* {formatar_valor_br(financiado)}")
+                                        st.write(f"📆 *Parcela:* {formatar_valor_br(parcela_media)}")
                         else:
-                            st.session_state['mensagem'] = ("warning", f"⚠️ Nenhuma oportunidade encontrada para {nome_cliente} com os critérios informados.")
-                            st.rerun()
+                            st.warning(f"⚠️ Nenhuma oportunidade encontrada para {nome_cliente}.")
                     except Exception as e:
-                        st.session_state['mensagem'] = ("error", f"❌ Erro ao analisar oportunidades: {str(e)}")
-                        st.rerun()
+                        st.error(f"❌ Erro ao analisar oportunidades: {str(e)}")
         
         st.markdown("---")
         st.markdown("### 💰 Ajuste de Entrada")
-        st.caption("Ajuste o percentual de entrada para simular diferentes cenários de financiamento.")
+        st.caption("Ajuste o percentual de entrada para simular diferentes cenários.")
         
         entrada_percentual_global = st.slider(
             "Percentual de entrada (%)",
-            min_value=20,
-            max_value=50,
-            value=30,
-            step=5,
-            key="entrada_global"
+            min_value=20, max_value=50, value=30, step=5, key="entrada_global"
         )
         
         if preco_col in df.columns and not df.empty:
@@ -368,15 +366,11 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
             entrada_media = valor_medio * (entrada_percentual_global / 100)
             financiado_medio = valor_medio - entrada_media
             parcela_media_global = financiado_medio * (1 + 0.10/12) / 420
-            
             st.markdown("*📊 Simulação média com base nos imóveis disponíveis:*")
             col_s1, col_s2, col_s3 = st.columns(3)
-            with col_s1:
-                st.metric("💰 Valor médio", formatar_valor_br(valor_medio))
-            with col_s2:
-                st.metric(f"💵 Entrada ({entrada_percentual_global}%)", formatar_valor_br(entrada_media))
-            with col_s3:
-                st.metric("📆 Parcela média", formatar_valor_br(parcela_media_global))
+            col_s1.metric("💰 Valor médio", formatar_valor_br(valor_medio))
+            col_s2.metric(f"💵 Entrada ({entrada_percentual_global}%)", formatar_valor_br(entrada_media))
+            col_s3.metric("📆 Parcela média", formatar_valor_br(parcela_media_global))
         
         st.markdown("---")
         if st.button("💬 Perguntar à BIA (IA Imobiliária)", use_container_width=True):
