@@ -28,7 +28,7 @@ def gerar_resumo_cliente(nome, renda, entrada, bairro, top_imoveis):
     linhas.append("")
     linhas.append("━" * 40)
     linhas.append("")
-    if top_imoveis and not top_imoveis.empty:
+    if top_imoveis is not None and not top_imoveis.empty:
         linhas.append("🏆 TOP 3 OPORTUNIDADES")
         linhas.append("")
         for i, (idx, row) in enumerate(top_imoveis.head(3).iterrows()):
@@ -102,7 +102,6 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                             if df is None:
                                 st.error("❌ Erro ao ler a planilha. Verifique o formato e o mapeamento.")
                             else:
-                                # Converte colunas monetárias
                                 colunas_monetarias = ['AVALIAÇÃO', 'PREÇO', 'VALOR', 'DESCONTO', '1ª AVALIAÇÃO OÁSIS II']
                                 for col in colunas_monetarias:
                                     if col in df.columns:
@@ -140,7 +139,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
             st.info("🔒 As planilhas são gerenciadas pelo gerente. Você está visualizando a versão mais recente disponível.")
         
         st.markdown("---")
-        st.caption("Versão 4.3 - Compartilhamento WhatsApp")
+        st.caption("Versão 4.4 - Compartilhamento WhatsApp")
     
     if not produto_selecionado:
         st.warning("⚠️ Selecione um produto para visualizar os dados.")
@@ -358,17 +357,19 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                         
                         top_recomendacoes = df_filtrado.head(5)
                         
+                        # =========================================================
+                        # SALVA NA SESSÃO PARA COMPARTILHAMENTO
+                        # =========================================================
+                        st.session_state['top_recomendacoes'] = top_recomendacoes
+                        st.session_state['cliente_atual'] = {
+                            'nome': nome_cliente,
+                            'renda': renda_cliente,
+                            'entrada': entrada_cliente,
+                            'bairro': bairro_preferencia
+                        }
+                        
                         if not top_recomendacoes.empty:
                             st.success(f"✅ {len(top_recomendacoes)} oportunidades encontradas para {nome_cliente}!")
-                            
-                            # Armazena as recomendações na sessão para compartilhamento
-                            st.session_state['top_recomendacoes'] = top_recomendacoes
-                            st.session_state['cliente_atual'] = {
-                                'nome': nome_cliente,
-                                'renda': renda_cliente,
-                                'entrada': entrada_cliente,
-                                'bairro': bairro_preferencia
-                            }
                             
                             for idx, row in top_recomendacoes.iterrows():
                                 with st.container():
@@ -404,30 +405,31 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         # =========================================================
         # BOTÕES DE COMPARTILHAMENTO (WhatsApp + Copiar)
         # =========================================================
-        if 'top_recomendacoes' in st.session_state and st.session_state['top_recomendacoes'] is not None:
+        if 'top_recomendacoes' in st.session_state and st.session_state['top_recomendacoes'] is not None and not st.session_state['top_recomendacoes'].empty:
             top = st.session_state['top_recomendacoes']
             cliente = st.session_state['cliente_atual']
             
             st.markdown("---")
             st.markdown("### 📤 Compartilhar Simulação")
             
+            resumo = gerar_resumo_cliente(
+                cliente['nome'],
+                cliente['renda'],
+                cliente['entrada'],
+                cliente['bairro'],
+                top
+            )
+            
             col_share1, col_share2 = st.columns(2)
             
             with col_share1:
-                # Gera resumo
-                resumo = gerar_resumo_cliente(
-                    cliente['nome'],
-                    cliente['renda'],
-                    cliente['entrada'],
-                    cliente['bairro'],
-                    top
-                )
-                
                 # Botão Copiar Resumo (com JavaScript)
+                # Escapa caracteres especiais para o JavaScript
+                resumo_js = resumo.replace('\\', '\\\\').replace('`', '\\`').replace('$', '\\$')
                 copiar_js = f"""
                 <script>
                 function copiarResumo() {{
-                    const texto = `{resumo.replace('`', '\\`').replace('$', '\\$')}`;
+                    const texto = `{resumo_js}`;
                     navigator.clipboard.writeText(texto).then(function() {{
                         alert('✅ Resumo copiado para a área de transferência!');
                     }}, function(err) {{
