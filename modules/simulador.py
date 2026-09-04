@@ -117,7 +117,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         else:
             st.info("🔒 As planilhas são gerenciadas pelo gerente.")
         st.markdown("---")
-        st.caption("Versão 4.5 - Compartilhamento integrado")
+        st.caption("Versão 4.6 - Compartilhamento definitivo")
     
     if not produto_selecionado:
         st.warning("⚠️ Selecione um produto para visualizar os dados.")
@@ -274,80 +274,94 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                                 df_filtrado = df_filtrado.sort_values('R$/m²')
                         top_recomendacoes = df_filtrado.head(5)
                         
+                        # =========================================================
+                        # SALVA NO SESSION_STATE PARA OS BOTÕES DE COMPARTILHAMENTO
+                        # =========================================================
+                        st.session_state['top_recomendacoes'] = top_recomendacoes
+                        st.session_state['cliente_atual'] = {
+                            'nome': nome_cliente,
+                            'renda': renda_cliente,
+                            'entrada': entrada_cliente,
+                            'bairro': bairro_preferencia
+                        }
+                        
                         if not top_recomendacoes.empty:
                             st.success(f"✅ {len(top_recomendacoes)} oportunidades encontradas para {nome_cliente}!")
-                            # Exibe as recomendações
                             for idx, row in top_recomendacoes.iterrows():
                                 with st.container():
                                     st.markdown("---")
                                     col_a, col_b = st.columns([3, 2])
                                     with col_a:
-                                        st.markdown(f"**🏢 Unidade {row['UNIDADE']}**")
+                                        st.markdown(f"*🏢 Unidade {row['UNIDADE']}*")
                                         if preco_col in row:
-                                            st.write(f"💰 **Preço:** {formatar_valor_br(row[preco_col])}")
+                                            st.write(f"💰 *Preço:* {formatar_valor_br(row[preco_col])}")
                                         if 'R$/m²' in row:
-                                            st.write(f"📊 **R$/m²:** {formatar_valor_br(row['R$/m²'])}")
+                                            st.write(f"📊 *R$/m²:* {formatar_valor_br(row['R$/m²'])}")
                                         if 'parcela_estimada' in row:
-                                            st.write(f"📆 **Parcela estimada:** {formatar_valor_br(row['parcela_estimada'])}")
+                                            st.write(f"📆 *Parcela estimada:* {formatar_valor_br(row['parcela_estimada'])}")
                                         if 'TIPOLOGIA' in row:
-                                            st.write(f"🏠 **Tipo:** {row['TIPOLOGIA']}")
+                                            st.write(f"🏠 *Tipo:* {row['TIPOLOGIA']}")
                                     with col_b:
                                         entrada_percentual = st.slider(f"Entrada (%) - Unidade {row['UNIDADE']}", min_value=20, max_value=50, value=30, step=5, key=f"entrada_{idx}")
                                         valor_imovel = row[preco_col] if preco_col in row else 0
                                         entrada_valor = valor_imovel * (entrada_percentual / 100)
                                         financiado = valor_imovel - entrada_valor
                                         parcela_media = financiado * (1 + 0.10/12) / 420
-                                        st.write(f"💵 **Entrada:** {formatar_valor_br(entrada_valor)}")
-                                        st.write(f"🏦 **Financiado:** {formatar_valor_br(financiado)}")
-                                        st.write(f"📆 **Parcela:** {formatar_valor_br(parcela_media)}")
-                            
-                            # =========================================================
-                            # BOTÕES DE COMPARTILHAMENTO (AQUI, GARANTIDO)
-                            # =========================================================
-                            st.markdown("---")
-                            st.markdown("### 📤 Compartilhar Simulação")
-                            
-                            resumo = gerar_resumo_cliente(
-                                nome_cliente,
-                                renda_cliente,
-                                entrada_cliente,
-                                bairro_preferencia,
-                                top_recomendacoes
-                            )
-                            
-                            col_share1, col_share2 = st.columns(2)
-                            
-                            with col_share1:
-                                resumo_js = resumo.replace('\\', '\\\\').replace('`', '\\`').replace('$', '\\$')
-                                copiar_js = f"""
-                                <script>
-                                function copiarResumo() {{
-                                    const texto = `{resumo_js}`;
-                                    navigator.clipboard.writeText(texto).then(function() {{
-                                        alert('✅ Resumo copiado para a área de transferência!');
-                                    }}, function(err) {{
-                                        alert('❌ Erro ao copiar: ' + err);
-                                    }});
-                                }}
-                                </script>
-                                <button onclick="copiarResumo()" style="background-color:#1a73e8; color:white; border:none; border-radius:8px; padding:8px 20px; font-weight:600; width:100%; cursor:pointer;">
-                                    📋 Copiar Resumo
-                                </button>
-                                """
-                                st.components.v1.html(copiar_js, height=50)
-                            
-                            with col_share2:
-                                mensagem_whatsapp = resumo.replace('\n', '%0A')
-                                link_whatsapp = f"https://wa.me/?text={mensagem_whatsapp}"
-                                st.markdown(f"""
-                                <a href="{link_whatsapp}" target="_blank" style="display:block; background-color:#25D366; color:white; border:none; border-radius:8px; padding:8px 20px; font-weight:600; text-align:center; text-decoration:none; width:100%;">
-                                    📱 Enviar WhatsApp
-                                </a>
-                                """, unsafe_allow_html=True)
+                                        st.write(f"💵 *Entrada:* {formatar_valor_br(entrada_valor)}")
+                                        st.write(f"🏦 *Financiado:* {formatar_valor_br(financiado)}")
+                                        st.write(f"📆 *Parcela:* {formatar_valor_br(parcela_media)}")
                         else:
                             st.warning(f"⚠️ Nenhuma oportunidade encontrada para {nome_cliente}.")
                     except Exception as e:
                         st.error(f"❌ Erro ao analisar oportunidades: {str(e)}")
+    
+    # =========================================================
+    # BOTÕES DE COMPARTILHAMENTO (FORA DO BOTÃO ANALISAR)
+    # =========================================================
+    if 'top_recomendacoes' in st.session_state and st.session_state['top_recomendacoes'] is not None and not st.session_state['top_recomendacoes'].empty:
+        st.markdown("---")
+        st.markdown("### 📤 Compartilhar Simulação")
+        
+        top = st.session_state['top_recomendacoes']
+        cliente = st.session_state['cliente_atual']
+        
+        resumo = gerar_resumo_cliente(
+            cliente['nome'],
+            cliente['renda'],
+            cliente['entrada'],
+            cliente['bairro'],
+            top
+        )
+        
+        col_share1, col_share2 = st.columns(2)
+        
+        with col_share1:
+            resumo_js = resumo.replace('\\', '\\\\').replace('', '\\').replace('$', '\\$')
+            copiar_js = f"""
+            <script>
+            function copiarResumo() {{
+                const texto = {resumo_js};
+                navigator.clipboard.writeText(texto).then(function() {{
+                    alert('✅ Resumo copiado para a área de transferência!');
+                }}, function(err) {{
+                    alert('❌ Erro ao copiar: ' + err);
+                }});
+            }}
+            </script>
+            <button onclick="copiarResumo()" style="background-color:#1a73e8; color:white; border:none; border-radius:8px; padding:8px 20px; font-weight:600; width:100%; cursor:pointer;">
+                📋 Copiar Resumo
+            </button>
+            """
+            st.components.v1.html(copiar_js, height=50)
+        
+        with col_share2:
+            mensagem_whatsapp = resumo.replace('\n', '%0A')
+            link_whatsapp = f"https://wa.me/?text={mensagem_whatsapp}"
+            st.markdown(f"""
+            <a href="{link_whatsapp}" target="_blank" style="display:block; background-color:#25D366; color:white; border:none; border-radius:8px; padding:8px 20px; font-weight:600; text-align:center; text-decoration:none; width:100%;">
+                📱 Enviar WhatsApp
+            </a>
+            """, unsafe_allow_html=True)
     
     st.markdown("---")
     st.markdown("### 💰 Ajuste de Entrada")
@@ -358,7 +372,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         entrada_media = valor_medio * (entrada_percentual_global / 100)
         financiado_medio = valor_medio - entrada_media
         parcela_media_global = financiado_medio * (1 + 0.10/12) / 420
-        st.markdown("**📊 Simulação média com base nos imóveis disponíveis:**")
+        st.markdown("*📊 Simulação média com base nos imóveis disponíveis:*")
         col_s1, col_s2, col_s3 = st.columns(3)
         col_s1.metric("💰 Valor médio", formatar_valor_br(valor_medio))
         col_s2.metric(f"💵 Entrada ({entrada_percentual_global}%)", formatar_valor_br(entrada_media))
