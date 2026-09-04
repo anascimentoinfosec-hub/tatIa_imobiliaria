@@ -16,150 +16,167 @@ st.set_page_config(
 )
 
 # =========================================================
-# CSS PERSONALIZADO (VISUAL MODERNO)
+# CSS PERSONALIZADO – PALETA MODERNA COM CONTRASTE
 # =========================================================
 st.markdown("""
 <style>
-    /* Fundo geral */
+    /* Fundo principal */
     .stApp {
-        background-color: #f8f9fa;
+        background-color: #eef2f7 !important;
+    }
+    
+    /* Sidebar */
+    .css-1d391kg, .st-emotion-cache-1d391kg {
+        background-color: #ffffff !important;
+        border-right: 1px solid #d0d7de !important;
     }
     
     /* Cards modernos */
     .card-moderno {
-        background-color: white;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        border: 1px solid #e9ecef;
-        margin-bottom: 16px;
-        transition: 0.2s;
+        background-color: #ffffff !important;
+        border-radius: 12px !important;
+        padding: 20px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+        border: 1px solid #e2e8f0 !important;
+        margin-bottom: 16px !important;
     }
     .card-moderno:hover {
-        box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.10) !important;
     }
     
-    /* Botões */
-    .stButton button {
-        border-radius: 8px;
-        font-weight: 500;
-        transition: 0.2s;
-        border: none;
-        padding: 8px 20px;
-    }
-    .stButton button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    .stButton button:active {
-        transform: translateY(0px);
-    }
-    
-    /* Botão primário (salvar, carregar) */
+    /* Botão primário (salvar, carregar, analisar) */
     .stButton button[kind="primary"] {
-        background-color: #1a73e8;
-        color: white;
+        background-color: #1a73e8 !important;
+        color: white !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        padding: 8px 24px !important;
+        border: none !important;
+        box-shadow: 0 2px 4px rgba(26,115,232,0.3) !important;
+        transition: 0.2s !important;
     }
     .stButton button[kind="primary"]:hover {
-        background-color: #1557b0;
+        background-color: #1557b0 !important;
+        box-shadow: 0 4px 12px rgba(26,115,232,0.4) !important;
+        transform: translateY(-1px) !important;
+    }
+    .stButton button[kind="primary"]:active {
+        transform: translateY(0px) !important;
+    }
+    
+    /* Botão secundário (cancelar, limpar, etc) */
+    .stButton button:not([kind="primary"]) {
+        background-color: #f1f3f4 !important;
+        color: #1a73e8 !important;
+        border: 1px solid #dadce0 !important;
+        border-radius: 8px !important;
+        font-weight: 500 !important;
+        padding: 8px 20px !important;
+        transition: 0.2s !important;
+    }
+    .stButton button:not([kind="primary"]):hover {
+        background-color: #e8eaed !important;
+        border-color: #1a73e8 !important;
     }
     
     /* Títulos */
     h1, h2, h3 {
-        color: #1a237e;
-        font-weight: 600;
+        color: #0d2b3e !important;
+        font-weight: 600 !important;
     }
     h1 {
-        font-size: 2.2rem;
-        border-bottom: 3px solid #1a73e8;
-        padding-bottom: 8px;
-        display: inline-block;
-    }
-    
-    /* Sidebar */
-    .css-1d391kg {
-        background-color: #ffffff;
-        border-right: 1px solid #e9ecef;
-    }
-    .css-1d391kg .st-emotion-cache-1wivap2 {
-        padding: 2rem 1rem;
+        font-size: 2.2rem !important;
+        border-bottom: 3px solid #1a73e8 !important;
+        padding-bottom: 8px !important;
+        display: inline-block !important;
     }
     
     /* Inputs */
     .stTextInput input, .stSelectbox select, .stNumberInput input {
-        border-radius: 8px;
-        border: 1px solid #ced4da;
-        padding: 8px 12px;
+        border-radius: 8px !important;
+        border: 1px solid #d0d7de !important;
+        padding: 8px 12px !important;
+        background-color: #ffffff !important;
+        transition: 0.2s !important;
     }
     .stTextInput input:focus, .stSelectbox select:focus, .stNumberInput input:focus {
-        border-color: #1a73e8;
-        box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
+        border-color: #1a73e8 !important;
+        box-shadow: 0 0 0 3px rgba(26,115,232,0.15) !important;
     }
     
-    /* Dataframe (tabelas) */
+    /* Tabelas (Dataframe) */
     .stDataFrame {
-        border-radius: 8px;
-        overflow: hidden;
-        border: 1px solid #e9ecef;
+        border-radius: 8px !important;
+        overflow: hidden !important;
+        border: 1px solid #e2e8f0 !important;
     }
     .stDataFrame thead tr th {
-        background-color: #f1f3f5 !important;
+        background-color: #f1f5f9 !important;
         font-weight: 600 !important;
-        color: #202124 !important;
+        color: #0d2b3e !important;
         padding: 10px 12px !important;
     }
     .stDataFrame tbody tr:hover {
-        background-color: #f8f9fa !important;
+        background-color: #f8fafc !important;
     }
     
-    /* Métricas */
+    /* Métricas (cards) */
     .stMetric {
-        background-color: white;
-        border-radius: 12px;
-        padding: 16px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        border: 1px solid #e9ecef;
-        text-align: center;
+        background-color: #e8f0fe !important;
+        border-radius: 12px !important;
+        padding: 16px !important;
+        border-left: 4px solid #1a73e8 !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.04) !important;
     }
     .stMetric .stMetric-label {
-        font-size: 14px;
-        color: #5f6368;
-        font-weight: 500;
+        font-size: 14px !important;
+        color: #1e293b !important;
+        font-weight: 500 !important;
     }
     .stMetric .stMetric-value {
-        font-size: 28px;
-        font-weight: 700;
-        color: #1a237e;
+        font-size: 28px !important;
+        font-weight: 700 !important;
+        color: #0d2b3e !important;
     }
     
-    /* Separadores */
-    hr {
-        margin: 2rem 0;
-        border: 0;
-        border-top: 1px solid #e9ecef;
-    }
-    
-    /* Badge de perfil */
+    /* Badges de perfil */
     .badge-perfil {
-        display: inline-block;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 600;
-        color: white;
+        display: inline-block !important;
+        padding: 4px 12px !important;
+        border-radius: 20px !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        color: white !important;
     }
-    .badge-superadmin { background-color: #dc3545; }
-    .badge-gerente { background-color: #1a73e8; }
-    .badge-corretor { background-color: #28a745; }
+    .badge-superadmin { background-color: #dc3545 !important; }
+    .badge-gerente { background-color: #1a73e8 !important; }
+    .badge-corretor { background-color: #28a745 !important; }
+    
+    /* Separador */
+    hr {
+        margin: 2rem 0 !important;
+        border: 0 !important;
+        border-top: 1px solid #e2e8f0 !important;
+    }
     
     /* Footer */
     .footer {
-        text-align: center;
-        padding: 20px 0;
-        color: #6c757d;
-        font-size: 13px;
-        border-top: 1px solid #e9ecef;
-        margin-top: 30px;
+        text-align: center !important;
+        padding: 20px 0 !important;
+        color: #64748b !important;
+        font-size: 13px !important;
+        border-top: 1px solid #e2e8f0 !important;
+        margin-top: 30px !important;
+    }
+    
+    /* Ajuste de containers */
+    .stContainer {
+        background-color: transparent !important;
+    }
+    
+    /* Fundo do conteúdo principal */
+    .main > div {
+        background-color: #eef2f7 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -186,7 +203,6 @@ with st.sidebar:
         usuario = st.session_state.usuario_logado
         perfil = USUARIOS[usuario]["perfil"]
         
-        # Nome e perfil com badge
         nome = USUARIOS[usuario]['nome']
         badge_class = "badge-superadmin" if perfil == "superadmin" else "badge-gerente" if perfil == "gerente" else "badge-corretor"
         st.markdown(f"👤 **{nome}**")
