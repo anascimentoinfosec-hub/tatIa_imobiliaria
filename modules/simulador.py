@@ -13,36 +13,29 @@ def formatar_valor_br(valor):
     br = us.replace(',', 'X').replace('.', ',').replace('X', '.')
     return f"R$ {br}"
 
-def gerar_resumo_cliente(nome, renda, entrada, bairro, top_imoveis):
+def gerar_resumo_sem_cliente(df, construtora, produto):
     linhas = []
     linhas.append("🏢 SIMULAÇÃO IMOBILIÁRIA")
     linhas.append("━" * 40)
     linhas.append("")
-    linhas.append(f"🧑 Cliente: {nome}")
-    if bairro:
-        linhas.append(f"📍 Bairro: {bairro}")
-    linhas.append(f"💰 Renda: {formatar_valor_br(renda)}")
-    linhas.append(f"🏦 Entrada disponível: {formatar_valor_br(entrada)}")
+    linhas.append(f"📌 Construtora: {construtora}")
+    linhas.append(f"📦 Produto: {produto}")
     linhas.append("")
-    linhas.append("━" * 40)
-    linhas.append("")
-    if top_imoveis is not None and not top_imoveis.empty:
-        linhas.append("🏆 TOP 3 OPORTUNIDADES")
-        linhas.append("")
-        for i, (idx, row) in enumerate(top_imoveis.head(3).iterrows()):
-            preco = row.get("PREÇO", 0)
-            parcela = preco * 0.005 if preco else 0
-            unidade = row.get("UNIDADE", "N/A")
-            tipologia = row.get("TIPOLOGIA", "")
-            r_m2 = row.get("R$/m²", 0)
-            linhas.append(f"{i+1}. {unidade} – {formatar_valor_br(preco)}")
-            linhas.append(f"   📆 Parcela estimada: {formatar_valor_br(parcela)}")
-            linhas.append(f"   📊 R$/m²: {formatar_valor_br(r_m2)}")
-            if tipologia:
-                linhas.append(f"   🏠 Tipo: {tipologia}")
-            linhas.append("")
+    if df is not None and not df.empty:
+        total = len(df)
+        if "PREÇO" in df.columns:
+            preco_min = df["PREÇO"].min()
+            preco_max = df["PREÇO"].max()
+            preco_medio = df["PREÇO"].mean()
+            linhas.append(f"📊 Total de imóveis: {total}")
+            linhas.append(f"💰 Faixa de preço: {formatar_valor_br(preco_min)} a {formatar_valor_br(preco_max)}")
+            linhas.append(f"📈 Preço médio: {formatar_valor_br(preco_medio)}")
+        if "DISPONIBILIDADE" in df.columns:
+            disp = df[df["DISPONIBILIDADE"] == "LIVRE"]
+            linhas.append(f"🔑 Disponíveis: {len(disp)} unidades")
     else:
-        linhas.append("⚠️ Nenhuma oportunidade encontrada.")
+        linhas.append("⚠️ Nenhum imóvel disponível.")
+    linhas.append("")
     linhas.append("━" * 40)
     linhas.append("")
     linhas.append(f"📅 Gerado em: {pd.Timestamp.now().strftime('%d/%m/%Y %H:%M')}")
@@ -50,6 +43,13 @@ def gerar_resumo_cliente(nome, renda, entrada, bairro, top_imoveis):
     return "\n".join(linhas)
 
 def pagina_simulador(CONSTRUTORAS, USUARIOS):
+    # =========================================================
+    # VERIFICA SE EXISTEM CONSTRUTORAS CADASTRADAS
+    # =========================================================
+    if not CONSTRUTORAS:
+        st.warning("⚠️ Nenhuma construtora cadastrada. Cadastre uma construtora primeiro.")
+        return
+
     st.title("📊 Simulador de Crédito")
     
     usuario_logado = st.session_state.get("usuario_logado")
@@ -117,8 +117,31 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         else:
             st.info("🔒 As planilhas são gerenciadas pelo gerente.")
         st.markdown("---")
-        st.caption("Versão 4.6 - Compartilhamento definitivo")
+        
+        # =========================================================
+        # COMPARTILHAMENTO SEMPRE DISPONÍVEL (com planilha carregada)
+        # =========================================================
+        if 'produto_selecionado' in locals() and produto_selecionado and 'df' in locals() and df is not None:
+            st.markdown("### 📤 Compartilhar")
+            
+            resumo = gerar_resumo_sem_cliente(df, construtora_selecionada, produto_selecionado)
+            
+            if st.button("📋 Copiar Resumo", use_container_width=True):
+                st.code(resumo, language="text")
+                st.success("✅ Resumo gerado! Copie o texto acima.")
+            
+            mensagem_whatsapp = resumo.replace('\n', '%0A')
+            link_whatsapp = f"https://wa.me/?text={mensagem_whatsapp}"
+            st.markdown(f"""
+            <a href="{link_whatsapp}" target="_blank" style="display:block; background-color:#25D366; color:white; border:none; border-radius:8px; padding:8px; font-weight:600; text-align:center; text-decoration:none; width:100%; margin-top:8px;">
+                📱 Enviar WhatsApp
+            </a>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        st.caption("Versão 4.9 - Corrige KeyError")
     
+    # --- CORPO PRINCIPAL ---
     if not produto_selecionado:
         st.warning("⚠️ Selecione um produto para visualizar os dados.")
         return
@@ -274,17 +297,6 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                                 df_filtrado = df_filtrado.sort_values('R$/m²')
                         top_recomendacoes = df_filtrado.head(5)
                         
-                        # =========================================================
-                        # SALVA NO SESSION_STATE PARA OS BOTÕES DE COMPARTILHAMENTO
-                        # =========================================================
-                        st.session_state['top_recomendacoes'] = top_recomendacoes
-                        st.session_state['cliente_atual'] = {
-                            'nome': nome_cliente,
-                            'renda': renda_cliente,
-                            'entrada': entrada_cliente,
-                            'bairro': bairro_preferencia
-                        }
-                        
                         if not top_recomendacoes.empty:
                             st.success(f"✅ {len(top_recomendacoes)} oportunidades encontradas para {nome_cliente}!")
                             for idx, row in top_recomendacoes.iterrows():
@@ -314,54 +326,6 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                             st.warning(f"⚠️ Nenhuma oportunidade encontrada para {nome_cliente}.")
                     except Exception as e:
                         st.error(f"❌ Erro ao analisar oportunidades: {str(e)}")
-    
-    # =========================================================
-    # BOTÕES DE COMPARTILHAMENTO (FORA DO BOTÃO ANALISAR)
-    # =========================================================
-    if 'top_recomendacoes' in st.session_state and st.session_state['top_recomendacoes'] is not None and not st.session_state['top_recomendacoes'].empty:
-        st.markdown("---")
-        st.markdown("### 📤 Compartilhar Simulação")
-        
-        top = st.session_state['top_recomendacoes']
-        cliente = st.session_state['cliente_atual']
-        
-        resumo = gerar_resumo_cliente(
-            cliente['nome'],
-            cliente['renda'],
-            cliente['entrada'],
-            cliente['bairro'],
-            top
-        )
-        
-        col_share1, col_share2 = st.columns(2)
-        
-        with col_share1:
-            resumo_js = resumo.replace('\\', '\\\\').replace('', '\\').replace('$', '\\$')
-            copiar_js = f"""
-            <script>
-            function copiarResumo() {{
-                const texto = {resumo_js};
-                navigator.clipboard.writeText(texto).then(function() {{
-                    alert('✅ Resumo copiado para a área de transferência!');
-                }}, function(err) {{
-                    alert('❌ Erro ao copiar: ' + err);
-                }});
-            }}
-            </script>
-            <button onclick="copiarResumo()" style="background-color:#1a73e8; color:white; border:none; border-radius:8px; padding:8px 20px; font-weight:600; width:100%; cursor:pointer;">
-                📋 Copiar Resumo
-            </button>
-            """
-            st.components.v1.html(copiar_js, height=50)
-        
-        with col_share2:
-            mensagem_whatsapp = resumo.replace('\n', '%0A')
-            link_whatsapp = f"https://wa.me/?text={mensagem_whatsapp}"
-            st.markdown(f"""
-            <a href="{link_whatsapp}" target="_blank" style="display:block; background-color:#25D366; color:white; border:none; border-radius:8px; padding:8px 20px; font-weight:600; text-align:center; text-decoration:none; width:100%;">
-                📱 Enviar WhatsApp
-            </a>
-            """, unsafe_allow_html=True)
     
     st.markdown("---")
     st.markdown("### 💰 Ajuste de Entrada")
