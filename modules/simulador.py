@@ -1,55 +1,16 @@
 import streamlit as st
 import pandas as pd
 from modules.planilha import ler_planilha
-from modules.utils import converter_para_float
+from modules.utils import converter_para_float, formatar_valor_br
 from modules.planilha_cache import salvar_planilha_cache, carregar_planilha_cache, tem_planilha_cache, excluir_planilha_cache
 from modules.recomendacoes import recomendar_imoveis
 from modules.construtoras import carregar_cidades
-
-def formatar_valor_br(valor):
-    if valor is None or pd.isna(valor):
-        return "R$ 0,00"
-    us = f"{valor:,.2f}"
-    br = us.replace(',', 'X').replace('.', ',').replace('X', '.')
-    return f"R$ {br}"
-
-def gerar_resumo_cliente(nome, renda, entrada, bairro, top_imoveis):
-    linhas = []
-    linhas.append("🏢 SIMULAÇÃO IMOBILIÁRIA")
-    linhas.append("━" * 40)
-    linhas.append("")
-    linhas.append(f"🧑 Cliente: {nome}")
-    if bairro:
-        linhas.append(f"📍 Bairro: {bairro}")
-    linhas.append(f"💰 Renda: {formatar_valor_br(renda)}")
-    linhas.append(f"🏦 Entrada disponível: {formatar_valor_br(entrada)}")
-    linhas.append("")
-    linhas.append("━" * 40)
-    linhas.append("")
-    if top_imoveis is not None and not top_imoveis.empty:
-        linhas.append("🏆 TOP 3 OPORTUNIDADES")
-        linhas.append("")
-        for i, (idx, row) in enumerate(top_imoveis.head(3).iterrows()):
-            preco = row.get("PREÇO", 0)
-            parcela = preco * 0.005 if preco else 0
-            unidade = row.get("UNIDADE", "N/A")
-            tipologia = row.get("TIPOLOGIA", "")
-            r_m2 = row.get("R$/m²", 0)
-            linhas.append(f"{i+1}. {unidade} – {formatar_valor_br(preco)}")
-            linhas.append(f"   📆 Parcela estimada: {formatar_valor_br(parcela)}")
-            linhas.append(f"   📊 R$/m²: {formatar_valor_br(r_m2)}")
-            if tipologia:
-                linhas.append(f"   🏠 Tipo: {tipologia}")
-            linhas.append("")
-    else:
-        linhas.append("⚠️ Nenhuma oportunidade encontrada.")
-    linhas.append("━" * 40)
-    linhas.append("")
-    linhas.append(f"📅 Gerado em: {pd.Timestamp.now().strftime('%d/%m/%Y %H:%M')}")
-    linhas.append("🔗 App: simulador-credito.streamlit.app")
-    return "\n".join(linhas)
+from modules.compartilhar import gerar_resumo, botoes_compartilhar
 
 def pagina_simulador(CONSTRUTORAS, USUARIOS):
+    # =========================================================
+    # VERIFICA SE EXISTEM CONSTRUTORAS CADASTRADAS
+    # =========================================================
     if not CONSTRUTORAS:
         st.warning("⚠️ Nenhuma construtora cadastrada. Cadastre uma construtora primeiro.")
         return
@@ -121,7 +82,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         else:
             st.info("🔒 As planilhas são gerenciadas pelo gerente.")
         st.markdown("---")
-        st.caption("Versão 5.2 - Forçando deploy")
+        st.caption("Versão 6.0 - Módulo compartilhar")
 
     if not produto_selecionado:
         st.warning("⚠️ Selecione um produto para visualizar os dados.")
@@ -149,7 +110,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
     
     st.markdown("---")
     
-    # --- FILTROS (com preco_col definido) ---
+    # --- FILTROS ---
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         tipo_col = None
@@ -265,9 +226,6 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                     try:
                         df_filtrado = resultado.copy()
                         
-                        # --- DEBUG ---
-                        st.write(f"🔍 Total de imóveis antes dos filtros: {len(df_filtrado)}")
-                        
                         if quartos_preferencia != "Indiferente":
                             qtd = int(quartos_preferencia.replace("+", ""))
                             col_quartos = None
@@ -288,15 +246,12 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                             if 'R$/m²' in df_filtrado.columns:
                                 df_filtrado = df_filtrado.sort_values('R$/m²')
                         
-                        # --- DEBUG: quantos imóveis após filtros
-                        st.write(f"🔍 Total de imóveis após filtros: {len(df_filtrado)}")
-                        
                         top_recomendacoes = df_filtrado.head(5)
                         
-                        # ---------------------------------------------------------
-                        # SEMPRE EXIBE OS BOTÕES (mesmo se não houver oportunidades)
-                        # ---------------------------------------------------------
-                        resumo = gerar_resumo_cliente(
+                        # =========================================================
+                        # BOTÕES DE COMPARTILHAMENTO (USANDO O MÓDULO)
+                        # =========================================================
+                        resumo = gerar_resumo(
                             nome_cliente,
                             renda_cliente,
                             entrada_cliente,
@@ -304,45 +259,9 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                             top_recomendacoes
                         )
                         
-                        col_botoes1, col_botoes2, col_botoes3 = st.columns(3)
-                        
-                        with col_botoes1:
-                            resumo_js = resumo.replace('\\', '\\\\').replace('', '\\').replace('$', '\\$')
-                            copiar_js = f"""
-                            <script>
-                            function copiarResumo() {{
-                                const texto = {resumo_js};
-                                navigator.clipboard.writeText(texto).then(function() {{
-                                    alert('✅ Resumo copiado para a área de transferência!');
-                                }}, function(err) {{
-                                    alert('❌ Erro ao copiar: ' + err);
-                                }});
-                            }}
-                            </script>
-                            <button onclick="copiarResumo()" style="background-color:#1a73e8; color:white; border:none; border-radius:8px; padding:8px 20px; font-weight:600; width:100%; cursor:pointer;">
-                                📋 Copiar Resumo
-                            </button>
-                            """
-                            st.components.v1.html(copiar_js, height=50)
-                        
-                        with col_botoes2:
-                            mensagem_whatsapp = resumo.replace('\n', '%0A')
-                            link_whatsapp = f"https://wa.me/?text={mensagem_whatsapp}"
-                            st.markdown(f"""
-                            <a href="{link_whatsapp}" target="_blank" style="display:block; background-color:#25D366; color:white; border:none; border-radius:8px; padding:8px 20px; font-weight:600; text-align:center; text-decoration:none; width:100%;">
-                                📱 Enviar WhatsApp
-                            </a>
-                            """, unsafe_allow_html=True)
-                        
-                        with col_botoes3:
-                            st.download_button(
-                                label="📄 Gerar Resumo (TXT)",
-                                data=resumo,
-                                file_name=f"simulacao_{nome_cliente.replace(' ', '_')}.txt",
-                                mime="text/plain",
-                                use_container_width=True
-                            )
-                        
+                        st.markdown("---")
+                        st.markdown("### 📤 Compartilhar Simulação")
+                        botoes_compartilhar(resumo, nome_cliente)
                         st.markdown("---")
                         
                         if not top_recomendacoes.empty:
@@ -352,15 +271,15 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                                     st.markdown("---")
                                     col_a, col_b = st.columns([3, 2])
                                     with col_a:
-                                        st.markdown(f"*🏢 Unidade {row['UNIDADE']}*")
+                                        st.markdown(f"**🏢 Unidade {row['UNIDADE']}**")
                                         if preco_col in row:
-                                            st.write(f"💰 *Preço:* {formatar_valor_br(row[preco_col])}")
+                                            st.write(f"💰 **Preço:** {formatar_valor_br(row[preco_col])}")
                                         if 'R$/m²' in row:
-                                            st.write(f"📊 *R$/m²:* {formatar_valor_br(row['R$/m²'])}")
+                                            st.write(f"📊 **R$/m²:** {formatar_valor_br(row['R$/m²'])}")
                                         if 'parcela_estimada' in row:
-                                            st.write(f"📆 *Parcela estimada:* {formatar_valor_br(row['parcela_estimada'])}")
+                                            st.write(f"📆 **Parcela estimada:** {formatar_valor_br(row['parcela_estimada'])}")
                                         if 'TIPOLOGIA' in row:
-                                            st.write(f"🏠 *Tipo:* {row['TIPOLOGIA']}")
+                                            st.write(f"🏠 **Tipo:** {row['TIPOLOGIA']}")
                                     with col_b:
                                         entrada_percentual = st.slider(
                                             f"Entrada (%) - Unidade {row['UNIDADE']}",
@@ -371,9 +290,9 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                                         entrada_valor = valor_imovel * (entrada_percentual / 100)
                                         financiado = valor_imovel - entrada_valor
                                         parcela_media = financiado * (1 + 0.10/12) / 420
-                                        st.write(f"💵 *Entrada:* {formatar_valor_br(entrada_valor)}")
-                                        st.write(f"🏦 *Financiado:* {formatar_valor_br(financiado)}")
-                                        st.write(f"📆 *Parcela:* {formatar_valor_br(parcela_media)}")
+                                        st.write(f"💵 **Entrada:** {formatar_valor_br(entrada_valor)}")
+                                        st.write(f"🏦 **Financiado:** {formatar_valor_br(financiado)}")
+                                        st.write(f"📆 **Parcela:** {formatar_valor_br(parcela_media)}")
                         else:
                             st.warning(f"⚠️ Nenhuma oportunidade encontrada para {nome_cliente}.")
                     except Exception as e:
@@ -388,7 +307,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         entrada_media = valor_medio * (entrada_percentual_global / 100)
         financiado_medio = valor_medio - entrada_media
         parcela_media_global = financiado_medio * (1 + 0.10/12) / 420
-        st.markdown("*📊 Simulação média com base nos imóveis disponíveis:*")
+        st.markdown("**📊 Simulação média com base nos imóveis disponíveis:**")
         col_s1, col_s2, col_s3 = st.columns(3)
         col_s1.metric("💰 Valor médio", formatar_valor_br(valor_medio))
         col_s2.metric(f"💵 Entrada ({entrada_percentual_global}%)", formatar_valor_br(entrada_media))
