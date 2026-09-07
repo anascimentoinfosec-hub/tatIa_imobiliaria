@@ -14,7 +14,6 @@ def formatar_valor_br(valor):
     return f"R$ {br}"
 
 def gerar_resumo_cliente(nome, renda, entrada, bairro, top_imoveis):
-    """Gera um resumo formatado para compartilhamento"""
     linhas = []
     linhas.append("🏢 SIMULAÇÃO IMOBILIÁRIA")
     linhas.append("━" * 40)
@@ -51,9 +50,6 @@ def gerar_resumo_cliente(nome, renda, entrada, bairro, top_imoveis):
     return "\n".join(linhas)
 
 def pagina_simulador(CONSTRUTORAS, USUARIOS):
-    # =========================================================
-    # VERIFICA SE EXISTEM CONSTRUTORAS CADASTRADAS
-    # =========================================================
     if not CONSTRUTORAS:
         st.warning("⚠️ Nenhuma construtora cadastrada. Cadastre uma construtora primeiro.")
         return
@@ -125,7 +121,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         else:
             st.info("🔒 As planilhas são gerenciadas pelo gerente.")
         st.markdown("---")
-        st.caption("Versão 5.0 - Compartilhamento integrado")
+        st.caption("Versão 5.1 - Compartilhamento robusto")
 
     if not produto_selecionado:
         st.warning("⚠️ Selecione um produto para visualizar os dados.")
@@ -152,6 +148,8 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
     st.session_state.df_imoveis = df
     
     st.markdown("---")
+    
+    # --- FILTROS (com preco_col definido) ---
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         tipo_col = None
@@ -180,7 +178,10 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
             if c in df.columns:
                 preco_col = c
                 break
-        if preco_col and not df[preco_col].isna().all():
+        if preco_col is None:
+            st.error("❌ Nenhuma coluna de preço encontrada. Verifique o mapeamento da planilha.")
+            return
+        if not df[preco_col].isna().all():
             preco_max = st.number_input("💰 Preço máximo (R$)", min_value=0, value=int(df[preco_col].max()) if df[preco_col].max() > 0 else 1000000, step=50000, format="%d")
         else:
             preco_max = 1000000
@@ -263,6 +264,10 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                 with st.spinner("Analisando oportunidades..."):
                     try:
                         df_filtrado = resultado.copy()
+                        
+                        # --- DEBUG ---
+                        st.write(f"🔍 Total de imóveis antes dos filtros: {len(df_filtrado)}")
+                        
                         if quartos_preferencia != "Indiferente":
                             qtd = int(quartos_preferencia.replace("+", ""))
                             col_quartos = None
@@ -272,77 +277,76 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                                     break
                             if col_quartos:
                                 df_filtrado = df_filtrado[df_filtrado[col_quartos].astype(str).str.contains(str(qtd))]
+                        
                         if tipo_preferencia != "Indiferente" and "TIPOLOGIA" in df_filtrado.columns:
                             df_filtrado = df_filtrado[df_filtrado["TIPOLOGIA"].astype(str).str.contains(tipo_preferencia, case=False, na=False)]
+                        
                         parcela_maxima = renda_cliente * 0.3
                         if preco_col in df_filtrado.columns:
                             df_filtrado["parcela_estimada"] = df_filtrado[preco_col] * 0.005
                             df_filtrado = df_filtrado[df_filtrado["parcela_estimada"] <= parcela_maxima]
                             if 'R$/m²' in df_filtrado.columns:
                                 df_filtrado = df_filtrado.sort_values('R$/m²')
+                        
+                        # --- DEBUG: quantos imóveis após filtros
+                        st.write(f"🔍 Total de imóveis após filtros: {len(df_filtrado)}")
+                        
                         top_recomendacoes = df_filtrado.head(5)
+                        
+                        # ---------------------------------------------------------
+                        # SEMPRE EXIBE OS BOTÕES (mesmo se não houver oportunidades)
+                        # ---------------------------------------------------------
+                        resumo = gerar_resumo_cliente(
+                            nome_cliente,
+                            renda_cliente,
+                            entrada_cliente,
+                            bairro_preferencia,
+                            top_recomendacoes
+                        )
+                        
+                        col_botoes1, col_botoes2, col_botoes3 = st.columns(3)
+                        
+                        with col_botoes1:
+                            resumo_js = resumo.replace('\\', '\\\\').replace('', '\\').replace('$', '\\$')
+                            copiar_js = f"""
+                            <script>
+                            function copiarResumo() {{
+                                const texto = {resumo_js};
+                                navigator.clipboard.writeText(texto).then(function() {{
+                                    alert('✅ Resumo copiado para a área de transferência!');
+                                }}, function(err) {{
+                                    alert('❌ Erro ao copiar: ' + err);
+                                }});
+                            }}
+                            </script>
+                            <button onclick="copiarResumo()" style="background-color:#1a73e8; color:white; border:none; border-radius:8px; padding:8px 20px; font-weight:600; width:100%; cursor:pointer;">
+                                📋 Copiar Resumo
+                            </button>
+                            """
+                            st.components.v1.html(copiar_js, height=50)
+                        
+                        with col_botoes2:
+                            mensagem_whatsapp = resumo.replace('\n', '%0A')
+                            link_whatsapp = f"https://wa.me/?text={mensagem_whatsapp}"
+                            st.markdown(f"""
+                            <a href="{link_whatsapp}" target="_blank" style="display:block; background-color:#25D366; color:white; border:none; border-radius:8px; padding:8px 20px; font-weight:600; text-align:center; text-decoration:none; width:100%;">
+                                📱 Enviar WhatsApp
+                            </a>
+                            """, unsafe_allow_html=True)
+                        
+                        with col_botoes3:
+                            st.download_button(
+                                label="📄 Gerar Resumo (TXT)",
+                                data=resumo,
+                                file_name=f"simulacao_{nome_cliente.replace(' ', '_')}.txt",
+                                mime="text/plain",
+                                use_container_width=True
+                            )
+                        
+                        st.markdown("---")
                         
                         if not top_recomendacoes.empty:
                             st.success(f"✅ {len(top_recomendacoes)} oportunidades encontradas para {nome_cliente}!")
-                            
-                            # =========================================================
-                            # BOTÕES DE COMPARTILHAMENTO (AQUI, APÓS A ANÁLISE)
-                            # =========================================================
-                            resumo = gerar_resumo_cliente(
-                                nome_cliente,
-                                renda_cliente,
-                                entrada_cliente,
-                                bairro_preferencia,
-                                top_recomendacoes
-                            )
-                            
-                            col_botoes1, col_botoes2, col_botoes3 = st.columns(3)
-                            
-                            with col_botoes1:
-                                # Copiar Resumo (JavaScript)
-                                resumo_js = resumo.replace('\\', '\\\\').replace('', '\\').replace('$', '\\$')
-                                copiar_js = f"""
-                                <script>
-                                function copiarResumo() {{
-                                    const texto = {resumo_js};
-                                    navigator.clipboard.writeText(texto).then(function() {{
-                                        alert('✅ Resumo copiado para a área de transferência!');
-                                    }}, function(err) {{
-                                        alert('❌ Erro ao copiar: ' + err);
-                                    }});
-                                }}
-                                </script>
-                                <button onclick="copiarResumo()" style="background-color:#1a73e8; color:white; border:none; border-radius:8px; padding:8px 20px; font-weight:600; width:100%; cursor:pointer;">
-                                    📋 Copiar Resumo
-                                </button>
-                                """
-                                st.components.v1.html(copiar_js, height=50)
-                            
-                            with col_botoes2:
-                                # WhatsApp
-                                mensagem_whatsapp = resumo.replace('\n', '%0A')
-                                link_whatsapp = f"https://wa.me/?text={mensagem_whatsapp}"
-                                st.markdown(f"""
-                                <a href="{link_whatsapp}" target="_blank" style="display:block; background-color:#25D366; color:white; border:none; border-radius:8px; padding:8px 20px; font-weight:600; text-align:center; text-decoration:none; width:100%;">
-                                    📱 Enviar WhatsApp
-                                </a>
-                                """, unsafe_allow_html=True)
-                            
-                            with col_botoes3:
-                                # Download TXT
-                                st.download_button(
-                                    label="📄 Gerar Resumo (TXT)",
-                                    data=resumo,
-                                    file_name=f"simulacao_{nome_cliente.replace(' ', '_')}.txt",
-                                    mime="text/plain",
-                                    use_container_width=True
-                                )
-                            
-                            st.markdown("---")
-                            
-                            # ---------------------------------------------------------
-                            # EXIBIÇÃO DAS OPORTUNIDADES
-                            # ---------------------------------------------------------
                             for idx, row in top_recomendacoes.iterrows():
                                 with st.container():
                                     st.markdown("---")
