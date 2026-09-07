@@ -51,12 +51,13 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
         if CONSTRUTORAS:
             for construtora, dados in CONSTRUTORAS.items():
                 with st.expander(f"🏢 {construtora}"):
+                    tipo_desconto = dados.get("tipo_desconto", "AVALIAÇÃO")
+                    st.caption(f"💡 Desconto sobre: **{tipo_desconto}**")
                     produtos = dados.get("produtos", {})
                     if produtos:
                         for produto, config in produtos.items():
                             cidade = config.get("cidade", "Não definida")
-                            tipo_desconto = config.get("tipo_desconto", "AVALIAÇÃO")
-                            st.write(f"  📄 **{produto}** - 📍 {cidade} - 💰 Desconto sobre: {tipo_desconto}")
+                            st.write(f"  📄 **{produto}** - 📍 {cidade}")
                             st.caption(f"     {len(config.get('colunas_ordem', []))} colunas")
                     else:
                         st.caption("  ⚠️ Nenhum produto cadastrado")
@@ -67,10 +68,11 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
         st.markdown("### Adicionar Nova Construtora")
         with st.form("form_nova_construtora"):
             nome = st.text_input("Nome da Construtora")
+            tipo_desconto = st.selectbox("💡 Desconto será aplicado sobre:", ["AVALIAÇÃO", "PREÇO"])
+            
             produto_nome = st.text_input("Nome do Produto (opcional)", placeholder="Ex: Torre A")
             opcoes_cidade = [""] + cidades
             cidade_selecionada = st.selectbox("📍 Cidade", opcoes_cidade)
-            tipo_desconto = st.selectbox("💰 Base de desconto", ["AVALIAÇÃO", "PREÇO"], help="O desconto será aplicado sobre AVALIAÇÃO ou PREÇO?")
             skiprows = st.number_input("Linhas para pular", min_value=0, value=2, step=1)
             mapeamento_str = st.text_area("Mapeamento (índice: nome)", placeholder='{"0": "UNIDADE", "1": "PREÇO"}', height=80)
             colunas_ordem_str = st.text_input("Colunas para exibir", placeholder="UNIDADE, PAVTO, PREÇO")
@@ -81,14 +83,13 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                     st.warning("⚠️ Digite o nome da construtora!")
                 else:
                     try:
-                        nova_construtora = {"produtos": {}}
+                        nova_construtora = {"tipo_desconto": tipo_desconto, "produtos": {}}
                         if produto_nome and cidade_selecionada:
                             mapeamento = json.loads(mapeamento_str) if mapeamento_str else {}
                             colunas_ordem = [c.strip() for c in colunas_ordem_str.split(',') if c.strip()]
                             colunas_numericas = [c.strip() for c in colunas_numericas_str.split(',') if c.strip()]
                             nova_construtora["produtos"][produto_nome] = {
                                 "cidade": cidade_selecionada,
-                                "tipo_desconto": tipo_desconto,
                                 "skiprows": skiprows,
                                 "mapeamento": {str(k): v for k, v in mapeamento.items()},
                                 "colunas_ordem": colunas_ordem,
@@ -120,9 +121,12 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
         st.session_state.construtora_edit = construtora_edit
         
         dados = CONSTRUTORAS_ATUALIZADO[construtora_edit]
-        produtos = dados.get("produtos", {})
+        tipo_desconto = dados.get("tipo_desconto", "AVALIAÇÃO")
         
         st.markdown(f"#### Produtos de **{construtora_edit}**")
+        st.caption(f"💡 Desconto sobre: **{tipo_desconto}**")
+        
+        produtos = dados.get("produtos", {})
         if produtos:
             for produto, config in produtos.items():
                 col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
@@ -130,8 +134,7 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                     st.write(f"📄 **{produto}**")
                 with col2:
                     cidade = config.get("cidade", "Não definida")
-                    tipo_desconto = config.get("tipo_desconto", "AVALIAÇÃO")
-                    st.write(f"📍 {cidade} | 💰 {tipo_desconto}")
+                    st.write(f"📍 {cidade}")
                 with col3:
                     if st.button(f"✏️ Editar", key=f"edit_prod_{produto}"):
                         st.session_state['editando_produto'] = produto
@@ -152,61 +155,12 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
         st.markdown("---")
         st.markdown("#### Adicionar Produto")
         
-        novo_produto = st.text_input(
-            "Nome do Produto",
-            placeholder="Ex: Torre A",
-            key="novo_produto_nome"
-        )
-        st.caption("📌 Use apenas letras, números e underline. Evite espaços e barras (/ \\ : * ?)")
-        
-        nova_cidade = st.selectbox(
-            "📍 Cidade",
-            [""] + cidades,
-            key="nova_cidade_produto"
-        )
-        st.caption("📌 Selecione a cidade onde o produto está localizado.")
-        
-        # =========================================================
-        # CAMPO: BASE DE DESCONTO (NOVO)
-        # =========================================================
-        novo_tipo_desconto = st.selectbox(
-            "💰 Base de desconto",
-            ["AVALIAÇÃO", "PREÇO"],
-            key="novo_tipo_desconto",
-            help="O desconto acordado será aplicado sobre a AVALIAÇÃO ou sobre o PREÇO do imóvel?"
-        )
-        st.caption("📌 Ex: Se escolher AVALIAÇÃO, o desconto será subtraído do valor de avaliação.")
-        
-        novo_skiprows = st.number_input(
-            "Skiprows (linhas para pular)",
-            min_value=0,
-            value=2,
-            step=1,
-            key="novo_produto_skiprows"
-        )
-        st.caption("📌 Número de linhas do cabeçalho que devem ser ignoradas na planilha.")
-        
-        novo_mapeamento = st.text_area(
-            "Mapeamento (índice: nome da coluna)",
-            placeholder='{"0": "UNIDADE", "1": "PAVTO", "2": "PREÇO"}',
-            height=80,
-            key="novo_produto_mapeamento"
-        )
-        st.caption("📌 Mapeie cada coluna da planilha (índice começando em 0) para o nome da coluna.")
-        
-        novo_colunas_ordem = st.text_input(
-            "Colunas para exibir (separadas por vírgula)",
-            placeholder="UNIDADE, PAVTO, PREÇO",
-            key="novo_produto_colunas_ordem"
-        )
-        st.caption("📌 Digite os nomes das colunas que deseja mostrar na tabela, na ordem desejada.")
-        
-        novo_colunas_numericas = st.text_input(
-            "Colunas numéricas (separadas por vírgula)",
-            placeholder="PREÇO, M², ANDAR",
-            key="novo_produto_colunas_numericas"
-        )
-        st.caption("📌 Informe apenas colunas que contenham valores numéricos (ex: PREÇO, AVALIAÇÃO, M²).")
+        novo_produto = st.text_input("Nome do Produto", placeholder="Ex: Torre A", key="novo_produto_nome")
+        nova_cidade = st.selectbox("📍 Cidade", [""] + cidades, key="nova_cidade_produto")
+        novo_skiprows = st.number_input("Skiprows", min_value=0, value=2, step=1, key="novo_produto_skiprows")
+        novo_mapeamento = st.text_area("Mapeamento (índice: nome)", placeholder='{"0": "UNIDADE", "1": "PAVTO", "2": "PREÇO"}', height=80, key="novo_produto_mapeamento")
+        novo_colunas_ordem = st.text_input("Colunas para exibir (separadas por vírgula)", placeholder="UNIDADE, PAVTO, PREÇO", key="novo_produto_colunas_ordem")
+        novo_colunas_numericas = st.text_input("Colunas numéricas (separadas por vírgula)", placeholder="PREÇO, M², ANDAR", key="novo_produto_colunas_numericas")
         
         if st.button("💾 Salvar Produto", use_container_width=True, key="btn_salvar_produto"):
             if not novo_produto:
@@ -215,7 +169,7 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                 try:
                     dados_atuais = carregar_construtoras()
                     if construtora_edit not in dados_atuais:
-                        dados_atuais[construtora_edit] = {"produtos": {}}
+                        dados_atuais[construtora_edit] = {"tipo_desconto": tipo_desconto, "produtos": {}}
                     produtos_atuais = dados_atuais[construtora_edit].get("produtos", {})
                     
                     mapeamento = json.loads(novo_mapeamento) if novo_mapeamento else {}
@@ -227,7 +181,6 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                     else:
                         produtos_atuais[novo_produto] = {
                             "cidade": nova_cidade,
-                            "tipo_desconto": novo_tipo_desconto,
                             "skiprows": novo_skiprows,
                             "mapeamento": {str(k): v for k, v in mapeamento.items()},
                             "colunas_ordem": colunas_ordem,
@@ -237,7 +190,7 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                         salvar_construtoras(dados_atuais)
                         
                         for key in ['novo_produto_nome', 'novo_produto_skiprows', 'novo_produto_mapeamento', 
-                                    'novo_produto_colunas_ordem', 'novo_produto_colunas_numericas', 'nova_cidade_produto', 'novo_tipo_desconto']:
+                                    'novo_produto_colunas_ordem', 'novo_produto_colunas_numericas', 'nova_cidade_produto']:
                             if key in st.session_state:
                                 del st.session_state[key]
                         
@@ -255,14 +208,12 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                 if produto_edit in produtos_atuais:
                     config = produtos_atuais[produto_edit]
                     cidade_atual = config.get("cidade", "")
-                    tipo_desconto_atual = config.get("tipo_desconto", "AVALIAÇÃO")
                     
                     st.markdown("---")
                     st.markdown(f"#### Editando: **{produto_edit}**")
                     with st.form("form_editar_produto"):
                         novo_nome = st.text_input("Novo nome do produto", value=produto_edit)
                         cidade_edit = st.selectbox("📍 Cidade", [""] + cidades, index=([""] + cidades).index(cidade_atual) if cidade_atual in cidades else 0, key="edit_cidade_produto")
-                        tipo_desconto_edit = st.selectbox("💰 Base de desconto", ["AVALIAÇÃO", "PREÇO"], index=0 if tipo_desconto_atual == "AVALIAÇÃO" else 1, key="edit_tipo_desconto")
                         novo_skiprows = st.number_input("Skiprows", value=config.get("skiprows", 2), step=1, key="edit_skiprows")
                         novo_mapeamento = st.text_area("Mapeamento", value=json.dumps(config.get("mapeamento", {}), indent=2, ensure_ascii=False), height=100, key="edit_mapeamento")
                         novo_colunas_ordem = st.text_input("Colunas para exibir", value=", ".join(config.get("colunas_ordem", [])), key="edit_colunas_ordem")
@@ -281,7 +232,6 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                                     colunas_numericas = [c.strip() for c in novo_colunas_numericas.split(',') if c.strip()]
                                     produtos_atuais[novo_nome] = {
                                         "cidade": cidade_edit,
-                                        "tipo_desconto": tipo_desconto_edit,
                                         "skiprows": novo_skiprows,
                                         "mapeamento": {str(k): v for k, v in mapeamento.items()},
                                         "colunas_ordem": colunas_ordem,

@@ -8,9 +8,6 @@ from modules.construtoras import carregar_cidades
 from modules.compartilhar import gerar_resumo, botoes_compartilhar
 
 def pagina_simulador(CONSTRUTORAS, USUARIOS):
-    # =========================================================
-    # VERIFICA SE EXISTEM CONSTRUTORAS CADASTRADAS
-    # =========================================================
     if not CONSTRUTORAS:
         st.warning("⚠️ Nenhuma construtora cadastrada. Cadastre uma construtora primeiro.")
         return
@@ -26,6 +23,10 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
     with st.sidebar:
         st.header("⚙️ Configurações")
         construtora_selecionada = st.selectbox("🏗️ Selecione a construtora", options=list(CONSTRUTORAS.keys()))
+        
+        # Obter tipo de desconto da construtora
+        tipo_desconto = CONSTRUTORAS[construtora_selecionada].get("tipo_desconto", "AVALIAÇÃO")
+        
         produtos = CONSTRUTORAS[construtora_selecionada].get("produtos", {})
         produtos_lista = list(produtos.keys())
         if produtos_lista:
@@ -82,15 +83,12 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         else:
             st.info("🔒 As planilhas são gerenciadas pelo gerente.")
         st.markdown("---")
-        st.caption("Versão 6.0 - Módulo compartilhar")
+        st.caption("Versão 6.1 - Desconto por Construtora")
 
     if not produto_selecionado:
         st.warning("⚠️ Selecione um produto para visualizar os dados.")
         return
     
-    # =========================================================
-    # CARREGA CONFIGURAÇÃO DO PRODUTO
-    # =========================================================
     config = produtos[produto_selecionado]
     df = None
     if tem_planilha_cache(construtora_selecionada, produto_selecionado):
@@ -220,19 +218,18 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
             bairro_preferencia = st.selectbox("📍 Bairro de preferência", opcoes_bairro)
             quartos_preferencia = st.selectbox("🛏️ Quantos quartos?", ["Indiferente", "1", "2", "3", "4+"])
             tipo_preferencia = st.selectbox("🏠 Tipo de imóvel", ["Indiferente", "Apartamento", "Cobertura", "Garden"])
-        
-        # =========================================================
-        # CAMPO: DESCONTO ACORDADO (NOVO)
-        # =========================================================
-        desconto_acordado = st.number_input(
-            "💰 Desconto acordado (R$)",
-            min_value=0.0,
-            value=0.0,
-            step=1000.0,
-            format="%.2f",
-            help="Valor em reais do desconto negociado com a construtora."
-        )
-        st.caption("📌 O desconto será aplicado sobre a base definida no cadastro do produto (AVALIAÇÃO ou PREÇO).")
+            
+            # =========================================================
+            # CAMPO DESCONTO ACORDADO (NOVO)
+            # =========================================================
+            desconto_acordado = st.number_input(
+                "💸 Desconto acordado (R$)",
+                min_value=0.0,
+                value=0.0,
+                step=1000.0,
+                format="%.2f",
+                help=f"Desconto será aplicado sobre: {tipo_desconto}"
+            )
         
         if st.button("🔍 Analisar Oportunidades", use_container_width=True):
             if not nome_cliente:
@@ -255,33 +252,31 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                         if tipo_preferencia != "Indiferente" and "TIPOLOGIA" in df_filtrado.columns:
                             df_filtrado = df_filtrado[df_filtrado["TIPOLOGIA"].astype(str).str.contains(tipo_preferencia, case=False, na=False)]
                         
+                        # =========================================================
+                        # CÁLCULO COM DESCONTO
+                        # =========================================================
+                        # Define a coluna base para o desconto
+                        if tipo_desconto == "AVALIAÇÃO":
+                            coluna_base = "AVALIAÇÃO"
+                        else:
+                            coluna_base = "PREÇO"
+                        
+                        # Aplica o desconto nos imóveis
+                        if coluna_base in df_filtrado.columns:
+                            df_filtrado["valor_base"] = df_filtrado[coluna_base] - desconto_acordado
+                            df_filtrado["valor_base"] = df_filtrado["valor_base"].clip(lower=0)  # Evita valores negativos
+                        else:
+                            df_filtrado["valor_base"] = df_filtrado["PREÇO"]  # Fallback
+                        
+                        # Parcela máxima baseada na renda
                         parcela_maxima = renda_cliente * 0.3
+                        
                         if preco_col in df_filtrado.columns:
-                            df_filtrado["parcela_estimada"] = df_filtrado[preco_col] * 0.005
+                            # Parcela estimada baseada no valor base
+                            df_filtrado["parcela_estimada"] = df_filtrado["valor_base"] * 0.005
                             df_filtrado = df_filtrado[df_filtrado["parcela_estimada"] <= parcela_maxima]
                             if 'R$/m²' in df_filtrado.columns:
                                 df_filtrado = df_filtrado.sort_values('R$/m²')
-                        
-                        top_recomendacoes = df_filtrado.head(5)
-                        
-                        # =========================================================
-                        # CALCULA COM DESCONTO (SE HOUVER)
-                        # =========================================================
-                        tipo_desconto = config.get("tipo_desconto", "AVALIAÇÃO")
-                        coluna_base = "AVALIAÇÃO" if tipo_desconto == "AVALIAÇÃO" else preco_col
-                        
-                        # Aplica o desconto nos resultados para exibição
-                        if desconto_acordado > 0 and coluna_base in df_filtrado.columns:
-                            df_filtrado["valor_base"] = df_filtrado[coluna_base] - desconto_acordado
-                            df_filtrado["valor_base"] = df_filtrado["valor_base"].clip(lower=0)
-                            df_filtrado["parcela_com_desconto"] = df_filtrado["valor_base"] * 0.005
-                        else:
-                            df_filtrado["valor_base"] = df_filtrado[preco_col]
-                            df_filtrado["parcela_com_desconto"] = df_filtrado["parcela_estimada"]
-                        
-                        # Reordena com base no valor base (se houver)
-                        if desconto_acordado > 0:
-                            df_filtrado = df_filtrado.sort_values("valor_base")
                         
                         top_recomendacoes = df_filtrado.head(5)
                         
@@ -294,7 +289,9 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                             entrada_cliente,
                             bairro_preferencia,
                             top_recomendacoes,
-                            nome_gerente=USUARIOS[usuario_logado]['nome']
+                            nome_gerente=USUARIOS[usuario_logado]['nome'],
+                            desconto=desconto_acordado,
+                            tipo_desconto=tipo_desconto
                         )
                         
                         st.markdown("---")
@@ -304,47 +301,33 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                         
                         if not top_recomendacoes.empty:
                             st.success(f"✅ {len(top_recomendacoes)} oportunidades encontradas para {nome_cliente}!")
-                            
-                            # Exibe o tipo de desconto sendo aplicado
-                            if desconto_acordado > 0:
-                                st.info(f"💰 Desconto de R$ {desconto_acordado:,.2f} aplicado sobre **{tipo_desconto}**.")
-                            else:
-                                st.info("💰 Nenhum desconto aplicado.")
-                            
                             for idx, row in top_recomendacoes.iterrows():
                                 with st.container():
                                     st.markdown("---")
                                     col_a, col_b = st.columns([3, 2])
                                     with col_a:
                                         st.markdown(f"**🏢 Unidade {row['UNIDADE']}**")
-                                        
-                                        # Exibe valores originais
+                                        st.caption(f"Desconto sobre: {tipo_desconto}")
+                                        if coluna_base in row:
+                                            st.write(f"📊 **Valor original ({coluna_base}):** {formatar_valor_br(row[coluna_base])}")
+                                        st.write(f"💸 **Desconto:** {formatar_valor_br(desconto_acordado)}")
+                                        st.write(f"💰 **Valor base:** {formatar_valor_br(row['valor_base'])}")
                                         if preco_col in row:
-                                            st.write(f"💰 **Preço original:** {formatar_valor_br(row[preco_col])}")
-                                        if "AVALIAÇÃO" in row and row["AVALIAÇÃO"] > 0:
-                                            st.write(f"📊 **Avaliação original:** {formatar_valor_br(row['AVALIAÇÃO'])}")
-                                        
-                                        # Exibe o valor base com desconto
-                                        valor_base = row["valor_base"]
-                                        st.write(f"💎 **Valor base (com desconto):** {formatar_valor_br(valor_base)}")
-                                        
-                                        if 'R$/m²' in row:
-                                            st.write(f"📊 **R$/m²:** {formatar_valor_br(row['R$/m²'])}")
+                                            st.write(f"💵 **Preço original:** {formatar_valor_br(row[preco_col])}")
+                                        if 'parcela_estimada' in row:
+                                            st.write(f"📆 **Parcela estimada:** {formatar_valor_br(row['parcela_estimada'])}")
                                         if 'TIPOLOGIA' in row:
                                             st.write(f"🏠 **Tipo:** {row['TIPOLOGIA']}")
-                                    
                                     with col_b:
                                         entrada_percentual = st.slider(
                                             f"Entrada (%) - Unidade {row['UNIDADE']}",
                                             min_value=20, max_value=50, value=30, step=5,
                                             key=f"entrada_{idx}"
                                         )
-                                        # Usa o valor base para os cálculos
-                                        valor_imovel = row["valor_base"]
-                                        entrada_valor = valor_imovel * (entrada_percentual / 100)
-                                        financiado = valor_imovel - entrada_valor
+                                        valor_base = row['valor_base']
+                                        entrada_valor = valor_base * (entrada_percentual / 100)
+                                        financiado = valor_base - entrada_valor
                                         parcela_media = financiado * (1 + 0.10/12) / 420
-                                        
                                         st.write(f"💵 **Entrada:** {formatar_valor_br(entrada_valor)}")
                                         st.write(f"🏦 **Financiado:** {formatar_valor_br(financiado)}")
                                         st.write(f"📆 **Parcela:** {formatar_valor_br(parcela_media)}")

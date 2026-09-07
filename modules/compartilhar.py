@@ -2,8 +2,8 @@ import streamlit as st
 import pandas as pd
 from modules.utils import formatar_valor_br
 
-def gerar_resumo(nome_cliente, renda, entrada, bairro, top_imoveis, nome_gerente=None):
-    """Gera um resumo formatado para compartilhamento (sem emojis, compatível com WhatsApp)"""
+def gerar_resumo(nome_cliente, renda, entrada, bairro, top_imoveis, nome_gerente=None, desconto=0, tipo_desconto="AVALIAÇÃO"):
+    """Gera um resumo formatado para compartilhamento (sem emojis)"""
     linhas = []
     linhas.append("SIMULAÇÃO IMOBILIÁRIA")
     linhas.append("=" * 40)
@@ -13,6 +13,8 @@ def gerar_resumo(nome_cliente, renda, entrada, bairro, top_imoveis, nome_gerente
         linhas.append(f"Bairro: {bairro}")
     linhas.append(f"Renda: {formatar_valor_br(renda)}")
     linhas.append(f"Entrada disponível: {formatar_valor_br(entrada)}")
+    if desconto > 0:
+        linhas.append(f"Desconto acordado: {formatar_valor_br(desconto)} (sobre {tipo_desconto})")
     linhas.append("")
     linhas.append("=" * 40)
     linhas.append("")
@@ -25,7 +27,10 @@ def gerar_resumo(nome_cliente, renda, entrada, bairro, top_imoveis, nome_gerente
             unidade = row.get("UNIDADE", "N/A")
             tipologia = row.get("TIPOLOGIA", "")
             r_m2 = row.get("R$/m²", 0)
+            valor_base = row.get("valor_base", preco)
             linhas.append(f"{i+1}. {unidade} - {formatar_valor_br(preco)}")
+            if desconto > 0:
+                linhas.append(f"   Valor base: {formatar_valor_br(valor_base)}")
             linhas.append(f"   Parcela estimada: {formatar_valor_br(parcela)}")
             linhas.append(f"   R$/m²: {formatar_valor_br(r_m2)}")
             if tipologia:
@@ -43,9 +48,7 @@ def gerar_resumo(nome_cliente, renda, entrada, bairro, top_imoveis, nome_gerente
     return "\n".join(linhas)
 
 def botoes_compartilhar(resumo, nome_cliente):
-    """Exibe os botões de compartilhamento (WhatsApp, TXT)"""
     col1, col2, col3 = st.columns(3)
-    
     with col1:
         st.download_button(
             label="📄 Baixar TXT",
@@ -54,7 +57,6 @@ def botoes_compartilhar(resumo, nome_cliente):
             mime="text/plain",
             use_container_width=True
         )
-    
     with col2:
         mensagem = resumo.replace('\n', '%0A')
         link = f"https://wa.me/?text={mensagem}"
@@ -62,6 +64,5 @@ def botoes_compartilhar(resumo, nome_cliente):
             f'<a href="{link}" target="_blank" style="display:block; background-color:#25D366; color:white; text-align:center; padding:8px; border-radius:8px; text-decoration:none; font-weight:600;">📱 Enviar WhatsApp</a>',
             unsafe_allow_html=True
         )
-    
     with col3:
         st.caption("📄 PDF em breve")
