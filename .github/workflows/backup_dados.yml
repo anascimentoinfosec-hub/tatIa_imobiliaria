@@ -1,10 +1,9 @@
-name: Backup Diário dos Dados
+name: Backup Completo do Projeto
 
 on:
   schedule:
-    # Roda todos os dias às 3 da manhã
     - cron: '0 3 * * *'
-  workflow_dispatch:  # Permite rodar manualmente também
+  workflow_dispatch:
 
 jobs:
   backup:
@@ -12,23 +11,20 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Checkout do repositório
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fazer backup dos dados
+      - name: Backup de todos os dados importantes
         run: |
-          # Cria um arquivo com a data do backup
-          echo "Backup realizado em $(date)" > dados/backup_info.txt
-          
-          # Adiciona os arquivos de dados
           git config --local user.email "backup@github-actions.com"
           git config --local user.name "Backup Automático"
           
-          # Só faz commit se houver mudanças
-          if [ -n "$(git status --porcelain dados/)" ]; then
-            git add dados/
-            git commit -m "Backup diário automático - $(date '+%Y-%m-%d %H:%M')"
+          # Adiciona tudo que é importante
+          git add dados/ usuarios.json construtoras.json requirements.txt 2>/dev/null || true
+          
+          if [ -n "$(git status --porcelain)" ]; then
+            git commit -m "Backup automático - $(date '+%Y-%m-%d %H:%M')"
             git push
           else
-            echo "Nenhuma alteração detectada. Backup não necessário."
+            echo "Nada para backup"
           fi
