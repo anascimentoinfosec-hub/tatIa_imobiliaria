@@ -256,7 +256,8 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                             renda_cliente,
                             entrada_cliente,
                             bairro_preferencia,
-                            top_recomendacoes
+                            top_recomendacoes,
+                            nome_gerente=USUARIOS[usuario_logado]['nome']  # <-- NOME DO GERENTE
                         )
                         
                         st.markdown("---")
@@ -271,15 +272,15 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                                     st.markdown("---")
                                     col_a, col_b = st.columns([3, 2])
                                     with col_a:
-                                        st.markdown(f"**🏢 Unidade {row['UNIDADE']}**")
+                                        st.markdown(f"*🏢 Unidade {row['UNIDADE']}*")
                                         if preco_col in row:
-                                            st.write(f"💰 **Preço:** {formatar_valor_br(row[preco_col])}")
+                                            st.write(f"💰 *Preço:* {formatar_valor_br(row[preco_col])}")
                                         if 'R$/m²' in row:
-                                            st.write(f"📊 **R$/m²:** {formatar_valor_br(row['R$/m²'])}")
+                                            st.write(f"📊 *R$/m²:* {formatar_valor_br(row['R$/m²'])}")
                                         if 'parcela_estimada' in row:
-                                            st.write(f"📆 **Parcela estimada:** {formatar_valor_br(row['parcela_estimada'])}")
+                                            st.write(f"📆 *Parcela estimada:* {formatar_valor_br(row['parcela_estimada'])}")
                                         if 'TIPOLOGIA' in row:
-                                            st.write(f"🏠 **Tipo:** {row['TIPOLOGIA']}")
+                                            st.write(f"🏠 *Tipo:* {row['TIPOLOGIA']}")
                                     with col_b:
                                         entrada_percentual = st.slider(
                                             f"Entrada (%) - Unidade {row['UNIDADE']}",
@@ -290,9 +291,9 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                                         entrada_valor = valor_imovel * (entrada_percentual / 100)
                                         financiado = valor_imovel - entrada_valor
                                         parcela_media = financiado * (1 + 0.10/12) / 420
-                                        st.write(f"💵 **Entrada:** {formatar_valor_br(entrada_valor)}")
-                                        st.write(f"🏦 **Financiado:** {formatar_valor_br(financiado)}")
-                                        st.write(f"📆 **Parcela:** {formatar_valor_br(parcela_media)}")
+                                        st.write(f"💵 *Entrada:* {formatar_valor_br(entrada_valor)}")
+                                        st.write(f"🏦 *Financiado:* {formatar_valor_br(financiado)}")
+                                        st.write(f"📆 *Parcela:* {formatar_valor_br(parcela_media)}")
                         else:
                             st.warning(f"⚠️ Nenhuma oportunidade encontrada para {nome_cliente}.")
                     except Exception as e:
@@ -307,7 +308,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         entrada_media = valor_medio * (entrada_percentual_global / 100)
         financiado_medio = valor_medio - entrada_media
         parcela_media_global = financiado_medio * (1 + 0.10/12) / 420
-        st.markdown("**📊 Simulação média com base nos imóveis disponíveis:**")
+        st.markdown("*📊 Simulação média com base nos imóveis disponíveis:*")
         col_s1, col_s2, col_s3 = st.columns(3)
         col_s1.metric("💰 Valor médio", formatar_valor_br(valor_medio))
         col_s2.metric(f"💵 Entrada ({entrada_percentual_global}%)", formatar_valor_br(entrada_media))
