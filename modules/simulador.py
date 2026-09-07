@@ -121,7 +121,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         else:
             st.info("🔒 As planilhas são gerenciadas pelo gerente.")
         st.markdown("---")
-        st.caption("Versão 5.1 - Compartilhamento robusto")
+        st.caption("Versão 5.2 - Forçando deploy")
 
     if not produto_selecionado:
         st.warning("⚠️ Selecione um produto para visualizar os dados.")
