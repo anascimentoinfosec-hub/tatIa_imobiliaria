@@ -1,12 +1,12 @@
 import streamlit as st
-from modules.auth import carregar_usuarios, pagina_login, exibir_login_sidebar
-from modules.usuarios import pagina_gestao_usuarios
-from modules.construtoras import carregar_construtoras, pagina_gestao_construtoras
-from modules.simulador import pagina_simulador
-from modules.bia import pagina_bia
-from modules.superadmin import pagina_superadmin
-from modules.creditos import pagina_creditos
-from modules.dashboard import pagina_dashboard
+from src.auth import carregar_usuarios, pagina_login, exibir_login_sidebar
+from src.usuarios import pagina_gestao_usuarios
+from src.construtoras import carregar_construtoras, pagina_gestao_construtoras
+from src.simulador import pagina_simulador
+from src.bia import pagina_bia
+from src.superadmin import pagina_superadmin
+from src.creditos import pagina_creditos
+from src.dashboard import pagina_dashboard
 
 # CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(

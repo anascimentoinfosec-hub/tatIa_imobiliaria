@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from modules.utils import hash_senha
-from modules.auth import salvar_usuarios, carregar_usuarios
+from src.utils import hash_senha
+from src.auth import salvar_usuarios, carregar_usuarios
 
 def pagina_superadmin(USUARIOS):
     st.title("👑 Super Admin - Gestão do Sistema")

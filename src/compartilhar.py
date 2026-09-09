@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from modules.utils import formatar_valor_br
+from src.utils import formatar_valor_br
 
 def gerar_resumo(nome_cliente, renda, entrada, bairro, top_imoveis, nome_gerente=None, desconto=0, tipo_desconto="AVALIAÇÃO"):
     """Gera um resumo formatado para compartilhamento (sem emojis)"""
