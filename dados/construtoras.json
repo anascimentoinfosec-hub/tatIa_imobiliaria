@@ -1,0 +1,58 @@
+{
+  "TesteA": {
+    "tipo_desconto": "AVALIAÇÃO",
+    "produtos": {
+      "TorreA": {
+        "cidade": "Nova Iguaçu",
+        "skiprows": 5,
+        "mapeamento": {
+          "0": "BLOCO",
+          "1": "UNIDADE",
+          "2": "ÁREA PRIVATIVA",
+          "3": "COLUNA",
+          "4": "VAGA",
+          "5": "TIPOLOGIA",
+          "6": "AVALIAÇÃO",
+          "7": "PREÇO"
+        },
+        "colunas_ordem": [
+          "UNIDADE",
+          "AVALIAÇÃO",
+          "PREÇO"
+        ],
+        "colunas_para_converter": [
+          "AVALIAÇÃO",
+          "PREÇO"
+        ]
+      }
+    }
+  },
+  "XYZ": {
+    "tipo_desconto": "PREÇO",
+    "produtos": {
+      "Torre XYZ": {
+        "cidade": "Nova Iguaçu",
+        "skiprows": 5,
+        "mapeamento": {
+          "0": "BLOCO",
+          "1": "UNIDADE",
+          "2": "ÁREA PRIVATIVA",
+          "3": "COLUNA",
+          "4": "VAGA",
+          "5": "TIPOLOGIA",
+          "6": "AVALIAÇÃO",
+          "7": "PREÇO"
+        },
+        "colunas_ordem": [
+          "UNIDADE",
+          "AVALIAÇÃO",
+          "PREÇO"
+        ],
+        "colunas_para_converter": [
+          "AVALIAÇÃO",
+          "PREÇO"
+        ]
+      }
+    }
+  }
+}

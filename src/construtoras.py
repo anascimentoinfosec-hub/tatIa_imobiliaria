@@ -46,6 +46,9 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
     cidades = carregar_cidades()
     tabs = st.tabs(["📋 Listar", "➕ Adicionar Construtora", "📦 Gerenciar Produtos", "📍 Gerenciar Cidades"])
     
+    # =========================================================
+    # TAB 0 - LISTAR
+    # =========================================================
     with tabs[0]:
         st.markdown("### Construtoras e Produtos")
         if CONSTRUTORAS:
@@ -64,6 +67,9 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
         else:
             st.info("Nenhuma construtora cadastrada.")
     
+    # =========================================================
+    # TAB 1 - ADICIONAR CONSTRUTORA
+    # =========================================================
     with tabs[1]:
         st.markdown("### Adicionar Nova Construtora")
         with st.form("form_nova_construtora"):
@@ -101,6 +107,9 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                     except Exception as e:
                         st.error(f"❌ Erro: {str(e)}")
     
+    # =========================================================
+    # TAB 2 - GERENCIAR PRODUTOS
+    # =========================================================
     with tabs[2]:
         st.markdown("### Gerenciar Produtos")
         CONSTRUTORAS_ATUALIZADO = carregar_construtoras()
@@ -124,7 +133,27 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
         tipo_desconto = dados.get("tipo_desconto", "AVALIAÇÃO")
         
         st.markdown(f"#### Produtos de **{construtora_edit}**")
-        st.caption(f"💡 Desconto sobre: **{tipo_desconto}**")
+        
+        # === EDITAR TIPO DE DESCONTO ===
+        col_td1, col_td2 = st.columns([2, 1])
+        with col_td1:
+            novo_tipo_desconto = st.selectbox(
+                "💡 Desconto será aplicado sobre:",
+                ["AVALIAÇÃO", "PREÇO"],
+                index=0 if tipo_desconto == "AVALIAÇÃO" else 1,
+                key="edit_tipo_desconto"
+            )
+        with col_td2:
+            st.write("")
+            st.write("")
+            if st.button("💾 Salvar regra", use_container_width=True, key="btn_salvar_regra"):
+                dados_atuais = carregar_construtoras()
+                dados_atuais[construtora_edit]["tipo_desconto"] = novo_tipo_desconto
+                salvar_construtoras(dados_atuais)
+                st.success(f"✅ Regra alterada para: {novo_tipo_desconto}")
+                st.rerun()
+        
+        st.markdown("---")
         
         produtos = dados.get("produtos", {})
         if produtos:
@@ -147,6 +176,7 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                                 del dados_atuais[construtora_edit]["produtos"][produto]
                                 salvar_construtoras(dados_atuais)
                                 st.success(f"✅ Produto '{produto}' excluído com sucesso!")
+                                st.rerun()
                         except Exception as e:
                             st.error(f"❌ Erro ao excluir: {str(e)}")
         else:
@@ -195,11 +225,13 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                                 del st.session_state[key]
                         
                         st.success(f"✅ Produto '{novo_produto}' adicionado com sucesso!")
+                        st.rerun()
                 except json.JSONDecodeError:
                     st.error("❌ Erro no mapeamento: formato JSON inválido!")
                 except Exception as e:
                     st.error(f"❌ Erro ao adicionar produto: {str(e)}")
         
+        # === EDITAR PRODUTO ===
         if st.session_state.get('editando_produto'):
             produto_edit = st.session_state['editando_produto']
             dados_atuais = carregar_construtoras()
@@ -241,6 +273,7 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                                     salvar_construtoras(dados_atuais)
                                     st.session_state['editando_produto'] = None
                                     st.success(f"✅ Produto '{novo_nome}' atualizado com sucesso!")
+                                    st.rerun()
                                 except Exception as e:
                                     st.error(f"❌ Erro ao atualizar: {str(e)}")
                         with col2:
@@ -248,6 +281,9 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
                                 st.session_state['editando_produto'] = None
                                 st.rerun()
     
+    # =========================================================
+    # TAB 3 - GERENCIAR CIDADES
+    # =========================================================
     with tabs[3]:
         st.markdown("### 📍 Gerenciar Cidades")
         st.markdown("Gerencie a lista de cidades disponíveis para os produtos.")
