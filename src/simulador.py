@@ -8,6 +8,8 @@ from src.planilha_cache import salvar_planilha_cache, carregar_planilha_cache, t
 from src.recomendacoes import recomendar_imoveis
 from src.construtoras import carregar_cidades, carregar_construtoras
 from src.compartilhar import gerar_resumo, botoes_compartilhar
+from src.regras.financeiro import calcular_parcela_price, calcular_entrada_e_financiado, calcular_comprometimento_renda
+
 
 ARQUIVO_CONFIG = "dados/construtoras.json"
 
@@ -56,9 +58,10 @@ def _renderizar_cards(top_recomendacoes, desconto_acordado, tipo_desconto, colun
                     key=f"entrada_{idx}"
                 )
                 valor_base = row['valor_base']
-                entrada_valor = valor_base * (entrada_percentual / 100)
-                financiado = valor_base - entrada_valor
-                parcela_media = financiado * (1 + 0.10/12) / 420
+                entrada_fin = calcular_entrada_e_financiado(valor_base, entrada_percentual)
+                entrada_valor = entrada_fin["entrada"]
+                financiado = entrada_fin["financiado"]
+                parcela_media = calcular_parcela_price(financiado, 0.10, 420)
                 st.write(f"💵 **Entrada:** {formatar_valor_br(entrada_valor)}")
                 st.write(f"🏦 **Financiado:** {formatar_valor_br(financiado)}")
                 st.write(f"📆 **Parcela:** {formatar_valor_br(parcela_media)}")
@@ -365,9 +368,10 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
     entrada_percentual_global = st.slider("Percentual de entrada (%)", min_value=20, max_value=50, value=20, step=5, key="entrada_global")
     if preco_col in df.columns and not df.empty:
         valor_medio = df[preco_col].mean()
-        entrada_media = valor_medio * (entrada_percentual_global / 100)
-        financiado_medio = valor_medio - entrada_media
-        parcela_media_global = financiado_medio * (1 + 0.10/12) / 420
+        entrada_fin_g = calcular_entrada_e_financiado(valor_medio, entrada_percentual_global)
+        entrada_media = entrada_fin_g["entrada"]
+        financiado_medio = entrada_fin_g["financiado"]
+        parcela_media_global = calcular_parcela_price(financiado_medio, 0.10, 420)
         st.markdown("**📊 Simulação média com base nos imóveis disponíveis:**")
         col_s1, col_s2, col_s3 = st.columns(3)
         col_s1.metric("💰 Valor médio", formatar_valor_br(valor_medio))
