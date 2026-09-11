@@ -5,3 +5,5 @@ dados/planilhas/
 *.log
 *.pyc
 _pycache_/
+
+.streamlit/secrets.toml
