@@ -1,5 +1,5 @@
 import streamlit as st
-from src.construtoras import carregar_cidades
+from src.construtoras_storage import carregar_cidades
 from src.compartilhar import gerar_resumo
 
 

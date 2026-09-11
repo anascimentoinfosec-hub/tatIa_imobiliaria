@@ -1,7 +1,8 @@
 import streamlit as st
 from src.auth import carregar_usuarios, pagina_login, exibir_login_sidebar
 from src.usuarios import pagina_gestao_usuarios
-from src.construtoras import carregar_construtoras, pagina_gestao_construtoras
+from src.construtoras_storage import carregar_construtoras 
+from src.construtoras import pagina_gestao_construtoras
 from src.simulador import pagina_simulador
 from src.bia import pagina_bia
 from src.superadmin import pagina_superadmin
