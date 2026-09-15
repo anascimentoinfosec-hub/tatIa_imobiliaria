@@ -1,1 +1,62 @@
-[]
+[
+  {
+    "id": "20260915200452258044",
+    "data_hora": "2026-09-15T20:04:52.258090",
+    "cliente": "Ale3",
+    "renda": 4500.0,
+    "entrada": 100000.0,
+    "bairro": "",
+    "origem": "Indicação",
+    "desconto": 70000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-201",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 268800.0,
+        "parcela_estimada": 1344.0
+      },
+      {
+        "UNIDADE": "BL 1-202",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 268800.0,
+        "parcela_estimada": 1344.0
+      },
+      {
+        "UNIDADE": "BL 1-203",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339500.0,
+        "valor_base": 269500.0,
+        "parcela_estimada": 1347.5
+      },
+      {
+        "UNIDADE": "BL 1-204",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339700.0,
+        "valor_base": 269700.0,
+        "parcela_estimada": 1348.5
+      },
+      {
+        "UNIDADE": "BL 1-205",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339000.0,
+        "valor_base": 269000.0,
+        "parcela_estimada": 1345.0
+      }
+    ]
+  }
+]
