@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from src.utils import formatar_valor_br
+from src.pdf_export import gerar_pdf_simulacao
 
 
 def gerar_resumo(nome_cliente, renda, entrada, bairro, top_imoveis,
@@ -15,7 +16,6 @@ def gerar_resumo(nome_cliente, renda, entrada, bairro, top_imoveis,
 
     if origem and origem != "(Nao informado)":
         linhas.append(f"Origem: {origem}")
-
     if bairro:
         linhas.append(f"Bairro: {bairro}")
 
@@ -32,7 +32,6 @@ def gerar_resumo(nome_cliente, renda, entrada, bairro, top_imoveis,
     if top_imoveis is not None and not top_imoveis.empty:
         linhas.append("TOP 3 OPORTUNIDADES")
         linhas.append("")
-
         for i, (idx, row) in enumerate(top_imoveis.head(3).iterrows()):
             preco = row.get("PREÇO", 0)
             parcela = preco * 0.005 if preco else 0
@@ -62,7 +61,6 @@ def gerar_resumo(nome_cliente, renda, entrada, bairro, top_imoveis,
 
             if tipologia:
                 linhas.append(f"   Tipo: {tipologia}")
-
             linhas.append("")
     else:
         linhas.append("Nenhuma oportunidade encontrada.")
@@ -79,7 +77,12 @@ def gerar_resumo(nome_cliente, renda, entrada, bairro, top_imoveis,
     return "\n".join(linhas)
 
 
-def botoes_compartilhar(resumo, nome_cliente):
+def botoes_compartilhar(resumo, nome_cliente, dados_pdf=None):
+    """
+    Botões de compartilhamento (TXT, WhatsApp, PDF).
+
+    dados_pdf: dict com dados completos para o PDF. Se None, não renderiza PDF.
+    """
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -100,4 +103,28 @@ def botoes_compartilhar(resumo, nome_cliente):
         )
 
     with col3:
-        st.caption("📄 PDF em breve")
+        _renderizar_botao_pdf(nome_cliente, dados_pdf)
+
+
+def _renderizar_botao_pdf(nome_cliente, dados_pdf):
+    """Gera o PDF em memória e mostra o botão de download."""
+    if dados_pdf is None:
+        st.caption("📄 PDF indisponível")
+        return
+
+    try:
+        nome_arquivo = f"simulacao_{nome_cliente.replace(' ', '_')}.pdf"
+        gerar_pdf_simulacao(dados_pdf, nome_arquivo)
+
+        with open(nome_arquivo, "rb") as f:
+            pdf_bytes = f.read()
+
+        st.download_button(
+            label="📄 Baixar PDF",
+            data=pdf_bytes,
+            file_name=nome_arquivo,
+            mime="application/pdf",
+            use_container_width=True,
+        )
+    except Exception as e:
+        st.caption(f"📄 Erro ao gerar PDF: {str(e)[:40]}")

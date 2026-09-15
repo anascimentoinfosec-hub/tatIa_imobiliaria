@@ -6,6 +6,40 @@ from src.regras.financeiro import (
 )
 
 
+def renderizar_seletor_proposta(top_recomendacoes):
+    """Radio para escolher UMA unidade como proposta. Retorna o index ou None."""
+    if top_recomendacoes is None or top_recomendacoes.empty:
+        return None
+
+    st.markdown("### 🎯 Escolha a unidade para a proposta")
+    st.caption("Selecione UMA unidade para gerar o PDF e a proposta. Os cards mostram a escolhida com ⭐.")
+
+    opcoes = ["(Mostrar todas)"]
+    indices = [None]
+
+    for idx, row in top_recomendacoes.iterrows():
+        unidade = row.get("UNIDADE", "N/A")
+        tipologia = row.get("TIPOLOGIA", "")
+        valor = row.get("valor_base", 0)
+        label = f"🏢 Unidade {unidade}"
+        if tipologia:
+            label += f" — {tipologia}"
+        if valor:
+            label += f" — {formatar_valor_br(valor)}"
+        opcoes.append(label)
+        indices.append(idx)
+
+    escolha = st.radio(
+        "Selecione uma opção:",
+        range(len(opcoes)),
+        format_func=lambda i: opcoes[i],
+        key="seletor_proposta_radio",
+        label_visibility="collapsed",
+    )
+
+    return indices[escolha]
+
+
 def renderizar_cards(top_recomendacoes, desconto_acordado, tipo_desconto,
                      coluna_base, preco_col, nome_cliente):
     """Renderiza os cards das recomendações."""
@@ -15,6 +49,8 @@ def renderizar_cards(top_recomendacoes, desconto_acordado, tipo_desconto,
 
     st.success(f"✅ {len(top_recomendacoes)} oportunidades encontradas para {nome_cliente}!")
 
+    escolhida_idx = st.session_state.get("unidade_escolhida_idx")
+
     for idx, row in top_recomendacoes.iterrows():
         _renderizar_card_imovel(
             idx=idx,
@@ -23,31 +59,35 @@ def renderizar_cards(top_recomendacoes, desconto_acordado, tipo_desconto,
             tipo_desconto=tipo_desconto,
             coluna_base=coluna_base,
             preco_col=preco_col,
+            destacado=(idx == escolhida_idx),
         )
 
 
 def _renderizar_card_imovel(idx, row, desconto_acordado, tipo_desconto,
-                            coluna_base, preco_col):
-    """Renderiza um único card de imóvel."""
+                            coluna_base, preco_col, destacado=False):
     with st.container():
         st.markdown("---")
         col_a, col_b = st.columns([3, 2])
 
         with col_a:
             _renderizar_info_imovel(row, desconto_acordado, tipo_desconto,
-                                     coluna_base, preco_col)
+                                     coluna_base, preco_col, destacado)
 
         with col_b:
             _renderizar_simulacao_imovel(idx, row)
 
 
-def _renderizar_info_imovel(row, desconto_acordado, tipo_desconto, coluna_base, preco_col):
-    """Coluna esquerda: informações do imóvel (Bloco, Andar, valores)."""
+def _renderizar_info_imovel(row, desconto_acordado, tipo_desconto, coluna_base,
+                             preco_col, destacado=False):
     unidade = row.get("UNIDADE", "N/A")
-    st.markdown(f"**🏢 Unidade {unidade}**")
+
+    if destacado:
+        st.markdown(f"**🏢 Unidade {unidade}** ⭐ **_(proposta escolhida)_**")
+    else:
+        st.markdown(f"**🏢 Unidade {unidade}**")
+
     st.caption(f"💡 Desconto sobre: {tipo_desconto}")
 
-    # Bloco e Andar
     bloco = row.get("BLOCO", "")
     pavto = row.get("PAVTO", row.get("ANDAR", ""))
     if bloco or pavto:
@@ -58,7 +98,6 @@ def _renderizar_info_imovel(row, desconto_acordado, tipo_desconto, coluna_base, 
             partes.append(f"Andar: {pavto}")
         st.write(f"📍 **{' | '.join(partes)}**")
 
-    # Avaliação sempre primeiro
     if "AVALIAÇÃO" in row:
         st.write(f"📊 **Avaliação:** {formatar_valor_br(row['AVALIAÇÃO'])}")
 
@@ -75,7 +114,6 @@ def _renderizar_info_imovel(row, desconto_acordado, tipo_desconto, coluna_base, 
 
 
 def _renderizar_simulacao_imovel(idx, row):
-    """Coluna direita: number_input de financiado + entrada e parcela calculadas."""
     valor_base = row["valor_base"]
     unidade = row.get("UNIDADE", idx)
 
@@ -106,7 +144,6 @@ def _renderizar_simulacao_imovel(idx, row):
 
 
 def renderizar_ajuste_global(df, preco_col):
-    """Seção de ajuste de entrada global + métricas médias."""
     st.markdown("---")
     st.markdown("### 💰 Ajuste de Entrada")
     st.caption("Ajuste o percentual de entrada para simular diferentes cenários.")

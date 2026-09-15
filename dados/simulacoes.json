@@ -58,5 +58,89 @@
         "parcela_estimada": 1345.0
       }
     ]
+  },
+  {
+    "id": "20260915203616388625",
+    "data_hora": "2026-09-15T20:36:16.388674",
+    "cliente": "Ale5",
+    "renda": 5000.0,
+    "entrada": 100000.0,
+    "bairro": "Duque de Caxias",
+    "origem": "Espontâneo",
+    "desconto": 60000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-201",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 278800.0,
+        "parcela_estimada": 1394.0
+      },
+      {
+        "UNIDADE": "BL 1-202",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 278800.0,
+        "parcela_estimada": 1394.0
+      },
+      {
+        "UNIDADE": "BL 1-203",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339500.0,
+        "valor_base": 279500.0,
+        "parcela_estimada": 1397.5
+      },
+      {
+        "UNIDADE": "BL 1-204",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339700.0,
+        "valor_base": 279700.0,
+        "parcela_estimada": 1398.5
+      },
+      {
+        "UNIDADE": "BL 1-205",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339000.0,
+        "valor_base": 279000.0,
+        "parcela_estimada": 1395.0
+      }
+    ]
+  },
+  {
+    "id": "20260915205352867419",
+    "data_hora": "2026-09-15T20:53:52.867508",
+    "cliente": "Ale6",
+    "renda": 0.0,
+    "entrada": 0.0,
+    "bairro": "",
+    "origem": "",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 1,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-203",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339500.0,
+        "valor_base": 259500.0,
+        "parcela_estimada": 1297.5
+      }
+    ]
   }
 ]

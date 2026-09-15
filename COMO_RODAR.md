@@ -1,10 +1,6 @@
 \# 🚀 Como Rodar o App (Local + ngrok)
 
-
-
 \## 📋 Pré-requisitos (já instalados)
-
-
 
 \- Python 3.14
 
@@ -14,23 +10,10 @@
 
 \- Domínio fixo: `predefine-endeared-protector.ngrok-free.dev`
 
-
-
 \---
-
-
-
 \## 🎬 Passo a passo (toda vez)
-
-
-
 \### 1️⃣ Terminal 1 — Rodar o Streamlit
-
-
-
 Abra o PowerShell e rode:
-
-
 
 ```powershell
 
@@ -38,25 +21,12 @@ cd $env:USERPROFILE\\Documents\\tatIa\_imobiliaria
 
 py -3.14 -m streamlit run app.py --server.port 8080
 
-```
-
-
 
 ✅ Deixe esse terminal aberto.
-
-
-
 \---
-
-
-
 \### 2️⃣ Terminal 2 — Rodar o ngrok
 
-
-
 Abra \*\*outro\*\* PowerShell e rode:
-
-
 
 ```powershell
 
@@ -64,39 +34,20 @@ cd $env:USERPROFILE\\Downloads
 
 .\\ngrok http 8080 --domain=predefine-endeared-protector.ngrok-free.dev
 
-```
-
-
 
 ✅ Deixe esse terminal aberto também.
 
-
-
 \---
-
-
 
 \### 3️⃣ Compartilhar o link
 
-
-
 O link público (sempre o mesmo) é:
-
-
-
-```
 
 https://predefine-endeared-protector.ngrok-free.dev
 
-```
-
-
-
 Envie esse link para a gerente (ou qualquer pessoa autorizada).
 
-
-
-\---
+---
 
 
 
