@@ -47,13 +47,15 @@ def renderizar_sidebar(CONSTRUTORAS, USUARIOS):
 
     with st.sidebar:
         st.header("⚙️ Configurações")
-        construtora = st.selectbox("🏗️ Selecione a construtora", options=list(CONSTRUTORAS.keys()))
+        construtora = st.selectbox("🏗️ Selecione a construtora", options=list(CONSTRUTORAS.keys()), help="Escolha a construtora para carregar os produtos disponiveis.",
+                                   )
         tipo_desconto = obter_tipo_desconto(construtora, CONSTRUTORAS)
 
         produtos = CONSTRUTORAS[construtora].get("produtos", {})
         produtos_lista = list(produtos.keys())
         if produtos_lista:
-            produto = st.selectbox("📦 Selecione o produto", options=produtos_lista)
+            produto = st.selectbox("📦 Selecione o produto", options=produtos_lista, help="Escolha o empreendimento/produto. Cada produto tem sua própria planilha.",
+                                   )
         else:
             st.warning("⚠️ Nenhum produto cadastrado para esta construtora.")
             return None

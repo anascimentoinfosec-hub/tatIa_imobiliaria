@@ -1,13 +1,11 @@
 import streamlit as st
 from src.construtoras_storage import carregar_cidades
 from src.compartilhar import gerar_resumo
+from src.origens_storage import carregar_origens
 
 
 def renderizar_area_cliente(resultado, tipo_desconto, preco_col, usuario_logado, USUARIOS):
-    """
-    Renderiza a área do cliente (inputs + botão Analisar).
-    Se o botão for clicado, roda a análise e salva em st.session_state.simulacao_ativa.
-    """
+    """Renderiza a área do cliente (inputs + botão Analisar)."""
     st.subheader("🧑 Área do Cliente")
     st.markdown("Preencha os dados abaixo para receber recomendações personalizadas.")
 
@@ -15,33 +13,44 @@ def renderizar_area_cliente(resultado, tipo_desconto, preco_col, usuario_logado,
         col1, col2 = st.columns(2)
 
         with col1:
-            nome_cliente = st.text_input("Nome do Cliente", placeholder="Ex: João Silva", key="cliente_nome")
+            nome_cliente = st.text_input(
+                "Nome do Cliente",
+                placeholder="Ex: João Silva",
+                key="cliente_nome",
+                help="Nome completo do cliente. Aparecerá no resumo compartilhado.",
+            )
             renda_cliente = st.number_input(
                 "💰 Renda líquida mensal (R$)",
                 min_value=0.0, value=5000.0, step=500.0, format="%.2f",
                 key="cliente_renda",
+                help="Renda líquida mensal do cliente (após impostos). Usada para calcular a parcela máxima (30% da renda).",
             )
             entrada_cliente = st.number_input(
                 "🏦 Valor disponível para entrada (R$)",
                 min_value=0.0, value=100000.0, step=10000.0, format="%.2f",
                 key="cliente_entrada",
+                help="Quanto o cliente tem disponível para dar de entrada no imóvel.",
             )
+            origem_cliente = _renderizar_origem_cliente()
 
         with col2:
             cidades_disponiveis = carregar_cidades()
             bairro_preferencia = st.selectbox(
-                "📍 Bairro de preferência", [""] + cidades_disponiveis, key="cliente_bairro"
+                "📍 Bairro de preferência", [""] + cidades_disponiveis, key="cliente_bairro",
+                help="Filtra os imóveis pelo bairro de interesse do cliente.",
             )
             quartos_preferencia = st.selectbox(
-                "🛏️ Quantos quartos?", ["Indiferente", "1", "2", "3", "4+"], key="cliente_quartos"
+                "🛏️ Quantos quartos?", ["Indiferente", "1", "2", "3", "4+"], key="cliente_quartos",
+                help="Filtra os imóveis pela quantidade de quartos. Escolha 'Indiferente' para não filtrar.",
             )
             tipo_preferencia = st.selectbox(
-                "🏠 Tipo de imóvel", ["Indiferente", "Apartamento", "Cobertura", "Garden"], key="cliente_tipo"
+                "🏠 Tipo de imóvel", ["Indiferente", "Apartamento", "Cobertura", "Garden"], key="cliente_tipo",
+                help="Filtra os imóveis pelo tipo (apartamento, cobertura, garden, etc.).",
             )
             desconto_acordado = st.number_input(
                 "💸 Desconto acordado (R$)",
                 min_value=0.0, value=0.0, step=1000.0, format="%.2f",
-                help=f"Desconto será aplicado sobre: {tipo_desconto}",
+                help=f"Desconto a ser subtraído do {tipo_desconto} do imóvel. O resultado é o 'Valor base'.",
                 key="cliente_desconto",
             )
 
@@ -65,19 +74,32 @@ def renderizar_area_cliente(resultado, tipo_desconto, preco_col, usuario_logado,
                         preco_col=preco_col,
                         usuario_logado=usuario_logado,
                         USUARIOS=USUARIOS,
+                        origem_cliente=origem_cliente,
                     )
                     st.session_state.simulacao_ativa = dados_simulacao
                 except Exception as e:
                     st.error(f"❌ Erro ao analisar oportunidades: {str(e)}")
 
 
+def _renderizar_origem_cliente():
+    """Renderiza o combo de origem do cliente."""
+    origens = carregar_origens()
+    opcoes = ["(Não informado)"] + origens
+    return st.selectbox(
+        "🎯 Origem do Cliente",
+        opcoes,
+        key="cliente_origem",
+        help="Como esse cliente chegou até nós? Ajuda a medir a eficácia dos canais de captação.",
+    )
+
+
 def _analisar(resultado, nome_cliente, renda_cliente, entrada_cliente,
               bairro_preferencia, quartos_preferencia, tipo_preferencia,
-              desconto_acordado, tipo_desconto, preco_col, usuario_logado, USUARIOS):
+              desconto_acordado, tipo_desconto, preco_col, usuario_logado,
+              USUARIOS, origem_cliente):
     """Lógica pura de análise. Retorna dict pronto para o session_state."""
     df_filtrado = resultado.copy()
 
-    # Filtro por quartos
     if quartos_preferencia != "Indiferente":
         qtd = int(quartos_preferencia.replace("+", ""))
         col_quartos = None
@@ -88,23 +110,19 @@ def _analisar(resultado, nome_cliente, renda_cliente, entrada_cliente,
         if col_quartos:
             df_filtrado = df_filtrado[df_filtrado[col_quartos].astype(str).str.contains(str(qtd))]
 
-    # Filtro por tipologia
     if tipo_preferencia != "Indiferente" and "TIPOLOGIA" in df_filtrado.columns:
         df_filtrado = df_filtrado[
             df_filtrado["TIPOLOGIA"].astype(str).str.contains(tipo_preferencia, case=False, na=False)
         ]
 
-    # Define coluna base do desconto
     coluna_base = "AVALIAÇÃO" if tipo_desconto == "AVALIAÇÃO" else "PREÇO"
 
-    # Aplica desconto
     if coluna_base in df_filtrado.columns:
         df_filtrado["valor_base"] = df_filtrado[coluna_base] - desconto_acordado
         df_filtrado["valor_base"] = df_filtrado["valor_base"].clip(lower=0)
     else:
         df_filtrado["valor_base"] = df_filtrado["PREÇO"]
 
-    # Filtro por parcela máxima (30% da renda)
     parcela_maxima = renda_cliente * 0.3
     if preco_col in df_filtrado.columns:
         df_filtrado["parcela_estimada"] = df_filtrado["valor_base"] * 0.005
@@ -114,7 +132,6 @@ def _analisar(resultado, nome_cliente, renda_cliente, entrada_cliente,
 
     top_recomendacoes = df_filtrado.head(5)
 
-    # Gera resumo para compartilhar
     resumo = gerar_resumo(
         nome_cliente,
         renda_cliente,
@@ -124,6 +141,7 @@ def _analisar(resultado, nome_cliente, renda_cliente, entrada_cliente,
         nome_gerente=USUARIOS[usuario_logado]["nome"] if usuario_logado in USUARIOS else "",
         desconto=desconto_acordado,
         tipo_desconto=tipo_desconto,
+        origem=origem_cliente,
     )
 
     return {

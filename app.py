@@ -1,38 +1,28 @@
 import streamlit as st
 from src.auth import carregar_usuarios, pagina_login, exibir_login_sidebar
 from src.usuarios import pagina_gestao_usuarios
-from src.construtoras_storage import carregar_construtoras 
+from src.construtoras_storage import carregar_construtoras
 from src.construtoras import pagina_gestao_construtoras
 from src.simulador import pagina_simulador
 from src.bia import pagina_bia
 from src.superadmin import pagina_superadmin
 from src.creditos import pagina_creditos
 from src.dashboard import pagina_dashboard
+from src.origens_gerenciar import renderizar_gestao_origens
 
-# CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(
     page_title="Simulador de Crédito",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# =========================================================
-# CSS PERSONALIZADO – PALETA MODERNA COM CONTRASTE
-# =========================================================
 st.markdown("""
 <style>
-    /* Fundo principal */
-    .stApp {
-        background-color: #eef2f7 !important;
-    }
-    
-    /* Sidebar */
+    .stApp { background-color: #eef2f7 !important; }
     .css-1d391kg, .st-emotion-cache-1d391kg {
         background-color: #ffffff !important;
         border-right: 1px solid #d0d7de !important;
     }
-    
-    /* Cards modernos */
     .card-moderno {
         background-color: #ffffff !important;
         border-radius: 12px !important;
@@ -41,11 +31,7 @@ st.markdown("""
         border: 1px solid #e2e8f0 !important;
         margin-bottom: 16px !important;
     }
-    .card-moderno:hover {
-        box-shadow: 0 4px 16px rgba(0,0,0,0.10) !important;
-    }
-    
-    /* Botão primário (salvar, carregar, analisar) */
+    .card-moderno:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.10) !important; }
     .stButton button[kind="primary"] {
         background-color: #1a73e8 !important;
         color: white !important;
@@ -61,11 +47,6 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(26,115,232,0.4) !important;
         transform: translateY(-1px) !important;
     }
-    .stButton button[kind="primary"]:active {
-        transform: translateY(0px) !important;
-    }
-    
-    /* Botão secundário (cancelar, limpar, etc) */
     .stButton button:not([kind="primary"]) {
         background-color: #f1f3f4 !important;
         color: #1a73e8 !important;
@@ -79,20 +60,13 @@ st.markdown("""
         background-color: #e8eaed !important;
         border-color: #1a73e8 !important;
     }
-    
-    /* Títulos */
-    h1, h2, h3 {
-        color: #0d2b3e !important;
-        font-weight: 600 !important;
-    }
+    h1, h2, h3 { color: #0d2b3e !important; font-weight: 600 !important; }
     h1 {
         font-size: 2.2rem !important;
         border-bottom: 3px solid #1a73e8 !important;
         padding-bottom: 8px !important;
         display: inline-block !important;
     }
-    
-    /* Inputs */
     .stTextInput input, .stSelectbox select, .stNumberInput input {
         border-radius: 8px !important;
         border: 1px solid #d0d7de !important;
@@ -104,8 +78,6 @@ st.markdown("""
         border-color: #1a73e8 !important;
         box-shadow: 0 0 0 3px rgba(26,115,232,0.15) !important;
     }
-    
-    /* Tabelas (Dataframe) */
     .stDataFrame {
         border-radius: 8px !important;
         overflow: hidden !important;
@@ -117,11 +89,7 @@ st.markdown("""
         color: #0d2b3e !important;
         padding: 10px 12px !important;
     }
-    .stDataFrame tbody tr:hover {
-        background-color: #f8fafc !important;
-    }
-    
-    /* Métricas (cards) */
+    .stDataFrame tbody tr:hover { background-color: #f8fafc !important; }
     .stMetric {
         background-color: #e8f0fe !important;
         border-radius: 12px !important;
@@ -129,18 +97,6 @@ st.markdown("""
         border-left: 4px solid #1a73e8 !important;
         box-shadow: 0 2px 4px rgba(0,0,0,0.04) !important;
     }
-    .stMetric .stMetric-label {
-        font-size: 14px !important;
-        color: #1e293b !important;
-        font-weight: 500 !important;
-    }
-    .stMetric .stMetric-value {
-        font-size: 28px !important;
-        font-weight: 700 !important;
-        color: #0d2b3e !important;
-    }
-    
-    /* Badges de perfil */
     .badge-perfil {
         display: inline-block !important;
         padding: 4px 12px !important;
@@ -152,33 +108,8 @@ st.markdown("""
     .badge-superadmin { background-color: #dc3545 !important; }
     .badge-gerente { background-color: #1a73e8 !important; }
     .badge-corretor { background-color: #28a745 !important; }
-    
-    /* Separador */
-    hr {
-        margin: 2rem 0 !important;
-        border: 0 !important;
-        border-top: 1px solid #e2e8f0 !important;
-    }
-    
-    /* Footer */
-    .footer {
-        text-align: center !important;
-        padding: 20px 0 !important;
-        color: #64748b !important;
-        font-size: 13px !important;
-        border-top: 1px solid #e2e8f0 !important;
-        margin-top: 30px !important;
-    }
-    
-    /* Ajuste de containers */
-    .stContainer {
-        background-color: transparent !important;
-    }
-    
-    /* Fundo do conteúdo principal */
-    .main > div {
-        background-color: #eef2f7 !important;
-    }
+    hr { margin: 2rem 0 !important; border: 0 !important; border-top: 1px solid #e2e8f0 !important; }
+    .main > div { background-color: #eef2f7 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -194,7 +125,7 @@ CONSTRUTORAS = carregar_construtoras()
 with st.sidebar:
     st.markdown("### 🏢 **Simulador de Crédito**")
     st.markdown("---")
-    
+
     if "usuario_logado" not in st.session_state:
         st.session_state.usuario_logado = None
 
@@ -203,45 +134,48 @@ with st.sidebar:
     else:
         usuario = st.session_state.usuario_logado
         perfil = USUARIOS[usuario]["perfil"]
-        
-        nome = USUARIOS[usuario]['nome']
+
+        nome = USUARIOS[usuario]["nome"]
         badge_class = "badge-superadmin" if perfil == "superadmin" else "badge-gerente" if perfil == "gerente" else "badge-corretor"
         st.markdown(f"👤 **{nome}**")
         st.markdown(f'<span class="badge-perfil {badge_class}">{perfil.upper()}</span>', unsafe_allow_html=True)
-        
+
         st.markdown("---")
-        
+
         if st.button("🚪 Sair", use_container_width=True):
             st.session_state.usuario_logado = None
             st.rerun()
-        
+
         st.markdown("---")
-        
-        # Menu
+
         if st.button("📊 Simulador", use_container_width=True):
             st.session_state.pagina = "Simulador"
             st.rerun()
-        
+
         if st.button("💬 IA Imobiliária", use_container_width=True):
             st.session_state.pagina = "ChatIA"
             st.rerun()
-        
+
         if perfil in ["gerente", "superadmin"]:
             st.markdown("---")
             st.markdown("### ⚙️ Gestão")
-            
+
             if st.button("👥 Usuários", use_container_width=True):
                 st.session_state.pagina = "Usuários"
                 st.rerun()
-            
+
             if st.button("🏗️ Construtoras", use_container_width=True):
                 st.session_state.pagina = "Construtoras"
                 st.rerun()
-            
+
+            if st.button("🎯 Origens", use_container_width=True):
+                st.session_state.pagina = "Origens"
+                st.rerun()
+
             if st.button("📊 Dashboard", use_container_width=True):
                 st.session_state.pagina = "Dashboard"
                 st.rerun()
-        
+
         if perfil == "superadmin":
             st.markdown("---")
             st.markdown("### 👑 Admin")
@@ -253,13 +187,13 @@ with st.sidebar:
                 st.rerun()
 
 # =========================================================
-# ROTEAMENTO DE PÁGINAS
+# ROTEAMENTO
 # =========================================================
 if st.session_state.usuario_logado is None:
     pagina_login()
 else:
     pagina = st.session_state.get("pagina", "Simulador")
-    
+
     if pagina == "Simulador":
         pagina_simulador(CONSTRUTORAS, USUARIOS)
     elif pagina == "ChatIA":
@@ -272,6 +206,8 @@ else:
         pagina_gestao_usuarios(USUARIOS)
     elif pagina == "Construtoras":
         pagina_gestao_construtoras(CONSTRUTORAS)
+    elif pagina == "Origens":
+        renderizar_gestao_origens()
     elif pagina == "Creditos":
         pagina_creditos()
     else:

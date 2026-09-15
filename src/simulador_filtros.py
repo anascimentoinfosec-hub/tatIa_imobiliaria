@@ -19,7 +19,8 @@ def renderizar_filtros(df):
                 break
         if tipo_col:
             tipos = ["Todas"] + sorted(df[tipo_col].dropna().unique().tolist())
-            tipo_selecionado = st.selectbox("🏠 Tipo", tipos)
+            tipo_selecionado = st.selectbox("🏠 Tipo", tipos, help="Filtra os imóveis pela tipologia (ex: GARDEN, PADRÃO, PCD).",
+                                            )
         else:
             tipo_selecionado = "Todas"
 
@@ -31,7 +32,8 @@ def renderizar_filtros(df):
                 andar_col = c
                 break
         if andar_col:
-            andar_min = st.number_input("📌 Andar mínimo", min_value=0, value=0, step=1)
+            andar_min = st.number_input("📌 Andar mínimo", min_value=0, value=0, step=1, help="Mostra apenas imóveis a partir do andar informado.",
+                                        )
         else:
             andar_min = 0
 
@@ -51,7 +53,7 @@ def renderizar_filtros(df):
                 min_value=0,
                 value=int(df[preco_col].max()) if df[preco_col].max() > 0 else 1000000,
                 step=50000,
-                format="%d",
+                format="%d", help="Mostra apenas imóveis com preço menor ou igual ao valor informado.",
             )
         else:
             preco_max = 1000000
@@ -65,7 +67,8 @@ def renderizar_filtros(df):
                 break
         if status_col:
             status_opcoes = ["Todas"] + sorted(df[status_col].dropna().unique().tolist())
-            status_selecionado = st.selectbox("🔑 Disponibilidade", status_opcoes)
+            status_selecionado = st.selectbox("🔑 Disponibilidade", status_opcoes, help="Filtra pela situação do imóvel (LIVRE, RESERVADA, VENDIDA).",
+                                              )
         else:
             status_selecionado = "Todas"
 

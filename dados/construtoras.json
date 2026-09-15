@@ -1,6 +1,6 @@
 {
   "TesteA": {
-    "tipo_desconto": "AVALIAÇÃO",
+    "tipo_desconto": "PREÇO",
     "produtos": {
       "TorreA": {
         "cidade": "Nova Iguaçu",

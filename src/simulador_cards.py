@@ -8,10 +8,7 @@ from src.regras.financeiro import (
 
 def renderizar_cards(top_recomendacoes, desconto_acordado, tipo_desconto,
                      coluna_base, preco_col, nome_cliente):
-    """
-    Renderiza os cards das recomendações com sliders individuais de entrada.
-    Persiste o estado via st.session_state (chaves por índice).
-    """
+    """Renderiza os cards das recomendações."""
     if top_recomendacoes is None or top_recomendacoes.empty:
         st.warning(f"⚠️ Nenhuma oportunidade encontrada para {nome_cliente}.")
         return
@@ -36,70 +33,89 @@ def _renderizar_card_imovel(idx, row, desconto_acordado, tipo_desconto,
         st.markdown("---")
         col_a, col_b = st.columns([3, 2])
 
-        # --- Coluna esquerda: informações ---
         with col_a:
-            unidade = row.get("UNIDADE", "N/A")
-            st.markdown(f"**🏢 Unidade {unidade}**")
-            st.caption(f"💡 Desconto sobre: {tipo_desconto}")
+            _renderizar_info_imovel(row, desconto_acordado, tipo_desconto,
+                                     coluna_base, preco_col)
 
-            # SEMPRE mostra AVALIAÇÃO primeiro
-            if "AVALIAÇÃO" in row:
-                st.write(f"📊 **Avaliação:** {formatar_valor_br(row['AVALIAÇÃO'])}")
-
-            # Se o desconto for sobre PREÇO, mostra o preço original em seguida
-            if coluna_base == "PREÇO" and preco_col in row:
-                st.write(f"💵 **Preço original:** {formatar_valor_br(row[preco_col])}")
-
-            st.write(f"💸 **Desconto:** {formatar_valor_br(desconto_acordado)}")
-            st.write(f"💰 **Valor base:** {formatar_valor_br(row['valor_base'])}")
-
-            if "parcela_estimada" in row:
-                st.write(f"📆 **Parcela estimada:** {formatar_valor_br(row['parcela_estimada'])}")
-            if "TIPOLOGIA" in row:
-                st.write(f"🏠 **Tipo:** {row['TIPOLOGIA']}")
-
-        # --- Coluna direita: slider de entrada ---
         with col_b:
-            _renderizar_slider_entrada(idx, row)
+            _renderizar_simulacao_imovel(idx, row)
 
 
-def _renderizar_slider_entrada(idx, row):
-    """Renderiza o slider + os valores calculados de entrada/financiado/parcela."""
-    entrada_percentual = st.slider(
-        f"Entrada (%) - Unidade {row.get('UNIDADE', idx)}",
-        min_value=20,
-        max_value=50,
-        value=20,
-        step=5,
-        key=f"entrada_{idx}",
+def _renderizar_info_imovel(row, desconto_acordado, tipo_desconto, coluna_base, preco_col):
+    """Coluna esquerda: informações do imóvel (Bloco, Andar, valores)."""
+    unidade = row.get("UNIDADE", "N/A")
+    st.markdown(f"**🏢 Unidade {unidade}**")
+    st.caption(f"💡 Desconto sobre: {tipo_desconto}")
+
+    # Bloco e Andar
+    bloco = row.get("BLOCO", "")
+    pavto = row.get("PAVTO", row.get("ANDAR", ""))
+    if bloco or pavto:
+        partes = []
+        if bloco:
+            partes.append(f"Bloco: {bloco}")
+        if pavto:
+            partes.append(f"Andar: {pavto}")
+        st.write(f"📍 **{' | '.join(partes)}**")
+
+    # Avaliação sempre primeiro
+    if "AVALIAÇÃO" in row:
+        st.write(f"📊 **Avaliação:** {formatar_valor_br(row['AVALIAÇÃO'])}")
+
+    if coluna_base == "PREÇO" and preco_col in row:
+        st.write(f"💵 **Preço original:** {formatar_valor_br(row[preco_col])}")
+
+    st.write(f"💸 **Desconto:** {formatar_valor_br(desconto_acordado)}")
+    st.write(f"💰 **Valor base:** {formatar_valor_br(row['valor_base'])}")
+
+    if "parcela_estimada" in row:
+        st.write(f"📆 **Parcela estimada:** {formatar_valor_br(row['parcela_estimada'])}")
+    if "TIPOLOGIA" in row:
+        st.write(f"🏠 **Tipo:** {row['TIPOLOGIA']}")
+
+
+def _renderizar_simulacao_imovel(idx, row):
+    """Coluna direita: number_input de financiado + entrada e parcela calculadas."""
+    valor_base = row["valor_base"]
+    unidade = row.get("UNIDADE", idx)
+
+    financiado_padrao = round(valor_base * 0.8, 2)
+
+    st.markdown(f"##### 💰 Simulação — Unidade {unidade}")
+
+    financiado = st.number_input(
+        "🏦 Valor financiado (R$)",
+        min_value=0.0,
+        max_value=float(valor_base),
+        value=float(financiado_padrao),
+        step=5000.0,
+        format="%.2f",
+        key=f"financiado_{idx}",
+        help="Valor que o cliente vai financiar no banco. A entrada é calculada como (Valor base − Financiado).",
     )
 
-    valor_base = row["valor_base"]
-    entrada_fin = calcular_entrada_e_financiado(valor_base, entrada_percentual)
-    entrada_valor = entrada_fin["entrada"]
-    financiado = entrada_fin["financiado"]
+    entrada_valor = valor_base - financiado
+    percentual_entrada = (entrada_valor / valor_base * 100) if valor_base > 0 else 0
+
     parcela_media = calcular_parcela_price(financiado, 0.10, 420)
 
-    st.write(f"💵 **Entrada:** {formatar_valor_br(entrada_valor)}")
+    st.write(f"💵 **Entrada ({percentual_entrada:.1f}%):** {formatar_valor_br(entrada_valor)}")
     st.write(f"🏦 **Financiado:** {formatar_valor_br(financiado)}")
-    st.write(f"📆 **Parcela:** {formatar_valor_br(parcela_media)}")
+    st.write(f"📆 **Parcela (Price 10% a.a. / 420m):** {formatar_valor_br(parcela_media)}")
+    st.caption("💡 Tabela Price • Taxa 10% a.a. • Prazo 420 meses (35 anos) • Parcela fixa.")
 
 
 def renderizar_ajuste_global(df, preco_col):
-    """
-    Renderiza a seção de ajuste de entrada global + métricas médias.
-    """
+    """Seção de ajuste de entrada global + métricas médias."""
     st.markdown("---")
     st.markdown("### 💰 Ajuste de Entrada")
     st.caption("Ajuste o percentual de entrada para simular diferentes cenários.")
 
     entrada_percentual_global = st.slider(
         "Percentual de entrada (%)",
-        min_value=20,
-        max_value=50,
-        value=20,
-        step=5,
+        min_value=20, max_value=50, value=20, step=5,
         key="entrada_global",
+        help="Percentual do valor do imóvel que será pago como entrada. O restante é financiado.",
     )
 
     if preco_col not in df.columns or df.empty:
