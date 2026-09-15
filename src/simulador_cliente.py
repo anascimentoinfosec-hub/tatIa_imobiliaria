@@ -2,6 +2,7 @@ import streamlit as st
 from src.construtoras_storage import carregar_cidades
 from src.compartilhar import gerar_resumo
 from src.origens_storage import carregar_origens
+from src.simulacoes_storage import salvar_simulacao
 
 
 def renderizar_area_cliente(resultado, tipo_desconto, preco_col, usuario_logado, USUARIOS):
@@ -77,6 +78,23 @@ def renderizar_area_cliente(resultado, tipo_desconto, preco_col, usuario_logado,
                         origem_cliente=origem_cliente,
                     )
                     st.session_state.simulacao_ativa = dados_simulacao
+
+                    # === SALVA NO HISTÓRICO ===
+                    nome_gerente = USUARIOS[usuario_logado]["nome"] if usuario_logado in USUARIOS else ""
+                    sim_id = salvar_simulacao(
+                        nome_cliente=nome_cliente,
+                        renda=renda_cliente,
+                        entrada=entrada_cliente,
+                        bairro=bairro_preferencia,
+                        origem=origem_cliente if origem_cliente != "(Não informado)" else "",
+                        desconto=desconto_acordado,
+                        tipo_desconto=tipo_desconto,
+                        gerente=nome_gerente,
+                        top_recomendacoes=dados_simulacao["top_recomendacoes"],
+                    )
+                    st.session_state.ultima_simulacao_id = sim_id
+                    st.toast(f"💾 Simulação salva no histórico (ID: {sim_id[-6:]})")
+
                 except Exception as e:
                     st.error(f"❌ Erro ao analisar oportunidades: {str(e)}")
 

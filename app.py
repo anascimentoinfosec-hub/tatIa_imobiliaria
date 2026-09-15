@@ -9,11 +9,12 @@ from src.superadmin import pagina_superadmin
 from src.creditos import pagina_creditos
 from src.dashboard import pagina_dashboard
 from src.origens_gerenciar import renderizar_gestao_origens
+from src.simulacoes_historico import renderizar_historico
 
 st.set_page_config(
     page_title="Simulador de Crédito",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
 st.markdown("""
@@ -152,6 +153,10 @@ with st.sidebar:
             st.session_state.pagina = "Simulador"
             st.rerun()
 
+        if st.button("📚 Histórico", use_container_width=True):
+            st.session_state.pagina = "Histórico"
+            st.rerun()
+
         if st.button("💬 IA Imobiliária", use_container_width=True):
             st.session_state.pagina = "ChatIA"
             st.rerun()
@@ -196,6 +201,8 @@ else:
 
     if pagina == "Simulador":
         pagina_simulador(CONSTRUTORAS, USUARIOS)
+    elif pagina == "Histórico":
+        renderizar_historico()
     elif pagina == "ChatIA":
         pagina_bia()
     elif pagina == "Dashboard":
