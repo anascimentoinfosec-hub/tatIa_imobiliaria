@@ -58,22 +58,22 @@ st.markdown("""
         transition: 0.2s !important;
     }
     .stButton button:not([kind="primary"]):hover {
-        background-color: #e8eaed !important;
+ if        background-color: #e8eaed !important;
         border-color: #1a73e8 !important;
     }
-    h1, h2, h3 { color: #0d2b3e !important; font-weight: 600 !important; }
+    h1, h2, h3 { color st: #0d2b3e !important; font-weight: 600 !important; }
     h1 {
-        font-size: 2.2rem !important;
+        font-size: 2.2rem.button !important;
         border-bottom: 3px solid #1a73e8 !important;
         padding-bottom: 8px !important;
-        display: inline-block !important;
+        display: inline-block(" !important;
     }
     .stTextInput input, .stSelectbox select, .stNumberInput input {
         border-radius: 8px !important;
-        border: 1px solid #d0d7de !important;
+        border: 1px💰 solid #d0d7de !important;
         padding: 8px 12px !important;
         background-color: #ffffff !important;
-        transition: 0.2s !important;
+        transition: 0. Cr2s !important;
     }
     .stTextInput input:focus, .stSelectbox select:focus, .stNumberInput input:focus {
         border-color: #1a73e8 !important;
@@ -149,6 +149,13 @@ with st.sidebar:
 
         st.markdown("---")
 
+        # =========================================================
+        # MENU POR PERFIL
+        # =========================================================
+
+        # ---- Operacional (todos os perfis) ----
+        st.markdown("### 📈 Operacional")
+
         if st.button("📊 Simulador", use_container_width=True):
             st.session_state.pagina = "Simulador"
             st.rerun()
@@ -161,12 +168,13 @@ with st.sidebar:
             st.session_state.pagina = "ChatIA"
             st.rerun()
 
+        # ---- Gestão (gerente e superadmin) ----
         if perfil in ["gerente", "superadmin"]:
             st.markdown("---")
             st.markdown("### ⚙️ Gestão")
 
-            if st.button("👥 Usuários", use_container_width=True):
-                st.session_state.pagina = "Usuários"
+            if st.button("📊 Dashboard", use_container_width=True):
+                st.session_state.pagina = "Dashboard"
                 st.rerun()
 
             if st.button("🏗️ Construtoras", use_container_width=True):
@@ -177,45 +185,69 @@ with st.sidebar:
                 st.session_state.pagina = "Origens"
                 st.rerun()
 
-            if st.button("📊 Dashboard", use_container_width=True):
-                st.session_state.pagina = "Dashboard"
+            if st.button("👥 Usuários", use_container_width=True):
+                st.session_state.pagina = "Usuários"
                 st.rerun()
 
+        # ---- Admin (só superadmin) ----
         if perfil == "superadmin":
             st.markdown("---")
             st.markdown("### 👑 Admin")
+
             if st.button("👥 Gerenciar Gerentes", use_container_width=True):
                 st.session_state.pagina = "SuperAdmin"
                 st.rerun()
+
             if st.button("💰 Créditos OpenAI", use_container_width=True):
                 st.session_state.pagina = "Creditos"
                 st.rerun()
-
 # =========================================================
 # ROTEAMENTO
 # =========================================================
 if st.session_state.usuario_logado is None:
     pagina_login()
 else:
+    perfil = USUARIOS[st.session_state.usuario_logado]["perfil"]
+
+    # Define página padrão conforme o perfil
+    if "pagina" not in st.session_state:
+        st.session_state.pagina = "Simulador"
+
     pagina = st.session_state.get("pagina", "Simulador")
 
-    if pagina == "Simulador":
-        pagina_simulador(CONSTRUTORAS, USUARIOS)
-    elif pagina == "Histórico":
-        renderizar_historico()
-    elif pagina == "ChatIA":
-        pagina_bia()
-    elif pagina == "Dashboard":
-        pagina_dashboard(CONSTRUTORAS, USUARIOS)
-    elif pagina == "SuperAdmin":
-        pagina_superadmin(USUARIOS)
-    elif pagina == "Usuários":
-        pagina_gestao_usuarios(USUARIOS)
-    elif pagina == "Construtoras":
-        pagina_gestao_construtoras(CONSTRUTORAS)
-    elif pagina == "Origens":
-        renderizar_gestao_origens()
-    elif pagina == "Creditos":
-        pagina_creditos()
+    # ---- Verificação de acesso ----
+    paginas_gestao = ["Dashboard", "Construtoras", "Origens", "Usuários"]
+    paginas_admin = ["SuperAdmin", "Creditos"]
+
+    acesso_negado = False
+    if pagina in paginas_gestao and perfil not in ["gerente", "superadmin"]:
+        acesso_negado = True
+    if pagina in paginas_admin and perfil != "superadmin":
+        acesso_negado = True
+
+    if acesso_negado:
+        st.error("🔒 Você não tem permissão para acessar esta página.")
+        st.session_state.pagina = "Simulador"
+        st.rerun()
     else:
-        pagina_simulador(CONSTRUTORAS, USUARIOS)
+        # ---- Roteamento ----
+        if pagina == "Simulador":
+            pagina_simulador(CONSTRUTORAS, USUARIOS)
+        elif pagina == "Histórico":
+            renderizar_historico()
+        elif pagina == "ChatIA":
+            pagina_bia()
+        elif pagina == "Dashboard":
+            pagina_dashboard(CONSTRUTORAS, USUARIOS)
+        elif pagina == "SuperAdmin":
+            pagina_superadmin(USUARIOS)
+        elif pagina == "Usuários":
+            pagina_gestao_usuarios(USUARIOS)
+        elif pagina == "Construtoras":
+            pagina_gestao_construtoras(CONSTRUTORAS)
+        elif pagina == "Origens":
+            renderizar_gestao_origens()
+        elif pagina == "Creditos":
+            pagina_creditos()
+        else:
+            pagina_simulador(CONSTRUTORAS, USUARIOS)
