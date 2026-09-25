@@ -1,0 +1,62 @@
+{
+  "caixa_sbpe": {
+    "nome": "Caixa - SBPE",
+    "banco": "Caixa",
+    "taxa_anual": 0.1149,
+    "prazo_max_meses": 420,
+    "entrada_minima_pct": 20,
+    "comprometimento_max_pct": 30,
+    "sistema": "SAC",
+    "ativo": true
+  },
+  "caixa_mcmv_faixa1": {
+    "nome": "Caixa - MCMV Faixa 1",
+    "banco": "Caixa",
+    "taxa_anual": 0.05,
+    "prazo_max_meses": 420,
+    "entrada_minima_pct": 20,
+    "comprometimento_max_pct": 30,
+    "sistema": "SAC",
+    "ativo": true
+  },
+  "caixa_mcmv_faixa2": {
+    "nome": "Caixa - MCMV Faixa 2",
+    "banco": "Caixa",
+    "taxa_anual": 0.07,
+    "prazo_max_meses": 420,
+    "entrada_minima_pct": 20,
+    "comprometimento_max_pct": 30,
+    "sistema": "SAC",
+    "ativo": true
+  },
+  "caixa_mcmv_faixa3": {
+    "nome": "Caixa - MCMV Faixa 3",
+    "banco": "Caixa",
+    "taxa_anual": 0.0849,
+    "prazo_max_meses": 420,
+    "entrada_minima_pct": 20,
+    "comprometimento_max_pct": 30,
+    "sistema": "SAC",
+    "ativo": true
+  },
+  "itau_sbpe": {
+    "nome": "Itaú - SBPE",
+    "banco": "Itaú",
+    "taxa_anual": 0.1089,
+    "prazo_max_meses": 360,
+    "entrada_minima_pct": 20,
+    "comprometimento_max_pct": 30,
+    "sistema": "SAC",
+    "ativo": true
+  },
+  "bradesco_sbpe": {
+    "nome": "Bradesco - SBPE",
+    "banco": "Bradesco",
+    "taxa_anual": 0.1099,
+    "prazo_max_meses": 360,
+    "entrada_minima_pct": 20,
+    "comprometimento_max_pct": 30,
+    "sistema": "SAC",
+    "ativo": true
+  }
+}

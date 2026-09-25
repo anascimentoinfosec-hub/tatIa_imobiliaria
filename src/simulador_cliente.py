@@ -3,6 +3,7 @@ from src.construtoras_storage import carregar_cidades
 from src.compartilhar import gerar_resumo
 from src.origens_storage import carregar_origens
 from src.simulacoes_storage import salvar_simulacao
+from src.regras_storage import carregar_regras_ativas
 
 
 def renderizar_area_cliente(resultado, tipo_desconto, preco_col, usuario_logado, USUARIOS):
@@ -24,7 +25,7 @@ def renderizar_area_cliente(resultado, tipo_desconto, preco_col, usuario_logado,
                 "💰 Renda líquida mensal (R$)",
                 min_value=0.0, value=5000.0, step=500.0, format="%.2f",
                 key="cliente_renda",
-                help="Renda líquida mensal do cliente (após impostos). Usada para calcular a parcela máxima (30% da renda).",
+                help="Renda líquida mensal do cliente (após impostos). Usada para calcular a parcela máxima.",
             )
             entrada_cliente = st.number_input(
                 "🏦 Valor disponível para entrada (R$)",
@@ -42,11 +43,11 @@ def renderizar_area_cliente(resultado, tipo_desconto, preco_col, usuario_logado,
             )
             quartos_preferencia = st.selectbox(
                 "🛏️ Quantos quartos?", ["Indiferente", "1", "2", "3", "4+"], key="cliente_quartos",
-                help="Filtra os imóveis pela quantidade de quartos. Escolha 'Indiferente' para não filtrar.",
+                help="Filtra os imóveis pela quantidade de quartos.",
             )
             tipo_preferencia = st.selectbox(
                 "🏠 Tipo de imóvel", ["Indiferente", "Apartamento", "Cobertura", "Garden"], key="cliente_tipo",
-                help="Filtra os imóveis pelo tipo (apartamento, cobertura, garden, etc.).",
+                help="Filtra os imóveis pelo tipo.",
             )
             desconto_acordado = st.number_input(
                 "💸 Desconto acordado (R$)",
@@ -55,9 +56,16 @@ def renderizar_area_cliente(resultado, tipo_desconto, preco_col, usuario_logado,
                 key="cliente_desconto",
             )
 
+            # === Escolha da regra de financiamento ===
+            regra_id, regra = _renderizar_seletor_regra()
+
         if st.button("🔍 Analisar Oportunidades", use_container_width=True):
             if not nome_cliente:
                 st.warning("⚠️ Por favor, informe o nome do cliente.")
+                return
+
+            if regra is None:
+                st.warning("⚠️ Nenhuma regra de financiamento ativa. Cadastre em Gestão → Regras Financiamento.")
                 return
 
             with st.spinner("Analisando oportunidades..."):
@@ -76,10 +84,11 @@ def renderizar_area_cliente(resultado, tipo_desconto, preco_col, usuario_logado,
                         usuario_logado=usuario_logado,
                         USUARIOS=USUARIOS,
                         origem_cliente=origem_cliente,
+                        regra_id=regra_id,
+                        regra=regra,
                     )
                     st.session_state.simulacao_ativa = dados_simulacao
 
-                    # === SALVA NO HISTÓRICO ===
                     nome_gerente = USUARIOS[usuario_logado]["nome"] if usuario_logado in USUARIOS else ""
                     sim_id = salvar_simulacao(
                         nome_cliente=nome_cliente,
@@ -100,21 +109,41 @@ def renderizar_area_cliente(resultado, tipo_desconto, preco_col, usuario_logado,
 
 
 def _renderizar_origem_cliente():
-    """Renderiza o combo de origem do cliente."""
     origens = carregar_origens()
     opcoes = ["(Não informado)"] + origens
     return st.selectbox(
         "🎯 Origem do Cliente",
         opcoes,
         key="cliente_origem",
-        help="Como esse cliente chegou até nós? Ajuda a medir a eficácia dos canais de captação.",
+        help="Como esse cliente chegou até nós?",
     )
+
+
+def _renderizar_seletor_regra():
+    """Combo com as regras de financiamento ativas. Retorna (regra_id, dados_regra)."""
+    regras = carregar_regras_ativas()
+
+    if not regras:
+        return None, None
+
+    opcoes = list(regras.keys())
+    labels = {rid: f"{r['nome']} ({r['taxa_anual']*100:.2f}% a.a. • {r['prazo_max_meses']}m)" for rid, r in regras.items()}
+
+    regra_id = st.selectbox(
+        "🏦 Regra de financiamento",
+        opcoes,
+        format_func=lambda rid: labels[rid],
+        key="cliente_regra",
+        help="Escolha o banco/sistema. Taxa, prazo e sistema são aplicados nas parcelas.",
+    )
+
+    return regra_id, regras[regra_id]
 
 
 def _analisar(resultado, nome_cliente, renda_cliente, entrada_cliente,
               bairro_preferencia, quartos_preferencia, tipo_preferencia,
               desconto_acordado, tipo_desconto, preco_col, usuario_logado,
-              USUARIOS, origem_cliente):
+              USUARIOS, origem_cliente, regra_id, regra):
     """Lógica pura de análise. Retorna dict pronto para o session_state."""
     df_filtrado = resultado.copy()
 
@@ -141,7 +170,10 @@ def _analisar(resultado, nome_cliente, renda_cliente, entrada_cliente,
     else:
         df_filtrado["valor_base"] = df_filtrado["PREÇO"]
 
-    parcela_maxima = renda_cliente * 0.3
+    # Usa comprometimento da regra
+    comprometimento = regra.get("comprometimento_max_pct", 30) / 100
+    parcela_maxima = renda_cliente * comprometimento
+
     if preco_col in df_filtrado.columns:
         df_filtrado["parcela_estimada"] = df_filtrado["valor_base"] * 0.005
         df_filtrado = df_filtrado[df_filtrado["parcela_estimada"] <= parcela_maxima]
@@ -170,4 +202,8 @@ def _analisar(resultado, nome_cliente, renda_cliente, entrada_cliente,
         "preco_col": preco_col,
         "nome_cliente": nome_cliente,
         "resumo": resumo,
+        "regra_id": regra_id,
+        "regra": regra,
+        "renda": renda_cliente,
+        "entrada": entrada_cliente,
     }

@@ -10,6 +10,7 @@ from src.creditos import pagina_creditos
 from src.dashboard import pagina_dashboard
 from src.origens_gerenciar import renderizar_gestao_origens
 from src.simulacoes_historico import renderizar_historico
+from src.regras_gerenciar import renderizar_gestao_regras
 
 st.set_page_config(
     page_title="Simulador de Crédito",
@@ -58,22 +59,22 @@ st.markdown("""
         transition: 0.2s !important;
     }
     .stButton button:not([kind="primary"]):hover {
- if        background-color: #e8eaed !important;
+        background-color: #e8eaed !important;
         border-color: #1a73e8 !important;
     }
-    h1, h2, h3 { color st: #0d2b3e !important; font-weight: 600 !important; }
+    h1, h2, h3 { color: #0d2b3e !important; font-weight: 600 !important; }
     h1 {
-        font-size: 2.2rem.button !important;
+        font-size: 2.2rem !important;
         border-bottom: 3px solid #1a73e8 !important;
         padding-bottom: 8px !important;
-        display: inline-block(" !important;
+        display: inline-block !important;
     }
     .stTextInput input, .stSelectbox select, .stNumberInput input {
         border-radius: 8px !important;
-        border: 1px💰 solid #d0d7de !important;
+        border: 1px solid #d0d7de !important;
         padding: 8px 12px !important;
         background-color: #ffffff !important;
-        transition: 0. Cr2s !important;
+        transition: 0.2s !important;
     }
     .stTextInput input:focus, .stSelectbox select:focus, .stNumberInput input:focus {
         border-color: #1a73e8 !important;
@@ -149,11 +150,7 @@ with st.sidebar:
 
         st.markdown("---")
 
-        # =========================================================
-        # MENU POR PERFIL
-        # =========================================================
-
-        # ---- Operacional (todos os perfis) ----
+        # ---- Operacional ----
         st.markdown("### 📈 Operacional")
 
         if st.button("📊 Simulador", use_container_width=True):
@@ -168,7 +165,7 @@ with st.sidebar:
             st.session_state.pagina = "ChatIA"
             st.rerun()
 
-        # ---- Gestão (gerente e superadmin) ----
+        # ---- Gestão ----
         if perfil in ["gerente", "superadmin"]:
             st.markdown("---")
             st.markdown("### ⚙️ Gestão")
@@ -181,6 +178,10 @@ with st.sidebar:
                 st.session_state.pagina = "Construtoras"
                 st.rerun()
 
+            if st.button("🏦 Regras Financiamento", use_container_width=True):
+                st.session_state.pagina = "Regras"
+                st.rerun()
+
             if st.button("🎯 Origens", use_container_width=True):
                 st.session_state.pagina = "Origens"
                 st.rerun()
@@ -189,7 +190,7 @@ with st.sidebar:
                 st.session_state.pagina = "Usuários"
                 st.rerun()
 
-        # ---- Admin (só superadmin) ----
+        # ---- Admin ----
         if perfil == "superadmin":
             st.markdown("---")
             st.markdown("### 👑 Admin")
@@ -201,6 +202,7 @@ with st.sidebar:
             if st.button("💰 Créditos OpenAI", use_container_width=True):
                 st.session_state.pagina = "Creditos"
                 st.rerun()
+
 # =========================================================
 # ROTEAMENTO
 # =========================================================
@@ -209,14 +211,12 @@ if st.session_state.usuario_logado is None:
 else:
     perfil = USUARIOS[st.session_state.usuario_logado]["perfil"]
 
-    # Define página padrão conforme o perfil
     if "pagina" not in st.session_state:
         st.session_state.pagina = "Simulador"
 
     pagina = st.session_state.get("pagina", "Simulador")
 
-    # ---- Verificação de acesso ----
-    paginas_gestao = ["Dashboard", "Construtoras", "Origens", "Usuários"]
+    paginas_gestao = ["Dashboard", "Construtoras", "Origens", "Usuários", "Regras"]
     paginas_admin = ["SuperAdmin", "Creditos"]
 
     acesso_negado = False
@@ -230,7 +230,6 @@ else:
         st.session_state.pagina = "Simulador"
         st.rerun()
     else:
-        # ---- Roteamento ----
         if pagina == "Simulador":
             pagina_simulador(CONSTRUTORAS, USUARIOS)
         elif pagina == "Histórico":
@@ -245,6 +244,8 @@ else:
             pagina_gestao_usuarios(USUARIOS)
         elif pagina == "Construtoras":
             pagina_gestao_construtoras(CONSTRUTORAS)
+        elif pagina == "Regras":
+            renderizar_gestao_regras()
         elif pagina == "Origens":
             renderizar_gestao_origens()
         elif pagina == "Creditos":

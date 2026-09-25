@@ -2,6 +2,7 @@ import streamlit as st
 from src.utils import formatar_valor_br
 from src.regras.financeiro import (
     calcular_parcela_price,
+    calcular_parcela_sac,
     calcular_entrada_e_financiado,
 )
 
@@ -114,8 +115,18 @@ def _renderizar_info_imovel(row, desconto_acordado, tipo_desconto, coluna_base,
 
 
 def _renderizar_simulacao_imovel(idx, row):
+    """Coluna direita: aplica a regra escolhida pelo corretor."""
     valor_base = row["valor_base"]
     unidade = row.get("UNIDADE", idx)
+
+    # === Pega a regra escolhida no session_state ===
+    sim = st.session_state.get("simulacao_ativa", {})
+    regra = sim.get("regra", {})
+
+    taxa_anual = regra.get("taxa_anual", 0.10)
+    prazo = regra.get("prazo_max_meses", 420)
+    sistema = regra.get("sistema", "PRICE")
+    nome_regra = regra.get("nome", "Regra padrão")
 
     financiado_padrao = round(valor_base * 0.8, 2)
 
@@ -129,18 +140,26 @@ def _renderizar_simulacao_imovel(idx, row):
         step=5000.0,
         format="%.2f",
         key=f"financiado_{idx}",
-        help="Valor que o cliente vai financiar no banco. A entrada é calculada como (Valor base − Financiado).",
+        help=f"Regra aplicada: {nome_regra} — {taxa_anual*100:.2f}% a.a. / {prazo} meses / {sistema}",
     )
 
     entrada_valor = valor_base - financiado
     percentual_entrada = (entrada_valor / valor_base * 100) if valor_base > 0 else 0
 
-    parcela_media = calcular_parcela_price(financiado, 0.10, 420)
+    # === Calcula com a regra escolhida ===
+    if sistema.upper() == "SAC":
+        resultado_parcela = calcular_parcela_sac(financiado, taxa_anual, prazo)
+        parcela_txt = f"1ª {formatar_valor_br(resultado_parcela['primeira'])} → últ. {formatar_valor_br(resultado_parcela['ultima'])}"
+        caption_txt = f"💡 {nome_regra} • SAC • {taxa_anual*100:.2f}% a.a. • {prazo} meses • Parcela decrescente."
+    else:
+        parcela = calcular_parcela_price(financiado, taxa_anual, prazo)
+        parcela_txt = formatar_valor_br(parcela)
+        caption_txt = f"💡 {nome_regra} • PRICE • {taxa_anual*100:.2f}% a.a. • {prazo} meses • Parcela fixa."
 
     st.write(f"💵 **Entrada ({percentual_entrada:.1f}%):** {formatar_valor_br(entrada_valor)}")
     st.write(f"🏦 **Financiado:** {formatar_valor_br(financiado)}")
-    st.write(f"📆 **Parcela (Price 10% a.a. / 420m):** {formatar_valor_br(parcela_media)}")
-    st.caption("💡 Tabela Price • Taxa 10% a.a. • Prazo 420 meses (35 anos) • Parcela fixa.")
+    st.write(f"📆 **Parcela ({sistema}):** {parcela_txt}")
+    st.caption(caption_txt)
 
 
 def renderizar_ajuste_global(df, preco_col):
@@ -162,7 +181,13 @@ def renderizar_ajuste_global(df, preco_col):
     entrada_fin_g = calcular_entrada_e_financiado(valor_medio, entrada_percentual_global)
     entrada_media = entrada_fin_g["entrada"]
     financiado_medio = entrada_fin_g["financiado"]
-    parcela_media_global = calcular_parcela_price(financiado_medio, 0.10, 420)
+
+    sim = st.session_state.get("simulacao_ativa", {})
+    regra = sim.get("regra", {})
+    taxa = regra.get("taxa_anual", 0.10)
+    prazo = regra.get("prazo_max_meses", 420)
+
+    parcela_media_global = calcular_parcela_price(financiado_medio, taxa, prazo)
 
     st.markdown("**📊 Simulação média com base nos imóveis disponíveis:**")
     col_s1, col_s2, col_s3 = st.columns(3)
