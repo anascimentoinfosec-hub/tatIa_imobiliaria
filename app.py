@@ -11,6 +11,8 @@ from src.dashboard import pagina_dashboard
 from src.origens_gerenciar import renderizar_gestao_origens
 from src.simulacoes_historico import renderizar_historico
 from src.regras_gerenciar import renderizar_gestao_regras
+from src.vendas_gerenciar import renderizar_gestao_vendas
+from src.vendas_dashboard import renderizar_dashboard_vendas
 
 st.set_page_config(
     page_title="Simulador de Crédito",
@@ -157,6 +159,10 @@ with st.sidebar:
             st.session_state.pagina = "Simulador"
             st.rerun()
 
+        if st.button("💼 Vendas", use_container_width=True):
+            st.session_state.pagina = "Vendas"
+            st.rerun()
+
         if st.button("📚 Histórico", use_container_width=True):
             st.session_state.pagina = "Histórico"
             st.rerun()
@@ -172,6 +178,10 @@ with st.sidebar:
 
             if st.button("📊 Dashboard", use_container_width=True):
                 st.session_state.pagina = "Dashboard"
+                st.rerun()
+
+            if st.button("📈 Dashboard Vendas", use_container_width=True):
+                st.session_state.pagina = "DashboardVendas"
                 st.rerun()
 
             if st.button("🏗️ Construtoras", use_container_width=True):
@@ -216,7 +226,10 @@ else:
 
     pagina = st.session_state.get("pagina", "Simulador")
 
-    paginas_gestao = ["Dashboard", "Construtoras", "Origens", "Usuários", "Regras"]
+    paginas_gestao = [
+        "Dashboard", "DashboardVendas",
+        "Construtoras", "Origens", "Usuários", "Regras",
+    ]
     paginas_admin = ["SuperAdmin", "Creditos"]
 
     acesso_negado = False
@@ -232,12 +245,16 @@ else:
     else:
         if pagina == "Simulador":
             pagina_simulador(CONSTRUTORAS, USUARIOS)
+        elif pagina == "Vendas":
+            renderizar_gestao_vendas()
         elif pagina == "Histórico":
             renderizar_historico()
         elif pagina == "ChatIA":
             pagina_bia()
         elif pagina == "Dashboard":
             pagina_dashboard(CONSTRUTORAS, USUARIOS)
+        elif pagina == "DashboardVendas":
+            renderizar_dashboard_vendas()
         elif pagina == "SuperAdmin":
             pagina_superadmin(USUARIOS)
         elif pagina == "Usuários":

@@ -1,0 +1,53 @@
+[
+  {
+    "id": "20260926144644607782",
+    "criado_em": "2026-09-26T14:46:44.607800",
+    "fonte": "Indicação",
+    "cliente": "BARBARA FERREIRA CHATEAUBRIAND",
+    "produto": "LUZES DO RIO",
+    "bloco": "1",
+    "apt": "1138",
+    "construtora": "TesteA",
+    "vgv": 319000.0,
+    "responsavel": "Paula",
+    "data_venda": "25/09/2026",
+    "ato_pago": "Sim",
+    "status": "concluido",
+    "observacoes": "Ato na cabeça, analise com Ads . Aguardando Repasse",
+    "campos_extras": {}
+  },
+  {
+    "id": "20260926144910575004",
+    "criado_em": "2026-09-26T14:49:10.575022",
+    "fonte": "Espontâneo",
+    "cliente": "LUCAS DE MELO DOS SANTOS",
+    "produto": "THE ONE",
+    "bloco": "1",
+    "apt": "704",
+    "construtora": "XYZ",
+    "vgv": 180000.0,
+    "responsavel": "Monique",
+    "data_venda": "04/09/2026",
+    "ato_pago": "Não",
+    "status": "ato_parcial",
+    "observacoes": "Ato na cabeça, analise com Ads . Aguardando Repasse",
+    "campos_extras": {}
+  },
+  {
+    "id": "20260926145121995379",
+    "criado_em": "2026-09-26T14:51:21.995399",
+    "fonte": "Captação Própria",
+    "cliente": "BEATRIZ DE JESUS RENOVATO",
+    "produto": "CONCEITO CALIFÓRNIA",
+    "bloco": "6",
+    "apt": "604",
+    "construtora": "TesteA",
+    "vgv": 267000.0,
+    "responsavel": "Shayane",
+    "data_venda": "09/09/2026",
+    "ato_pago": "Parcialmente",
+    "status": "em_validacao",
+    "observacoes": "Ato pago | cliente restrição sendo resolvida",
+    "campos_extras": {}
+  }
+]

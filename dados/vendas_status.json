@@ -1,0 +1,44 @@
+[
+  {
+    "id": "nao_iniciado",
+    "nome": "Não iniciado",
+    "cor": "#94a3b8",
+    "ordem": 1
+  },
+  {
+    "id": "em_validacao",
+    "nome": "Em validação de pendências",
+    "cor": "#f59e0b",
+    "ordem": 2
+  },
+  {
+    "id": "ato_parcial",
+    "nome": "Ato pago (parcial)",
+    "cor": "#eab308",
+    "ordem": 3
+  },
+  {
+    "id": "ato_integral",
+    "nome": "Ato pago integral",
+    "cor": "#3b82f6",
+    "ordem": 4
+  },
+  {
+    "id": "aguardando_matricula",
+    "nome": "Aguardando atualização de matrícula",
+    "cor": "#8b5cf6",
+    "ordem": 5
+  },
+  {
+    "id": "aguardando_assinatura",
+    "nome": "Aguardando assinatura de contrato",
+    "cor": "#06b6d4",
+    "ordem": 6
+  },
+  {
+    "id": "concluido",
+    "nome": "Ato resolvido (comissão paga) - Concluído",
+    "cor": "#22c55e",
+    "ordem": 7
+  }
+]
