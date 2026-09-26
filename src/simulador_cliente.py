@@ -170,15 +170,26 @@ def _analisar(resultado, nome_cliente, renda_cliente, entrada_cliente,
     else:
         df_filtrado["valor_base"] = df_filtrado["PREÇO"]
 
-    # Usa comprometimento da regra
-    comprometimento = regra.get("comprometimento_max_pct", 30) / 100
-    parcela_maxima = renda_cliente * comprometimento
+    # === Cálculo correto: valor máximo do imóvel ===
+    from src.regras.financeiro import calcular_valor_maximo_imovel
 
-    if preco_col in df_filtrado.columns:
-        df_filtrado["parcela_estimada"] = df_filtrado["valor_base"] * 0.005
-        df_filtrado = df_filtrado[df_filtrado["parcela_estimada"] <= parcela_maxima]
-        if "R$/m²" in df_filtrado.columns:
-            df_filtrado = df_filtrado.sort_values("R$/m²")
+    diagnostico = calcular_valor_maximo_imovel(
+        renda=renda_cliente,
+        entrada=entrada_cliente,
+        comprometimento_pct=regra.get("comprometimento_max_pct", 30),
+        taxa_anual=regra.get("taxa_anual", 0.10),
+        meses=regra.get("prazo_max_meses", 420),
+        sistema=regra.get("sistema", "PRICE"),
+    )
+
+    valor_max = diagnostico["valor_max_imovel"]
+    df_filtrado = df_filtrado[df_filtrado["valor_base"] <= valor_max]
+
+    if "R$/m²" in df_filtrado.columns:
+        df_filtrado = df_filtrado.sort_values("R$/m²")
+
+    # Guarda o diagnóstico para exibir no final
+    st.session_state.diagnostico_simulacao = diagnostico
 
     top_recomendacoes = df_filtrado.head(5)
 

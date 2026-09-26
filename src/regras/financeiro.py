@@ -74,3 +74,49 @@ def calcular_comprometimento_renda(parcela: float, renda_mensal: float) -> float
     if renda_mensal <= 0:
         return 0.0
     return round((parcela / renda_mensal) * 100, 2)
+def calcular_pv_maximo_price(parcela_maxima: float, taxa_anual: float, meses: int) -> float:
+    """
+    Inverso do Price: quanto consigo financiar dada uma parcela máxima?
+    Fórmula: PV = PMT × ((1+i)^n − 1) / (i × (1+i)^n)
+    """
+    if parcela_maxima <= 0 or meses <= 0:
+        return 0.0
+    if taxa_anual <= 0:
+        return parcela_maxima * meses
+    i = taxa_anual / 12
+    fator = (1 + i) ** meses
+    return round(parcela_maxima * (fator - 1) / (i * fator), 2)
+
+
+def calcular_pv_maximo_sac(parcela_maxima: float, taxa_anual: float, meses: int) -> float:
+    """
+    Inverso do SAC: usa a 1ª parcela como referência.
+    Fórmula: PV = PMT / (1/n + i)
+    """
+    if parcela_maxima <= 0 or meses <= 0:
+        return 0.0
+    i = taxa_anual / 12 if taxa_anual > 0 else 0
+    denominador = (1 / meses) + i
+    return round(parcela_maxima / denominador, 2)
+
+
+def calcular_valor_maximo_imovel(renda, entrada, comprometimento_pct,
+                                   taxa_anual, meses, sistema):
+    """
+    Calcula o valor máximo de imóvel que o cliente consegue comprar.
+    Retorna dict com diagnóstico.
+    """
+    parcela_maxima = renda * (comprometimento_pct / 100)
+
+    if sistema.upper() == "SAC":
+        pv_max = calcular_pv_maximo_sac(parcela_maxima, taxa_anual, meses)
+    else:
+        pv_max = calcular_pv_maximo_price(parcela_maxima, taxa_anual, meses)
+
+    valor_max_imovel = pv_max + entrada
+
+    return {
+        "parcela_maxima": round(parcela_maxima, 2),
+        "pv_maximo": round(pv_max, 2),
+        "valor_max_imovel": round(valor_max_imovel, 2),
+    }

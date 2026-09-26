@@ -1,5 +1,6 @@
 import streamlit as st
 
+from src.utils import formatar_valor_br
 from src.simulador_upload import renderizar_sidebar, carregar_dataframe
 from src.simulador_filtros import (
     renderizar_filtros,
@@ -78,6 +79,17 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         st.markdown("### 📤 Compartilhar Simulação")
         dados_pdf = _montar_dados_pdf(sim, usuario_logado, USUARIOS, tipo_desconto, top_para_pdf)
         botoes_compartilhar(sim["resumo"], sim["nome_cliente"], dados_pdf)
+        # Diagnóstico financeiro
+        diag = st.session_state.get("diagnostico_simulacao")
+        if diag:
+            with st.expander("🔍 Diagnóstico financeiro da simulação", expanded=False):
+                st.markdown(f"""
+                - 💰 *Parcela máxima* (comprometimento): {formatar_valor_br(diag['parcela_maxima'])}
+                - 🏦 *Financiamento máximo* aprovado: {formatar_valor_br(diag['pv_maximo'])}
+                - 🏠 *Valor máximo do imóvel* (financiado + entrada): *{formatar_valor_br(diag['valor_max_imovel'])}*
+                
+                Se nenhuma oportunidade aparecer, é porque todos os imóveis estão acima desse teto. Aumente a entrada, mude a regra (ex: MCMV) ou revise o comprometimento.
+                """)
 
         st.markdown("---")
         renderizar_cards(

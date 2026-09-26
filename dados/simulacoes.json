@@ -396,5 +396,956 @@
         "parcela_estimada": 1395.0
       }
     ]
+  },
+  {
+    "id": "20260925205309040463",
+    "data_hora": "2026-09-25T20:53:09.040509",
+    "cliente": "joão nascimento",
+    "renda": 4500.0,
+    "entrada": 100000.0,
+    "bairro": "",
+    "origem": "Lead",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-201",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0,
+        "parcela_estimada": 1294.0
+      },
+      {
+        "UNIDADE": "BL 1-202",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0,
+        "parcela_estimada": 1294.0
+      },
+      {
+        "UNIDADE": "BL 1-203",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339500.0,
+        "valor_base": 259500.0,
+        "parcela_estimada": 1297.5
+      },
+      {
+        "UNIDADE": "BL 1-204",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339700.0,
+        "valor_base": 259700.0,
+        "parcela_estimada": 1298.5
+      },
+      {
+        "UNIDADE": "BL 1-205",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339000.0,
+        "valor_base": 259000.0,
+        "parcela_estimada": 1295.0
+      }
+    ]
+  },
+  {
+    "id": "20260925205320418372",
+    "data_hora": "2026-09-25T20:53:20.418423",
+    "cliente": "joão nascimento",
+    "renda": 4000.0,
+    "entrada": 100000.0,
+    "bairro": "",
+    "origem": "Lead",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260925205335507395",
+    "data_hora": "2026-09-25T20:53:35.507425",
+    "cliente": "joão nascimento",
+    "renda": 4400.0,
+    "entrada": 100000.0,
+    "bairro": "",
+    "origem": "Lead",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-201",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0,
+        "parcela_estimada": 1294.0
+      },
+      {
+        "UNIDADE": "BL 1-202",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0,
+        "parcela_estimada": 1294.0
+      },
+      {
+        "UNIDADE": "BL 1-203",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339500.0,
+        "valor_base": 259500.0,
+        "parcela_estimada": 1297.5
+      },
+      {
+        "UNIDADE": "BL 1-204",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339700.0,
+        "valor_base": 259700.0,
+        "parcela_estimada": 1298.5
+      },
+      {
+        "UNIDADE": "BL 1-205",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339000.0,
+        "valor_base": 259000.0,
+        "parcela_estimada": 1295.0
+      }
+    ]
+  },
+  {
+    "id": "20260925205343264959",
+    "data_hora": "2026-09-25T20:53:43.265005",
+    "cliente": "joão nascimento",
+    "renda": 4300.0,
+    "entrada": 100000.0,
+    "bairro": "",
+    "origem": "Lead",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260925205354919527",
+    "data_hora": "2026-09-25T20:53:54.919579",
+    "cliente": "joão nascimento",
+    "renda": 4390.0,
+    "entrada": 100000.0,
+    "bairro": "",
+    "origem": "Lead",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-201",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0,
+        "parcela_estimada": 1294.0
+      },
+      {
+        "UNIDADE": "BL 1-202",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0,
+        "parcela_estimada": 1294.0
+      },
+      {
+        "UNIDADE": "BL 1-203",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339500.0,
+        "valor_base": 259500.0,
+        "parcela_estimada": 1297.5
+      },
+      {
+        "UNIDADE": "BL 1-204",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339700.0,
+        "valor_base": 259700.0,
+        "parcela_estimada": 1298.5
+      },
+      {
+        "UNIDADE": "BL 1-205",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339000.0,
+        "valor_base": 259000.0,
+        "parcela_estimada": 1295.0
+      }
+    ]
+  },
+  {
+    "id": "20260925205400928958",
+    "data_hora": "2026-09-25T20:54:00.929008",
+    "cliente": "joão nascimento",
+    "renda": 4350.0,
+    "entrada": 100000.0,
+    "bairro": "",
+    "origem": "Lead",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-201",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0,
+        "parcela_estimada": 1294.0
+      },
+      {
+        "UNIDADE": "BL 1-202",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0,
+        "parcela_estimada": 1294.0
+      },
+      {
+        "UNIDADE": "BL 1-203",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339500.0,
+        "valor_base": 259500.0,
+        "parcela_estimada": 1297.5
+      },
+      {
+        "UNIDADE": "BL 1-204",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339700.0,
+        "valor_base": 259700.0,
+        "parcela_estimada": 1298.5
+      },
+      {
+        "UNIDADE": "BL 1-205",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339000.0,
+        "valor_base": 259000.0,
+        "parcela_estimada": 1295.0
+      }
+    ]
+  },
+  {
+    "id": "20260925205403564024",
+    "data_hora": "2026-09-25T20:54:03.564075",
+    "cliente": "joão nascimento",
+    "renda": 4350.0,
+    "entrada": 100000.0,
+    "bairro": "",
+    "origem": "Lead",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-201",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0,
+        "parcela_estimada": 1294.0
+      },
+      {
+        "UNIDADE": "BL 1-202",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0,
+        "parcela_estimada": 1294.0
+      },
+      {
+        "UNIDADE": "BL 1-203",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339500.0,
+        "valor_base": 259500.0,
+        "parcela_estimada": 1297.5
+      },
+      {
+        "UNIDADE": "BL 1-204",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339700.0,
+        "valor_base": 259700.0,
+        "parcela_estimada": 1298.5
+      },
+      {
+        "UNIDADE": "BL 1-205",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339000.0,
+        "valor_base": 259000.0,
+        "parcela_estimada": 1295.0
+      }
+    ]
+  },
+  {
+    "id": "20260925205417793149",
+    "data_hora": "2026-09-25T20:54:17.793198",
+    "cliente": "joão nascimento",
+    "renda": 4330.0,
+    "entrada": 100000.0,
+    "bairro": "",
+    "origem": "Lead",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-201",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0,
+        "parcela_estimada": 1294.0
+      },
+      {
+        "UNIDADE": "BL 1-202",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0,
+        "parcela_estimada": 1294.0
+      },
+      {
+        "UNIDADE": "BL 1-203",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339500.0,
+        "valor_base": 259500.0,
+        "parcela_estimada": 1297.5
+      },
+      {
+        "UNIDADE": "BL 1-204",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339700.0,
+        "valor_base": 259700.0,
+        "parcela_estimada": 1298.5
+      },
+      {
+        "UNIDADE": "BL 1-205",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339000.0,
+        "valor_base": 259000.0,
+        "parcela_estimada": 1295.0
+      }
+    ]
+  },
+  {
+    "id": "20260925205420682578",
+    "data_hora": "2026-09-25T20:54:20.682603",
+    "cliente": "joão nascimento",
+    "renda": 4330.0,
+    "entrada": 100000.0,
+    "bairro": "",
+    "origem": "Lead",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-201",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0,
+        "parcela_estimada": 1294.0
+      },
+      {
+        "UNIDADE": "BL 1-202",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0,
+        "parcela_estimada": 1294.0
+      },
+      {
+        "UNIDADE": "BL 1-203",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339500.0,
+        "valor_base": 259500.0,
+        "parcela_estimada": 1297.5
+      },
+      {
+        "UNIDADE": "BL 1-204",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339700.0,
+        "valor_base": 259700.0,
+        "parcela_estimada": 1298.5
+      },
+      {
+        "UNIDADE": "BL 1-205",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339000.0,
+        "valor_base": 259000.0,
+        "parcela_estimada": 1295.0
+      }
+    ]
+  },
+  {
+    "id": "20260925205429465844",
+    "data_hora": "2026-09-25T20:54:29.465892",
+    "cliente": "joão nascimento",
+    "renda": 4320.0,
+    "entrada": 100000.0,
+    "bairro": "",
+    "origem": "Lead",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-201",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0,
+        "parcela_estimada": 1294.0
+      },
+      {
+        "UNIDADE": "BL 1-202",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0,
+        "parcela_estimada": 1294.0
+      },
+      {
+        "UNIDADE": "BL 1-205",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339000.0,
+        "valor_base": 259000.0,
+        "parcela_estimada": 1295.0
+      },
+      {
+        "UNIDADE": "BL 1-206",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0,
+        "parcela_estimada": 1294.0
+      },
+      {
+        "UNIDADE": "BL 1-207",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0,
+        "parcela_estimada": 1294.0
+      }
+    ]
+  },
+  {
+    "id": "20260925205439821743",
+    "data_hora": "2026-09-25T20:54:39.821778",
+    "cliente": "joão nascimento",
+    "renda": 4310.0,
+    "entrada": 100000.0,
+    "bairro": "",
+    "origem": "Lead",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260925211400583057",
+    "data_hora": "2026-09-25T21:14:00.583091",
+    "cliente": "Carrascal",
+    "renda": 3000.0,
+    "entrada": 100000.0,
+    "bairro": "Duque de Caxias",
+    "origem": "Espontâneo",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260925211417556570",
+    "data_hora": "2026-09-25T21:14:17.556589",
+    "cliente": "Carrascal",
+    "renda": 4100.0,
+    "entrada": 100000.0,
+    "bairro": "Duque de Caxias",
+    "origem": "Espontâneo",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260925211438515769",
+    "data_hora": "2026-09-25T21:14:38.515789",
+    "cliente": "Carrascal",
+    "renda": 4350.0,
+    "entrada": 100000.0,
+    "bairro": "Duque de Caxias",
+    "origem": "Espontâneo",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260925211450329851",
+    "data_hora": "2026-09-25T21:14:50.329874",
+    "cliente": "Carrascal",
+    "renda": 4500.0,
+    "entrada": 100000.0,
+    "bairro": "Duque de Caxias",
+    "origem": "Espontâneo",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260925211459948925",
+    "data_hora": "2026-09-25T21:14:59.948956",
+    "cliente": "Carrascal",
+    "renda": 7000.0,
+    "entrada": 100000.0,
+    "bairro": "Duque de Caxias",
+    "origem": "Espontâneo",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-201",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0
+      },
+      {
+        "UNIDADE": "BL 1-202",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0
+      },
+      {
+        "UNIDADE": "BL 1-203",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339500.0,
+        "valor_base": 259500.0
+      },
+      {
+        "UNIDADE": "BL 1-204",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339700.0,
+        "valor_base": 259700.0
+      },
+      {
+        "UNIDADE": "BL 1-205",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339000.0,
+        "valor_base": 259000.0
+      }
+    ]
+  },
+  {
+    "id": "20260925211505375870",
+    "data_hora": "2026-09-25T21:15:05.375891",
+    "cliente": "Carrascal",
+    "renda": 5000.0,
+    "entrada": 100000.0,
+    "bairro": "Duque de Caxias",
+    "origem": "Espontâneo",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260925211513567545",
+    "data_hora": "2026-09-25T21:15:13.567568",
+    "cliente": "Carrascal",
+    "renda": 6000.0,
+    "entrada": 100000.0,
+    "bairro": "Duque de Caxias",
+    "origem": "Espontâneo",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260925211523309597",
+    "data_hora": "2026-09-25T21:15:23.309627",
+    "cliente": "Carrascal",
+    "renda": 6500.0,
+    "entrada": 100000.0,
+    "bairro": "Duque de Caxias",
+    "origem": "Espontâneo",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-201",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0
+      },
+      {
+        "UNIDADE": "BL 1-202",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0
+      },
+      {
+        "UNIDADE": "BL 1-203",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339500.0,
+        "valor_base": 259500.0
+      },
+      {
+        "UNIDADE": "BL 1-204",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339700.0,
+        "valor_base": 259700.0
+      },
+      {
+        "UNIDADE": "BL 1-205",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339000.0,
+        "valor_base": 259000.0
+      }
+    ]
+  },
+  {
+    "id": "20260925211528778747",
+    "data_hora": "2026-09-25T21:15:28.778766",
+    "cliente": "Carrascal",
+    "renda": 6400.0,
+    "entrada": 100000.0,
+    "bairro": "Duque de Caxias",
+    "origem": "Espontâneo",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-201",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0
+      },
+      {
+        "UNIDADE": "BL 1-202",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0
+      },
+      {
+        "UNIDADE": "BL 1-203",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339500.0,
+        "valor_base": 259500.0
+      },
+      {
+        "UNIDADE": "BL 1-204",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339700.0,
+        "valor_base": 259700.0
+      },
+      {
+        "UNIDADE": "BL 1-205",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339000.0,
+        "valor_base": 259000.0
+      }
+    ]
+  },
+  {
+    "id": "20260925211535072673",
+    "data_hora": "2026-09-25T21:15:35.072693",
+    "cliente": "Carrascal",
+    "renda": 6300.0,
+    "entrada": 100000.0,
+    "bairro": "Duque de Caxias",
+    "origem": "Espontâneo",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-201",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0
+      },
+      {
+        "UNIDADE": "BL 1-202",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0
+      },
+      {
+        "UNIDADE": "BL 1-205",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339000.0,
+        "valor_base": 259000.0
+      },
+      {
+        "UNIDADE": "BL 1-206",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0
+      },
+      {
+        "UNIDADE": "BL 1-207",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0
+      }
+    ]
+  },
+  {
+    "id": "20260925211540834693",
+    "data_hora": "2026-09-25T21:15:40.834714",
+    "cliente": "Carrascal",
+    "renda": 6200.0,
+    "entrada": 100000.0,
+    "bairro": "Duque de Caxias",
+    "origem": "Espontâneo",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260925211614367262",
+    "data_hora": "2026-09-25T21:16:14.367305",
+    "cliente": "Carrascal",
+    "renda": 3000.0,
+    "entrada": 100000.0,
+    "bairro": "Duque de Caxias",
+    "origem": "Espontâneo",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260925211615987014",
+    "data_hora": "2026-09-25T21:16:15.987036",
+    "cliente": "Carrascal",
+    "renda": 3000.0,
+    "entrada": 100000.0,
+    "bairro": "Duque de Caxias",
+    "origem": "Espontâneo",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260925211622092872",
+    "data_hora": "2026-09-25T21:16:22.092902",
+    "cliente": "Carrascal",
+    "renda": 4500.0,
+    "entrada": 100000.0,
+    "bairro": "Duque de Caxias",
+    "origem": "Espontâneo",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260925211630687865",
+    "data_hora": "2026-09-25T21:16:30.687892",
+    "cliente": "Carrascal",
+    "renda": 6400.0,
+    "entrada": 100000.0,
+    "bairro": "Duque de Caxias",
+    "origem": "Espontâneo",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-201",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0
+      },
+      {
+        "UNIDADE": "BL 1-202",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0
+      },
+      {
+        "UNIDADE": "BL 1-203",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339500.0,
+        "valor_base": 259500.0
+      },
+      {
+        "UNIDADE": "BL 1-204",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339700.0,
+        "valor_base": 259700.0
+      },
+      {
+        "UNIDADE": "BL 1-205",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339000.0,
+        "valor_base": 259000.0
+      }
+    ]
+  },
+  {
+    "id": "20260925211636150759",
+    "data_hora": "2026-09-25T21:16:36.150791",
+    "cliente": "Carrascal",
+    "renda": 6300.0,
+    "entrada": 100000.0,
+    "bairro": "Duque de Caxias",
+    "origem": "Espontâneo",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
   }
 ]
