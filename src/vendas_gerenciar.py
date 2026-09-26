@@ -56,7 +56,6 @@ def _renderizar_lista():
         st.info("📭 Nenhuma venda cadastrada ainda.")
         return
 
-    # Filtros
     col1, col2, col3 = st.columns(3)
 
     status_list = carregar_status()
@@ -73,7 +72,6 @@ def _renderizar_lista():
         responsaveis = sorted(set(v.get("responsavel", "") for v in vendas if v.get("responsavel")))
         filtro_responsavel = st.selectbox("Responsável", ["(Todos)"] + responsaveis, key="vendas_filtro_responsavel")
 
-    # Aplica filtros
     filtradas = vendas
     if filtro_status != "(Todos)":
         status_id = next((s["id"] for s in status_list if s["nome"] == filtro_status), None)
@@ -99,7 +97,7 @@ def _renderizar_card_venda(v):
     cor = status["cor"] if status else "#94a3b8"
     nome_status = status["nome"] if status else "N/A"
 
-    titulo = f"🏠 {cliente}  •  {produto}  •  R$ {vgv:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    titulo = f"🏠 {cliente}  •  {produto}  •  R$ {_formatar_brl(vgv)}"
 
     with st.expander(titulo):
         col1, col2 = st.columns([3, 2])
@@ -120,7 +118,6 @@ def _renderizar_card_venda(v):
             st.markdown("---")
             st.caption(f"💬 **Observações:** {v['observacoes']}")
 
-        # Campos extras
         extras = v.get("campos_extras", {})
         if extras:
             st.markdown("---")
@@ -146,6 +143,11 @@ def _renderizar_form_adicionar():
     st.markdown("### ➕ Adicionar nova venda")
     st.caption("Preencha os dados abaixo para registrar uma nova venda.")
 
+    # === LIMPA OS CAMPOS ANTES DE RENDERIZAR (se flag estiver marcada) ===
+    if st.session_state.get("limpar_form_venda", False):
+        _limpar_chaves_form_venda()
+        st.session_state["limpar_form_venda"] = False
+
     with st.form("form_nova_venda"):
         col1, col2 = st.columns(2)
 
@@ -154,7 +156,6 @@ def _renderizar_form_adicionar():
                 "Fonte",
                 ["(Não informado)"] + carregar_origens(),
                 key="venda_fonte",
-                help="De onde veio esse cliente (Lead, Indicação, etc.).",
             )
             cliente = st.text_input("Nome do cliente", key="venda_cliente")
             produto = st.text_input("Produto/Empreendimento", key="venda_produto")
@@ -170,7 +171,6 @@ def _renderizar_form_adicionar():
             vgv = st.number_input(
                 "VGV (R$)", min_value=0.0, value=0.0, step=10000.0, format="%.2f",
                 key="venda_vgv",
-                help="Valor Geral da Venda.",
             )
             responsavel = st.text_input("Responsável pela venda", key="venda_responsavel")
             data_venda = st.date_input("Data da venda", value=date.today(), key="venda_data")
@@ -185,7 +185,6 @@ def _renderizar_form_adicionar():
 
         observacoes = st.text_area("Observações", key="venda_obs", height=80)
 
-        # Campos extras
         campos_extras = carregar_campos_extras()
         valores_extras = {}
         if campos_extras:
@@ -216,8 +215,26 @@ def _renderizar_form_adicionar():
                     "observacoes": observacoes.strip(),
                     "campos_extras": valores_extras,
                 })
+
+                # Marca flag → limpeza acontece no próximo run
+                st.session_state["limpar_form_venda"] = True
                 st.success(f"✅ Venda de '{cliente}' registrada!")
                 st.rerun()
+
+
+def _limpar_chaves_form_venda():
+    """Remove as chaves do session_state dos campos do formulário de venda."""
+    keys = [
+        "venda_fonte", "venda_cliente", "venda_produto", "venda_bloco",
+        "venda_apt", "venda_construtora", "venda_vgv", "venda_responsavel",
+        "venda_data", "venda_ato_pago", "venda_status", "venda_obs",
+    ]
+    for campo in carregar_campos_extras():
+        keys.append(f"venda_extra_{campo['id']}")
+
+    for k in keys:
+        if k in st.session_state:
+            del st.session_state[k]
 
 
 # =========================================================
@@ -229,11 +246,19 @@ def _renderizar_form_editar():
         st.info("Nenhuma venda para editar.")
         return
 
-    opcoes = {f"{v.get('cliente', 'N/A')} — {v.get('produto', '')} (#{v['id'][-6:]})": v["id"] for v in vendas}
+    opcoes = {"— Selecione uma venda —": None}
+    for v in vendas:
+        label = f"{v.get('cliente', 'N/A')} — {v.get('produto', '')} (#{v['id'][-6:]})"
+        opcoes[label] = v["id"]
+
     escolha = st.selectbox("Selecione a venda", list(opcoes.keys()), key="venda_editar_select")
     venda_id = opcoes[escolha]
-    v = obter_venda(venda_id)
 
+    if venda_id is None:
+        st.info("💡 Selecione uma venda acima para editar.")
+        return
+
+    v = obter_venda(venda_id)
     if not v:
         st.error("Venda não encontrada.")
         return
@@ -244,33 +269,32 @@ def _renderizar_form_editar():
         col1, col2 = st.columns(2)
 
         with col1:
-            fonte = st.text_input("Fonte", value=v.get("fonte", ""), key="edit_fonte")
-            cliente = st.text_input("Nome do cliente", value=v.get("cliente", ""), key="edit_cliente")
-            produto = st.text_input("Produto", value=v.get("produto", ""), key="edit_produto")
-            bloco = st.text_input("Bloco", value=v.get("bloco", ""), key="edit_bloco")
-            apt = st.text_input("Apt/Unidade", value=v.get("apt", ""), key="edit_apt")
-            construtora = st.text_input("Construtora", value=v.get("construtora", ""), key="edit_construtora")
+            fonte = st.text_input("Fonte", value=v.get("fonte", ""), key=f"edit_fonte_{venda_id}")
+            cliente = st.text_input("Nome do cliente", value=v.get("cliente", ""), key=f"edit_cliente_{venda_id}")
+            produto = st.text_input("Produto", value=v.get("produto", ""), key=f"edit_produto_{venda_id}")
+            bloco = st.text_input("Bloco", value=v.get("bloco", ""), key=f"edit_bloco_{venda_id}")
+            apt = st.text_input("Apt/Unidade", value=v.get("apt", ""), key=f"edit_apt_{venda_id}")
+            construtora = st.text_input("Construtora", value=v.get("construtora", ""), key=f"edit_construtora_{venda_id}")
 
         with col2:
             vgv = st.number_input("VGV (R$)", min_value=0.0, value=float(v.get("vgv", 0) or 0),
-                                   step=10000.0, format="%.2f", key="edit_vgv")
-            responsavel = st.text_input("Responsável", value=v.get("responsavel", ""), key="edit_responsavel")
+                                   step=10000.0, format="%.2f", key=f"edit_vgv_{venda_id}")
+            responsavel = st.text_input("Responsável", value=v.get("responsavel", ""), key=f"edit_responsavel_{venda_id}")
             data_venda_str = v.get("data_venda", "")
-            data_venda = st.text_input("Data da venda", value=data_venda_str, key="edit_data")
+            data_venda = st.text_input("Data da venda", value=data_venda_str, key=f"edit_data_{venda_id}")
 
             ato_opcoes = ["(Não informado)", "Sim", "Não", "Parcialmente"]
             ato_idx = ato_opcoes.index(v.get("ato_pago", "")) if v.get("ato_pago", "") in ato_opcoes else 0
-            ato_pago = st.selectbox("Ato pago", ato_opcoes, index=ato_idx, key="edit_ato")
+            ato_pago = st.selectbox("Ato pago", ato_opcoes, index=ato_idx, key=f"edit_ato_{venda_id}")
 
             status_list = carregar_status()
             status_nomes = [s["nome"] for s in status_list]
             status_ids = [s["id"] for s in status_list]
             status_idx = status_ids.index(v.get("status", "nao_iniciado")) if v.get("status", "nao_iniciado") in status_ids else 0
-            status_nome = st.selectbox("Status", status_nomes, index=status_idx, key="edit_status")
+            status_nome = st.selectbox("Status", status_nomes, index=status_idx, key=f"edit_status_{venda_id}")
 
-        observacoes = st.text_area("Observações", value=v.get("observacoes", ""), key="edit_obs", height=80)
+        observacoes = st.text_area("Observações", value=v.get("observacoes", ""), key=f"edit_obs_{venda_id}", height=80)
 
-        # Campos extras
         campos_extras = carregar_campos_extras()
         valores_extras = {}
         if campos_extras:
@@ -280,7 +304,7 @@ def _renderizar_form_editar():
                 valores_extras[campo["id"]] = st.text_input(
                     campo["nome"],
                     value=v.get("campos_extras", {}).get(campo["id"], ""),
-                    key=f"edit_extra_{campo['id']}",
+                    key=f"edit_extra_{campo['id']}_{venda_id}",
                 )
 
         if st.form_submit_button("💾 Salvar alterações", use_container_width=True, type="primary"):
@@ -304,7 +328,6 @@ def _renderizar_gestao_status():
 
     status_list = carregar_status()
 
-    # Lista atual
     for s in status_list:
         col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
 
@@ -326,7 +349,7 @@ def _renderizar_gestao_status():
     st.markdown("---")
     st.markdown("#### ➕ Adicionar novo status")
 
-    with st.form("form_novo_status"):
+    with st.form("form_novo_status", clear_on_submit=True):
         col1, col2, col3 = st.columns([3, 2, 1])
         with col1:
             nome = st.text_input("Nome do status", key="novo_status_nome")
@@ -377,7 +400,7 @@ def _renderizar_gestao_campos_extras():
     st.markdown("---")
     st.markdown("#### ➕ Adicionar campo")
 
-    with st.form("form_novo_campo"):
+    with st.form("form_novo_campo", clear_on_submit=True):
         nome = st.text_input("Nome do campo", placeholder="Ex: Data de assinatura")
         if st.form_submit_button("➕ Adicionar campo", type="primary"):
             if not nome.strip():
