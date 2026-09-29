@@ -1638,5 +1638,295 @@
         "valor_base": 400700.0
       }
     ]
+  },
+  {
+    "id": "20260929184105241811",
+    "data_hora": "2026-09-29T18:41:05.241865",
+    "cliente": "Pelé",
+    "renda": 1700.0,
+    "entrada": 10000.0,
+    "bairro": "Nova Iguaçu",
+    "origem": "Lead",
+    "desconto": 70000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260929184133153481",
+    "data_hora": "2026-09-29T18:41:33.153533",
+    "cliente": "Pelé",
+    "renda": 10000.0,
+    "entrada": 50000.0,
+    "bairro": "Nova Iguaçu",
+    "origem": "Lead",
+    "desconto": 70000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260929184153736108",
+    "data_hora": "2026-09-29T18:41:53.736159",
+    "cliente": "Pelé",
+    "renda": 10000.0,
+    "entrada": 70000.0,
+    "bairro": "Nova Iguaçu",
+    "origem": "Lead",
+    "desconto": 70000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260929184204127401",
+    "data_hora": "2026-09-29T18:42:04.127452",
+    "cliente": "Pelé",
+    "renda": 10000.0,
+    "entrada": 70000.0,
+    "bairro": "Nova Iguaçu",
+    "origem": "Lead",
+    "desconto": 70000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260929184748549072",
+    "data_hora": "2026-09-29T18:47:48.549122",
+    "cliente": "Pelé",
+    "renda": 10000.0,
+    "entrada": 70000.0,
+    "bairro": "Nova Iguaçu",
+    "origem": "Lead",
+    "desconto": 70000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-001",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 460700.0,
+        "valor_base": 390700.0
+      },
+      {
+        "UNIDADE": "BL 1-002",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 460700.0,
+        "valor_base": 390700.0
+      },
+      {
+        "UNIDADE": "BL 1-003",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 481300.0,
+        "valor_base": 411300.0
+      },
+      {
+        "UNIDADE": "BL 1-004",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 479500.0,
+        "valor_base": 409500.0
+      },
+      {
+        "UNIDADE": "BL 1-005",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 480700.0,
+        "valor_base": 410700.0
+      }
+    ]
+  },
+  {
+    "id": "20260929185620477300",
+    "data_hora": "2026-09-29T18:56:20.477363",
+    "cliente": "Garrincha",
+    "renda": 1500.0,
+    "entrada": 10000.0,
+    "bairro": "Niterói",
+    "origem": "Captação Própria",
+    "desconto": 70000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-001",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 460700.0,
+        "valor_base": 390700.0
+      },
+      {
+        "UNIDADE": "BL 1-002",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 460700.0,
+        "valor_base": 390700.0
+      },
+      {
+        "UNIDADE": "BL 1-003",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 481300.0,
+        "valor_base": 411300.0
+      },
+      {
+        "UNIDADE": "BL 1-004",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 479500.0,
+        "valor_base": 409500.0
+      },
+      {
+        "UNIDADE": "BL 1-005",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 480700.0,
+        "valor_base": 410700.0
+      }
+    ]
+  },
+  {
+    "id": "20260929185635868959",
+    "data_hora": "2026-09-29T18:56:35.869009",
+    "cliente": "Garrincha",
+    "renda": 1500.0,
+    "entrada": 10000.0,
+    "bairro": "Niterói",
+    "origem": "Captação Própria",
+    "desconto": 70000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-001",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 460700.0,
+        "valor_base": 390700.0
+      },
+      {
+        "UNIDADE": "BL 1-002",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 460700.0,
+        "valor_base": 390700.0
+      },
+      {
+        "UNIDADE": "BL 1-003",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 481300.0,
+        "valor_base": 411300.0
+      },
+      {
+        "UNIDADE": "BL 1-004",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 479500.0,
+        "valor_base": 409500.0
+      },
+      {
+        "UNIDADE": "BL 1-005",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 480700.0,
+        "valor_base": 410700.0
+      }
+    ]
+  },
+  {
+    "id": "20260929185644774570",
+    "data_hora": "2026-09-29T18:56:44.774618",
+    "cliente": "Garrincha",
+    "renda": 1500.0,
+    "entrada": 10000.0,
+    "bairro": "Niterói",
+    "origem": "Captação Própria",
+    "desconto": 70000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-001",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 460700.0,
+        "valor_base": 390700.0
+      },
+      {
+        "UNIDADE": "BL 1-002",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 460700.0,
+        "valor_base": 390700.0
+      },
+      {
+        "UNIDADE": "BL 1-003",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 481300.0,
+        "valor_base": 411300.0
+      },
+      {
+        "UNIDADE": "BL 1-004",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 479500.0,
+        "valor_base": 409500.0
+      },
+      {
+        "UNIDADE": "BL 1-005",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 480700.0,
+        "valor_base": 410700.0
+      }
+    ]
+  },
+  {
+    "id": "20260929185730746494",
+    "data_hora": "2026-09-29T18:57:30.746567",
+    "cliente": "Garrincha",
+    "renda": 1500.0,
+    "entrada": 10000.0,
+    "bairro": "Niterói",
+    "origem": "Captação Própria",
+    "desconto": 70000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
   }
 ]
