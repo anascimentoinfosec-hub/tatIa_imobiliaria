@@ -23,6 +23,77 @@ Arquivo de controle das pendências do projeto. Atualizar conforme forem sendo r
 - Cards de "Disponíveis / Reservados / Vendidos" no Dashboard só aparecem se a planilha tiver coluna STATUS
 - **Alternativa:** Adicionar coluna automaticamente, ou permitir cadastro manual
 
+Data:27/09
+### #009 - nos campos de valores incluir o ponto do milhar
+    - priorizar
+    
+### #010 - No módulo de Gerente ao criar uma nova simulação está não aparecendo no modo Gestão de Vendas
+
+#### #011 - O valor de entrada não pode ter referência com as tabelas da regra de financiamento. 
+        *Qualquer valor de entrada tem que estar liberado
+
+#### #012 - O simulador deve ser somente e somente só a simulação de Entrada
+        * Por isso bloquear a área de regra de financiamento e não gerar calculo com essa regras(Temporiamente)
+
+### # 013 - Trocar do lado diretio no botão simulador para ser simulador de Entrada de Construtora
+        Pois é somente isso que ele deve fazer e não simular o que os bancos fariam
+
+### #014 Cada construtura tem uma regra de negócio para a entrada diferente
+    
+    1 - Cliente na mesa dados(cpf, renda brut....)
+2- Simulação com caixa Corretor simula na caixa
+3 - conforme o valor financiado. corretor identifica o imóvel: neste caso 380.900 
+   Dor:
+  ****- O Corretor na tela do simulador olhou um a um para saber o valor do imóvel
+   Pílula:  
+*** Aqui o ideal é que a busca traga os imóveis conforme preferências
+    O corretor vai realizando perguntas: Localização, andar, sol, vaga, quartos, lazer....
+	
+4 - Conforme a renda o banco financia ex.:297.600 ********
+5 - Corretor localiza imóvel conforme o valor do imóvel da tabela da construtora: neste caso 380.900 - O Corretor na tela do simulador olhou um a um para saber o valor do imóvel
+
+Ex.: Jeronimo da veiga
+6 - A construtora ta dando (Desconto acordado: R$ 80000) isso é de momento e varia 
+7 - 3 Regras do Conceito( *Validar regras de outras construtoras)
+8 - Regras do Pré-chaves
+  - Regra1: Ato Mínimo: R$1000,00
+  - Regra2: Se o corretor quiser receber na cabeça 4,2%. O cliente tem que dar os 4.2% +1000
+  - Regra3: A parcela antes das chaves(Pré-chaves) só pode comprometer 30% da renda bruta do cliente
+  - Regra3: As intermediarias Pré-chaves pode comprometer até 80% da renda bruta do cliente
+8 - Regras do Pós-Chaves
+   Regra1 - Parcela pós chaves não pode comprometar 5% da renda bruta do cliente
+   Regra2 - As intermediarias no pós chaves não pode comprometer _+ de 30% da renda bruta
+
+9 - Somando-se as regras de pré e pós chaves não pode comprometer 60x de parcelas
+
+
+    Obs.: Essa simulação poderá ser feita tanto pelo gerente quanto pelo corredor
+
+#### #  #015 - Na simulação do cliente é necessário ter um campo vagas. 
+    - Poist o Cliente pode necessitar e as oportunidades deverão buscar somente unidades com vagas
+
+#### # 016 Ajuste na lista de Oportunidades
+    Ao localizar as melhores oportunidades o corretor poderá ajustar campos importante tais como localização
+
+#### # Na área do cliente tem que aparecer um área chamada Lazer onde o corretor poderá marcar uma ou mais opções e com isto o filtro de oportunidades ser mais assertivo
+   Opções:
+       - Complexo Aquatico
+       - Salão de Festas
+       - Academia
+       - Cobertura
+       - Churrasqueira
+       - Quadra Poliesportiva,
+        - Quadra de Beach Tennis
+        - Playground
+        - Pet place
+        - Mini Mercado,
+        - Redário,
+        - Horta
+        - Espaço Piquinique
+        - Fitness
+        - Car Wash
+        - Futmesa
+     
 ### #003 — Supabase (persistência na nuvem)
 - Migrar dados de JSON local para banco PostgreSQL
 - Resolve: Streamlit Cloud apagar dados a cada deploy

@@ -32,10 +32,10 @@
   "caixa_mcmv_faixa3": {
     "nome": "Caixa - MCMV Faixa 3",
     "banco": "Caixa",
-    "taxa_anual": 0.0849,
+    "taxa_anual": 0.0793,
     "prazo_max_meses": 420,
-    "entrada_minima_pct": 20,
-    "comprometimento_max_pct": 30,
+    "entrada_minima_pct": 0.0,
+    "comprometimento_max_pct": 30.0,
     "sistema": "SAC",
     "ativo": true
   },

@@ -3,7 +3,7 @@ from src.construtoras_storage import carregar_cidades
 from src.compartilhar import gerar_resumo
 from src.origens_storage import carregar_origens
 from src.simulacoes_storage import salvar_simulacao
-from src.regras_storage import carregar_regras_ativas
+from src.utils import campo_moeda
 
 
 def renderizar_area_cliente(resultado, tipo_desconto, preco_col, usuario_logado, USUARIOS):
@@ -21,18 +21,23 @@ def renderizar_area_cliente(resultado, tipo_desconto, preco_col, usuario_logado,
                 key="cliente_nome",
                 help="Nome completo do cliente. Aparecerá no resumo compartilhado.",
             )
-            renda_cliente = st.number_input(
-                "💰 Renda líquida mensal (R$)",
-                min_value=0.0, value=5000.0, step=500.0, format="%.2f",
+
+            renda_cliente = campo_moeda(
+                "💰 Renda bruta mensal (R$)",
+                valor_inicial=5000.0,
                 key="cliente_renda",
-                help="Renda líquida mensal do cliente (após impostos). Usada para calcular a parcela máxima.",
+                help="Renda BRUTA mensal do cliente (antes dos descontos). Usada para avaliar potencial de compra.",
+                placeholder="Ex: 5.000,00",
             )
-            entrada_cliente = st.number_input(
+
+            entrada_cliente = campo_moeda(
                 "🏦 Valor disponível para entrada (R$)",
-                min_value=0.0, value=100000.0, step=10000.0, format="%.2f",
+                valor_inicial=100000.0,
                 key="cliente_entrada",
-                help="Quanto o cliente tem disponível para dar de entrada no imóvel.",
+                help="Quanto o cliente tem disponível para dar de entrada no imóvel. Sem limite.",
+                placeholder="Ex: 100.000,00",
             )
+
             origem_cliente = _renderizar_origem_cliente()
 
         with col2:
@@ -49,23 +54,24 @@ def renderizar_area_cliente(resultado, tipo_desconto, preco_col, usuario_logado,
                 "🏠 Tipo de imóvel", ["Indiferente", "Apartamento", "Cobertura", "Garden"], key="cliente_tipo",
                 help="Filtra os imóveis pelo tipo.",
             )
-            desconto_acordado = st.number_input(
+
+            desconto_acordado = campo_moeda(
                 "💸 Desconto acordado (R$)",
-                min_value=0.0, value=0.0, step=1000.0, format="%.2f",
-                help=f"Desconto a ser subtraído do {tipo_desconto} do imóvel. O resultado é o 'Valor base'.",
+                valor_inicial=0.0,
                 key="cliente_desconto",
+                help=f"Desconto a ser subtraído do {tipo_desconto} do imóvel. O resultado é o 'Valor base'.",
+                placeholder="Ex: 80.000,00",
             )
 
-            # === Escolha da regra de financiamento ===
-            regra_id, regra = _renderizar_seletor_regra()
+            # =========================================================
+            # #012 — REGRAS BANCÁRIAS BLOQUEADAS TEMPORARIAMENTE
+            # Serão reativadas após a #014 (Simulador de Entrada de Construtora)
+            # =========================================================
+            # regra_id, regra = _renderizar_seletor_regra()
 
         if st.button("🔍 Analisar Oportunidades", use_container_width=True):
             if not nome_cliente:
                 st.warning("⚠️ Por favor, informe o nome do cliente.")
-                return
-
-            if regra is None:
-                st.warning("⚠️ Nenhuma regra de financiamento ativa. Cadastre em Gestão → Regras Financiamento.")
                 return
 
             with st.spinner("Analisando oportunidades..."):
@@ -84,8 +90,6 @@ def renderizar_area_cliente(resultado, tipo_desconto, preco_col, usuario_logado,
                         usuario_logado=usuario_logado,
                         USUARIOS=USUARIOS,
                         origem_cliente=origem_cliente,
-                        regra_id=regra_id,
-                        regra=regra,
                     )
                     st.session_state.simulacao_ativa = dados_simulacao
 
@@ -119,31 +123,10 @@ def _renderizar_origem_cliente():
     )
 
 
-def _renderizar_seletor_regra():
-    """Combo com as regras de financiamento ativas. Retorna (regra_id, dados_regra)."""
-    regras = carregar_regras_ativas()
-
-    if not regras:
-        return None, None
-
-    opcoes = list(regras.keys())
-    labels = {rid: f"{r['nome']} ({r['taxa_anual']*100:.2f}% a.a. • {r['prazo_max_meses']}m)" for rid, r in regras.items()}
-
-    regra_id = st.selectbox(
-        "🏦 Regra de financiamento",
-        opcoes,
-        format_func=lambda rid: labels[rid],
-        key="cliente_regra",
-        help="Escolha o banco/sistema. Taxa, prazo e sistema são aplicados nas parcelas.",
-    )
-
-    return regra_id, regras[regra_id]
-
-
 def _analisar(resultado, nome_cliente, renda_cliente, entrada_cliente,
               bairro_preferencia, quartos_preferencia, tipo_preferencia,
               desconto_acordado, tipo_desconto, preco_col, usuario_logado,
-              USUARIOS, origem_cliente, regra_id, regra):
+              USUARIOS, origem_cliente):
     """Lógica pura de análise. Retorna dict pronto para o session_state."""
     df_filtrado = resultado.copy()
 
@@ -170,26 +153,28 @@ def _analisar(resultado, nome_cliente, renda_cliente, entrada_cliente,
     else:
         df_filtrado["valor_base"] = df_filtrado["PREÇO"]
 
-    # === Cálculo correto: valor máximo do imóvel ===
-    from src.regras.financeiro import calcular_valor_maximo_imovel
+    # =========================================================
+    # #012 — CÁLCULO BANCÁRIO REMOVIDO TEMPORARIAMENTE
+    # Volta após implementar #014 (regras de entrada por construtora)
+    # =========================================================
+    # from src.regras.financeiro import calcular_valor_maximo_imovel
+    #
+    # diagnostico = calcular_valor_maximo_imovel(
+    #     renda=renda_cliente,
+    #     entrada=entrada_cliente,
+    #     comprometimento_pct=regra.get("comprometimento_max_pct", 30),
+    #     taxa_anual=regra.get("taxa_anual", 0.10),
+    #     meses=regra.get("prazo_max_meses", 420),
+    #     sistema=regra.get("sistema", "PRICE"),
+    # )
+    #
+    # valor_max = diagnostico["valor_max_imovel"]
+    # df_filtrado = df_filtrado[df_filtrado["valor_base"] <= valor_max]
+    # st.session_state.diagnostico_simulacao = diagnostico
 
-    diagnostico = calcular_valor_maximo_imovel(
-        renda=renda_cliente,
-        entrada=entrada_cliente,
-        comprometimento_pct=regra.get("comprometimento_max_pct", 30),
-        taxa_anual=regra.get("taxa_anual", 0.10),
-        meses=regra.get("prazo_max_meses", 420),
-        sistema=regra.get("sistema", "PRICE"),
-    )
-
-    valor_max = diagnostico["valor_max_imovel"]
-    df_filtrado = df_filtrado[df_filtrado["valor_base"] <= valor_max]
-
+    # Ordena por R$/m² (melhor custo-benefício primeiro)
     if "R$/m²" in df_filtrado.columns:
         df_filtrado = df_filtrado.sort_values("R$/m²")
-
-    # Guarda o diagnóstico para exibir no final
-    st.session_state.diagnostico_simulacao = diagnostico
 
     top_recomendacoes = df_filtrado.head(5)
 
@@ -213,8 +198,6 @@ def _analisar(resultado, nome_cliente, renda_cliente, entrada_cliente,
         "preco_col": preco_col,
         "nome_cliente": nome_cliente,
         "resumo": resumo,
-        "regra_id": regra_id,
-        "regra": regra,
         "renda": renda_cliente,
         "entrada": entrada_cliente,
     }

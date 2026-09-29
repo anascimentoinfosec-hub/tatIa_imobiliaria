@@ -155,7 +155,7 @@ with st.sidebar:
         # ---- Operacional ----
         st.markdown("### 📈 Operacional")
 
-        if st.button("📊 Simulador", use_container_width=True):
+        if st.button("🏢 Simulador de Entrada", use_container_width=True):
             st.session_state.pagina = "Simulador"
             st.rerun()
 

@@ -1347,5 +1347,296 @@
     "gerente": "Gerente Geral",
     "total_oportunidades": 0,
     "oportunidades": []
+  },
+  {
+    "id": "20260927171507790246",
+    "data_hora": "2026-09-27T17:15:07.790267",
+    "cliente": "TATIANA ALVES DE OLIVEIRA",
+    "renda": 6000.0,
+    "entrada": 1000.0,
+    "bairro": "Nova Iguaçu",
+    "origem": "Captação Própria",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260927171519817361",
+    "data_hora": "2026-09-27T17:15:19.817406",
+    "cliente": "TATIANA ALVES DE OLIVEIRA",
+    "renda": 6000.0,
+    "entrada": 1000.0,
+    "bairro": "Nova Iguaçu",
+    "origem": "Captação Própria",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260927171539860851",
+    "data_hora": "2026-09-27T17:15:39.860876",
+    "cliente": "TATIANA ALVES DE OLIVEIRA",
+    "renda": 6000.0,
+    "entrada": 1000.0,
+    "bairro": "Nova Iguaçu",
+    "origem": "Captação Própria",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260927171638214432",
+    "data_hora": "2026-09-27T17:16:38.214462",
+    "cliente": "TATIANA ALVES DE OLIVEIRA",
+    "renda": 6000.0,
+    "entrada": 1000.0,
+    "bairro": "Nova Iguaçu",
+    "origem": "Captação Própria",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260927171725577876",
+    "data_hora": "2026-09-27T17:17:25.577907",
+    "cliente": "TATIANA ALVES DE OLIVEIRA",
+    "renda": 6000.0,
+    "entrada": 1000.0,
+    "bairro": "Nova Iguaçu",
+    "origem": "Captação Própria",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260927172759118048",
+    "data_hora": "2026-09-27T17:27:59.118082",
+    "cliente": "TATIANA ALVES DE OLIVEIRA",
+    "renda": 6000.0,
+    "entrada": 1000.0,
+    "bairro": "Nova Iguaçu",
+    "origem": "Captação Própria",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260927172808638292",
+    "data_hora": "2026-09-27T17:28:08.638327",
+    "cliente": "TATIANA ALVES DE OLIVEIRA",
+    "renda": 6000.0,
+    "entrada": 1000.0,
+    "bairro": "Nova Iguaçu",
+    "origem": "Captação Própria",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260927174232693020",
+    "data_hora": "2026-09-27T17:42:32.693056",
+    "cliente": "Tati",
+    "renda": 6000.0,
+    "entrada": 1000.0,
+    "bairro": "Nova Iguaçu",
+    "origem": "",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260927175131687126",
+    "data_hora": "2026-09-27T17:51:31.687150",
+    "cliente": "Tati",
+    "renda": 6000.0,
+    "entrada": 10000.0,
+    "bairro": "Nova Iguaçu",
+    "origem": "",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 0,
+    "oportunidades": []
+  },
+  {
+    "id": "20260927183613444377",
+    "data_hora": "2026-09-27T18:36:13.444394",
+    "cliente": "Zeca",
+    "renda": 10000.0,
+    "entrada": 100000.0,
+    "bairro": "São Gonçalo",
+    "origem": "Captação Própria",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-201",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0
+      },
+      {
+        "UNIDADE": "BL 1-202",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 258800.0
+      },
+      {
+        "UNIDADE": "BL 1-203",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339500.0,
+        "valor_base": 259500.0
+      },
+      {
+        "UNIDADE": "BL 1-204",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339700.0,
+        "valor_base": 259700.0
+      },
+      {
+        "UNIDADE": "BL 1-205",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339000.0,
+        "valor_base": 259000.0
+      }
+    ]
+  },
+  {
+    "id": "20260927183622610323",
+    "data_hora": "2026-09-27T18:36:22.610385",
+    "cliente": "Tatiana ",
+    "renda": 10000.0,
+    "entrada": 100000.0,
+    "bairro": "",
+    "origem": "",
+    "desconto": 0.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-201",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 338800.0
+      },
+      {
+        "UNIDADE": "BL 1-202",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 338800.0,
+        "valor_base": 338800.0
+      },
+      {
+        "UNIDADE": "BL 1-203",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339500.0,
+        "valor_base": 339500.0
+      },
+      {
+        "UNIDADE": "BL 1-204",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339700.0,
+        "valor_base": 339700.0
+      },
+      {
+        "UNIDADE": "BL 1-205",
+        "TIPOLOGIA": "PADRÃO",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 336000.0,
+        "PREÇO": 339000.0,
+        "valor_base": 339000.0
+      }
+    ]
+  },
+  {
+    "id": "20260929181826235502",
+    "data_hora": "2026-09-29T18:18:26.235552",
+    "cliente": "joão joão",
+    "renda": 5000.0,
+    "entrada": 1000.0,
+    "bairro": "",
+    "origem": "Indicação",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-001",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 460700.0,
+        "valor_base": 380700.0
+      },
+      {
+        "UNIDADE": "BL 1-002",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 460700.0,
+        "valor_base": 380700.0
+      },
+      {
+        "UNIDADE": "BL 1-003",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 481300.0,
+        "valor_base": 401300.0
+      },
+      {
+        "UNIDADE": "BL 1-004",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 479500.0,
+        "valor_base": 399500.0
+      },
+      {
+        "UNIDADE": "BL 1-005",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 480700.0,
+        "valor_base": 400700.0
+      }
+    ]
   }
 ]

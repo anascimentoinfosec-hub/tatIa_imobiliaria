@@ -22,7 +22,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         st.warning("⚠️ Nenhuma construtora cadastrada. Cadastre uma construtora primeiro.")
         return
 
-    st.title("📊 Simulador de Crédito")
+    st.title("🏢 Simulador de Entrada de Construtora")
 
     usuario_logado = st.session_state.get("usuario_logado")
 
@@ -43,7 +43,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
 
     st.info(f"📂 Planilha carregada do cache: {construtora} - {produto}")
     st.session_state.df_imoveis = df
-
+    st.caption("Analise o potencial de entrada do cliente para as unidades da construtora.")
     st.markdown("---")
 
     filtros = renderizar_filtros(df)
