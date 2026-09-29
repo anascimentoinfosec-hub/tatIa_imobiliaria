@@ -54,5 +54,29 @@
         ]
       }
     }
+  },
+  "MRV": {
+    "tipo_desconto": "AVALIAÇÃO",
+    "produtos": {
+      "Estoque Mrv   25.09.2026": {
+        "cidade": "Campos dos Goytacazes",
+        "skiprows": 2,
+        "mapeamento": {},
+        "colunas_ordem": [],
+        "colunas_para_converter": []
+      }
+    }
+  },
+  "Fantasminha": {
+    "tipo_desconto": "AVALIAÇÃO",
+    "produtos": {
+      "Disponibilidade": {
+        "cidade": "Barra da Tijuca",
+        "skiprows": 2,
+        "mapeamento": {},
+        "colunas_ordem": [],
+        "colunas_para_converter": []
+      }
+    }
   }
 }

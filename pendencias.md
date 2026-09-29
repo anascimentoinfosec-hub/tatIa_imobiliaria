@@ -24,19 +24,13 @@ Arquivo de controle das pendências do projeto. Atualizar conforme forem sendo r
 - **Alternativa:** Adicionar coluna automaticamente, ou permitir cadastro manual
 
 Data:27/09
-### #009 - nos campos de valores incluir o ponto do milhar
-    - priorizar
+
     
 ### #010 - No módulo de Gerente ao criar uma nova simulação está não aparecendo no modo Gestão de Vendas
 
-#### #011 - O valor de entrada não pode ter referência com as tabelas da regra de financiamento. 
-        *Qualquer valor de entrada tem que estar liberado
+#### 
 
-#### #012 - O simulador deve ser somente e somente só a simulação de Entrada
-        * Por isso bloquear a área de regra de financiamento e não gerar calculo com essa regras(Temporiamente)
-
-### # 013 - Trocar do lado diretio no botão simulador para ser simulador de Entrada de Construtora
-        Pois é somente isso que ele deve fazer e não simular o que os bancos fariam
+#### 
 
 ### #014 Cada construtura tem uma regra de negócio para a entrada diferente
     
@@ -69,30 +63,25 @@ Ex.: Jeronimo da veiga
 
     Obs.: Essa simulação poderá ser feita tanto pelo gerente quanto pelo corredor
 
+
+### PENDENTES
+### #019 — Bloquear salvamento de produto sem mapeamento
+- Hoje salva mesmo com mapeamento vazio → quebra o simulador
+- Solução: validar antes de salvar e mostrar erro claro
+
+### #020 — Encoding corrompido no JSON
+- "AVALIAÇÃO" está sendo salvo como "AVALIAÃ‡ÃƒO"
+- Afeta tipo_desconto, cidades, nomes com acento
+- Corrigir em construtoras_storage.py (encoding do json.dump)
+
+
 #### #  #015 - Na simulação do cliente é necessário ter um campo vagas. 
     - Poist o Cliente pode necessitar e as oportunidades deverão buscar somente unidades com vagas
 
 #### # 016 Ajuste na lista de Oportunidades
     Ao localizar as melhores oportunidades o corretor poderá ajustar campos importante tais como localização
 
-#### # Na área do cliente tem que aparecer um área chamada Lazer onde o corretor poderá marcar uma ou mais opções e com isto o filtro de oportunidades ser mais assertivo
-   Opções:
-       - Complexo Aquatico
-       - Salão de Festas
-       - Academia
-       - Cobertura
-       - Churrasqueira
-       - Quadra Poliesportiva,
-        - Quadra de Beach Tennis
-        - Playground
-        - Pet place
-        - Mini Mercado,
-        - Redário,
-        - Horta
-        - Espaço Piquinique
-        - Fitness
-        - Car Wash
-        - Futmesa
+### # 017 - BIA analisar a planilha e já criar os produtos automaticamente
      
 ### #003 — Supabase (persistência na nuvem)
 - Migrar dados de JSON local para banco PostgreSQL
@@ -133,9 +122,33 @@ Ex.: Jeronimo da veiga
 - ✅ Export PDF + Proposta única
 - ✅ Histórico de simulações
 - ✅ Dashboard com gráficos
+- ✅ nos campos de valores incluir o ponto do milhar
+  ✅ - O valor de entrada não pode ter referência com as tabelas da regra de financiamento. 
+        *Qualquer valor de entrada tem que estar liberado
+  ✅ - O simulador deve ser somente e somente só a simulação de Entrada
+        * Por isso bloquear a área de regra de financiamento e não gerar calculo com essa regras(Temporiamente)
 
+✅ Trocar do lado diretio no botão simulador para ser simulador de Entrada de Construtora
+        Pois é somente isso que ele deve fazer e não simular o que os bancos fariam
 ---
-
+✅ Na área do cliente tem que aparecer um área chamada Lazer onde o corretor poderá marcar uma ou mais opções e com isto o filtro de oportunidades ser mais assertivo
+   Opções:
+       - Complexo Aquatico
+       - Salão de Festas
+       - Academia
+       - Cobertura
+       - Churrasqueira
+       - Quadra Poliesportiva,
+        - Quadra de Beach Tennis
+        - Playground
+        - Pet place
+        - Mini Mercado,
+        - Redário,
+        - Horta
+        - Espaço Piquinique
+        - Fitness
+        - Car Wash
+        - Futmesa
 ## 📝 Como usar
 
 1. Adicione novas pendências no topo da seção apropriada
