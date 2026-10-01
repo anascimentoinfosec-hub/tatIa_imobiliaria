@@ -65,6 +65,11 @@ Ex.: Jeronimo da veiga
 
 
 ### PENDENTES
+
+### #021 - Unificar o upload das planilhas de construtoras para dentro da area de Gestão de construtoras
+
+### #020 - Mover Upload de planilha para dentro da área de configuração das construtoras
+
 ### #019 — Bloquear salvamento de produto sem mapeamento
 - Hoje salva mesmo com mapeamento vazio → quebra o simulador
 - Solução: validar antes de salvar e mostrar erro claro

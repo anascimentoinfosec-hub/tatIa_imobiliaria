@@ -2,6 +2,7 @@ import streamlit as st
 import json
 from src.construtoras_storage import carregar_construtoras, salvar_construtoras
 from src.bia_planilha import analisar_planilha_com_bia
+from src.planilha_processor import processar_planilha_e_salvar_cache
 
 
 def renderizar_aba_produtos(cidades):
@@ -125,6 +126,8 @@ def _renderizar_form_adicionar_produto(construtora_edit, cidades, tipo_desconto)
                     st.error(f"❌ {resultado['erro']}")
                 else:
                     st.session_state["prod_bia_resultado"] = resultado
+                    st.session_state["prod_bia_arquivo_bytes"] = uploaded.getvalue()
+                    st.session_state["prod_bia_arquivo_nome"] = uploaded.name
                     st.success("✅ BIA preencheu o formulário! Revise antes de salvar.")
                     if resultado.get("observacoes"):
                         st.info(f"💬 **Observação da BIA:** {resultado['observacoes']}")
@@ -224,6 +227,17 @@ def _salvar_novo_produto(construtora_edit, tipo_desconto, novo_produto, nova_cid
         }
         dados_atuais[construtora_edit]["produtos"] = produtos_atuais
         salvar_construtoras(dados_atuais)
+        # === SALVA PLANILHA NO CACHE ===
+        if "prod_bia_arquivo_bytes" in st.session_state:
+            ok, msg = processar_planilha_e_salvar_cache(
+                file_bytes=st.session_state["prod_bia_arquivo_bytes"],
+                file_name=st.session_state["prod_bia_arquivo_nome"],
+                config=produtos_atuais[novo_produto],
+                construtora=construtora_edit,
+                produto=novo_produto,
+            )
+            if not ok:
+                st.warning(f"⚠️ Produto criado, mas: {msg}")
         _limpar_chaves_form_produto()
         st.success(f"✅ Produto '{novo_produto}' adicionado com sucesso!")
         st.rerun()
@@ -236,6 +250,7 @@ def _limpar_chaves_form_produto():
         "prod_novo_produto_nome", "prod_novo_skiprows", "prod_novo_mapeamento",
         "prod_novo_colunas_ordem", "prod_novo_colunas_numericas",
         "prod_nova_cidade_produto", "prod_bia_resultado",
+        "prod_bia_arquivo_bytes", "prod_bia_arquivo_nome",
     ]
     for k in keys:
         if k in st.session_state:

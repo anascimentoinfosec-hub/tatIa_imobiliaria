@@ -275,6 +275,7 @@ def _analisar(resultado, nome_cliente, renda_cliente, entrada_cliente,
 
     return {
         "top_recomendacoes": top_recomendacoes,
+        "df_filtrado_completo": df_filtrado,  # ← NOVO (para refinamento)
         "desconto_acordado": desconto_acordado,
         "tipo_desconto": tipo_desconto,
         "coluna_base": coluna_base,

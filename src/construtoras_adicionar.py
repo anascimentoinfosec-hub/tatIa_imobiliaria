@@ -2,26 +2,22 @@ import streamlit as st
 import json
 from src.construtoras_storage import salvar_construtoras
 from src.bia_planilha import analisar_planilha_com_bia
+from src.planilha_processor import processar_planilha_e_salvar_cache
 
 
 def renderizar_aba_adicionar(CONSTRUTORAS, cidades):
-    """Renderiza a aba 'Adicionar Construtora' com análise da BIA."""
     st.markdown("### Adicionar Nova Construtora")
 
-    # =========================================================
-    # BLOCO BIA — Analisar planilha e preencher automaticamente
-    # =========================================================
     with st.expander("🤖 Preencher automaticamente com a BIA (opcional)", expanded=False):
         st.caption(
-            "Suba a planilha da construtora e clique em **Analisar com BIA**. "
-            "Ela identificará a estrutura e preencherá os campos abaixo."
+            "Suba a planilha da construtora, clique em **Analisar com BIA** "
+            "e os campos serão preenchidos. A mesma planilha será salva no cache."
         )
 
         uploaded = st.file_uploader(
             "Planilha de referência",
             type=["xlsx", "xls", "csv"],
             key="bia_upload_construtora",
-            help="A planilha não é salva — serve apenas para a BIA analisar.",
         )
 
         if st.button("🤖 Analisar com BIA", use_container_width=True, key="btn_bia_construtora"):
@@ -34,37 +30,32 @@ def renderizar_aba_adicionar(CONSTRUTORAS, cidades):
                 if "erro" in resultado:
                     st.error(f"❌ {resultado['erro']}")
                 else:
-                    # Preenche o session_state com as sugestões
-                    st.session_state["nova_produto_nome"] = _sugerir_nome_produto(uploaded.name)
-                    st.session_state["nova_produto_mapeamento_input"] = json.dumps(
+                    st.session_state["bia_arquivo_bytes"] = uploaded.getvalue()
+                    st.session_state["bia_arquivo_nome"] = uploaded.name
+                    st.session_state["bia_arquivo_produto_sugerido"] = _sugerir_nome_produto(uploaded.name)
+
+                    # === Seta direto nas KEYS DOS WIDGETS ===
+                    st.session_state["nova_produto_mapeamento_input_final"] = json.dumps(
                         resultado.get("mapeamento", {}), indent=2, ensure_ascii=False
                     )
-                    st.session_state["nova_produto_colunas_ordem_input"] = ", ".join(
+                    st.session_state["nova_produto_colunas_ordem_input_final"] = ", ".join(
                         resultado.get("colunas_ordem", [])
                     )
-                    st.session_state["nova_produto_colunas_numericas_input"] = ", ".join(
-                        resultado.get("colunas_monetarias", [])
-                        + resultado.get("colunas_numericas", [])
+                    st.session_state["nova_produto_colunas_numericas_input_final"] = ", ".join(
+                        resultado.get("colunas_monetarias", []) + resultado.get("colunas_numericas", [])
                     )
-                    st.session_state["nova_skiprows_input"] = int(
+                    st.session_state["nova_skiprows_input_final"] = int(
                         resultado.get("skiprows", resultado.get("header_row", 0))
                     )
-                    st.session_state["bia_obs_construtora"] = resultado.get("observacoes", "")
+                    st.session_state["nova_produto_nome"] = st.session_state["bia_arquivo_produto_sugerido"]
 
-                    st.success("✅ BIA preencheu os campos abaixo! Revise antes de salvar.")
+                    st.success("✅ BIA preencheu os campos! Revise antes de salvar.")
                     if resultado.get("observacoes"):
                         st.info(f"💬 **Observação da BIA:** {resultado['observacoes']}")
                     st.rerun()
 
-    # =========================================================
-    # FORMULÁRIO (fora do st.form para permitir preenchimento)
-    # =========================================================
-    nome = st.text_input(
-        "Nome da Construtora",
-        key="nova_construtora_nome",
-        placeholder="Ex: Construtora XYZ",
-    )
-
+    # === FORMULÁRIO (sem value=, só key=) ===
+    nome = st.text_input("Nome da Construtora", key="nova_construtora_nome", placeholder="Ex: Construtora XYZ")
     tipo_desconto = st.selectbox(
         "💡 Desconto será aplicado sobre:",
         ["AVALIAÇÃO", "PREÇO"],
@@ -72,75 +63,48 @@ def renderizar_aba_adicionar(CONSTRUTORAS, cidades):
     )
 
     st.markdown("---")
-    st.markdown("**📦 Produto inicial (opcional)**")
-    st.caption("Você pode criar a construtora sem produto e adicionar depois em 'Gerenciar Produtos'.")
+    st.markdown("**📦 Produto inicial**")
+    st.caption("Se preencher, a planilha analisada pela BIA será salva automaticamente no cache.")
 
-    produto_nome = st.text_input(
-        "Nome do Produto",
-        key="nova_produto_nome",
-        placeholder="Ex: Torre A",
-    )
+    produto_nome = st.text_input("Nome do Produto", key="nova_produto_nome", placeholder="Ex: Torre A")
 
     opcoes_cidade = [""] + cidades
-    cidade_selecionada = st.selectbox(
-        "📍 Cidade",
-        opcoes_cidade,
-        key="nova_cidade_produto",
-    )
+    cidade_selecionada = st.selectbox("📍 Cidade", opcoes_cidade, key="nova_cidade_produto")
 
-    skiprows_default = st.session_state.get("nova_skiprows_input", 2)
     skiprows = st.number_input(
         "Linhas para pular antes do cabeçalho",
-        min_value=0,
-        value=int(skiprows_default),
-        step=1,
-        key="nova_skiprows_input_final",
+        min_value=0, step=1, key="nova_skiprows_input_final",
     )
 
-    mapeamento_default = st.session_state.get("nova_produto_mapeamento_input", "")
     mapeamento_str = st.text_area(
         "Mapeamento (índice: nome)",
-        value=mapeamento_default,
         placeholder='{"0": "UNIDADE", "1": "PREÇO"}',
-        height=120,
-        key="nova_produto_mapeamento_input_final",
+        height=120, key="nova_produto_mapeamento_input_final",
     )
 
-    colunas_ordem_default = st.session_state.get("nova_produto_colunas_ordem_input", "")
     colunas_ordem_str = st.text_input(
         "Colunas para exibir (separadas por vírgula)",
-        value=colunas_ordem_default,
         placeholder="UNIDADE, PAVTO, PREÇO",
         key="nova_produto_colunas_ordem_input_final",
     )
 
-    colunas_num_default = st.session_state.get("nova_produto_colunas_numericas_input", "")
     colunas_numericas_str = st.text_input(
         "Colunas monetárias/numéricas (separadas por vírgula)",
-        value=colunas_num_default,
         placeholder="PREÇO, M², ANDAR",
         key="nova_produto_colunas_numericas_input_final",
     )
 
     if st.button("➕ Adicionar Construtora", use_container_width=True, type="primary", key="btn_adicionar_construtora"):
         _processar_nova_construtora(
-            CONSTRUTORAS=CONSTRUTORAS,
-            nome=nome,
-            tipo_desconto=tipo_desconto,
-            produto_nome=produto_nome,
-            cidade_selecionada=cidade_selecionada,
-            skiprows=skiprows,
-            mapeamento_str=mapeamento_str,
-            colunas_ordem_str=colunas_ordem_str,
-            colunas_numericas_str=colunas_numericas_str,
+            CONSTRUTORAS=CONSTRUTORAS, nome=nome, tipo_desconto=tipo_desconto,
+            produto_nome=produto_nome, cidade_selecionada=cidade_selecionada,
+            skiprows=skiprows, mapeamento_str=mapeamento_str,
+            colunas_ordem_str=colunas_ordem_str, colunas_numericas_str=colunas_numericas_str,
         )
 
 
 # =========================================================
-# HELPERS
-# =========================================================
 def _sugerir_nome_produto(nome_arquivo):
-    """Sugere um nome de produto a partir do nome do arquivo."""
     base = nome_arquivo.rsplit(".", 1)[0]
     return base.replace("_", " ").replace("-", " ").title()
 
@@ -148,18 +112,12 @@ def _sugerir_nome_produto(nome_arquivo):
 def _processar_nova_construtora(CONSTRUTORAS, nome, tipo_desconto, produto_nome,
                                  cidade_selecionada, skiprows, mapeamento_str,
                                  colunas_ordem_str, colunas_numericas_str):
-    """Processa e salva uma nova construtora."""
     if not nome:
         st.warning("⚠️ Digite o nome da construtora!")
         return
 
-    # === VALIDAÇÃO #019 ===
     if produto_nome and not mapeamento_str.strip():
-        st.error(
-            "❌ **Mapeamento vazio.** Você precisa preencher o mapeamento (ou usar a BIA) "
-            "para que o simulador saiba quais colunas usar. "
-            "Se não quiser cadastrar produto agora, deixe o campo 'Nome do Produto' em branco."
-        )
+        st.error("❌ **Mapeamento vazio.** Preencha ou use a BIA antes de salvar.")
         return
 
     if produto_nome and not cidade_selecionada:
@@ -173,23 +131,24 @@ def _processar_nova_construtora(CONSTRUTORAS, nome, tipo_desconto, produto_nome,
             try:
                 mapeamento = json.loads(mapeamento_str)
             except json.JSONDecodeError:
-                st.error("❌ O mapeamento não é um JSON válido. Verifique as chaves e vírgulas.")
+                st.error("❌ O mapeamento não é um JSON válido.")
                 return
 
             if not mapeamento:
-                st.error("❌ O mapeamento está vazio. Adicione pelo menos uma coluna.")
+                st.error("❌ O mapeamento está vazio.")
                 return
 
             colunas_ordem = [c.strip() for c in colunas_ordem_str.split(",") if c.strip()]
             colunas_numericas = [c.strip() for c in colunas_numericas_str.split(",") if c.strip()]
 
-            nova_construtora["produtos"][produto_nome] = {
+            config_produto = {
                 "cidade": cidade_selecionada,
                 "skiprows": skiprows,
                 "mapeamento": {str(k): v for k, v in mapeamento.items()},
                 "colunas_ordem": colunas_ordem,
                 "colunas_para_converter": colunas_numericas,
             }
+            nova_construtora["produtos"][produto_nome] = config_produto
 
         if nome in CONSTRUTORAS:
             st.error(f"❌ Já existe uma construtora com o nome '{nome}'.")
@@ -197,14 +156,28 @@ def _processar_nova_construtora(CONSTRUTORAS, nome, tipo_desconto, produto_nome,
 
         CONSTRUTORAS[nome] = nova_construtora
         salvar_construtoras(CONSTRUTORAS)
+
+        # === SALVA A PLANILHA NO CACHE (se a BIA foi usada) ===
+        if produto_nome and "bia_arquivo_bytes" in st.session_state:
+            file_bytes = st.session_state["bia_arquivo_bytes"]
+            file_name = st.session_state["bia_arquivo_nome"]
+            ok, msg = processar_planilha_e_salvar_cache(
+                file_bytes=file_bytes, file_name=file_name,
+                config=config_produto, construtora=nome, produto=produto_nome,
+            )
+            if ok:
+                st.success(f"✅ Construtora criada + planilha no cache: {msg}")
+            else:
+                st.warning(f"⚠️ Construtora criada, mas: {msg}")
+
         _limpar_chaves_form_construtora()
         st.success(f"✅ Construtora '{nome}' adicionada com sucesso!")
         st.rerun()
     except Exception as e:
         st.error(f"❌ Erro: {str(e)}")
 
+
 def _limpar_chaves_form_construtora():
-    """Limpa as chaves do session_state usadas no formulário."""
     keys = [
         "nova_construtora_nome", "nova_construtora_tipo_desconto",
         "nova_produto_nome", "nova_cidade_produto",
@@ -212,7 +185,8 @@ def _limpar_chaves_form_construtora():
         "nova_produto_mapeamento_input", "nova_produto_mapeamento_input_final",
         "nova_produto_colunas_ordem_input", "nova_produto_colunas_ordem_input_final",
         "nova_produto_colunas_numericas_input", "nova_produto_colunas_numericas_input_final",
-        "bia_obs_construtora",
+        "bia_arquivo_bytes", "bia_arquivo_nome", "bia_arquivo_resultado",
+        "bia_arquivo_produto_sugerido",
     ]
     for k in keys:
         if k in st.session_state:

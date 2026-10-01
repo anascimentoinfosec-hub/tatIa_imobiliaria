@@ -1,6 +1,5 @@
 import streamlit as st
 
-from src.utils import formatar_valor_br
 from src.simulador_upload import renderizar_sidebar, carregar_dataframe
 from src.simulador_filtros import (
     renderizar_filtros,
@@ -13,8 +12,10 @@ from src.simulador_cards import (
     renderizar_cards,
     renderizar_ajuste_global,
     renderizar_seletor_proposta,
+    renderizar_refinamento,
 )
 from src.compartilhar import botoes_compartilhar
+from src.utils import formatar_valor_br
 
 
 def pagina_simulador(CONSTRUTORAS, USUARIOS):
@@ -23,6 +24,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         return
 
     st.title("🏢 Simulador de Entrada de Construtora")
+    st.caption("Analise o potencial de entrada do cliente para as unidades da construtora.")
 
     usuario_logado = st.session_state.get("usuario_logado")
 
@@ -43,7 +45,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
 
     st.info(f"📂 Planilha carregada do cache: {construtora} - {produto}")
     st.session_state.df_imoveis = df
-    st.caption("Analise o potencial de entrada do cliente para as unidades da construtora.")
+
     st.markdown("---")
 
     filtros = renderizar_filtros(df, tipo_desconto)
@@ -59,41 +61,35 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
 
     renderizar_area_cliente(resultado, tipo_desconto, preco_col, usuario_logado, USUARIOS)
 
+    # =========================================================
+    # RESULTADOS + REFINAMENTO
+    # =========================================================
     if st.session_state.get("simulacao_ativa"):
         sim = st.session_state.simulacao_ativa
-        top = sim["top_recomendacoes"]
 
         st.markdown("---")
 
-        # === SELETOR DE PROPOSTA ===
-        idx_escolhido = renderizar_seletor_proposta(top)
+        # #016 — Refinamento pós-análise
+        top_refinado = renderizar_refinamento()
+        sim["top_recomendacoes"] = top_refinado
+
+        # Seletor de proposta
+        idx_escolhido = renderizar_seletor_proposta(top_refinado)
         st.session_state.unidade_escolhida_idx = idx_escolhido
 
-        # Define a lista de imóveis a usar (todos ou só o escolhido)
-        if idx_escolhido is not None and top is not None and not top.empty:
-            top_para_pdf = top.loc[[idx_escolhido]]
+        if idx_escolhido is not None and top_refinado is not None and not top_refinado.empty:
+            top_para_pdf = top_refinado.loc[[idx_escolhido]]
         else:
-            top_para_pdf = top
+            top_para_pdf = top_refinado
 
         st.markdown("---")
         st.markdown("### 📤 Compartilhar Simulação")
         dados_pdf = _montar_dados_pdf(sim, usuario_logado, USUARIOS, tipo_desconto, top_para_pdf)
         botoes_compartilhar(sim["resumo"], sim["nome_cliente"], dados_pdf)
-        # Diagnóstico financeiro
-        diag = st.session_state.get("diagnostico_simulacao")
-        if diag:
-            with st.expander("🔍 Diagnóstico financeiro da simulação", expanded=False):
-                st.markdown(f"""
-                - 💰 *Parcela máxima* (comprometimento): {formatar_valor_br(diag['parcela_maxima'])}
-                - 🏦 *Financiamento máximo* aprovado: {formatar_valor_br(diag['pv_maximo'])}
-                - 🏠 *Valor máximo do imóvel* (financiado + entrada): *{formatar_valor_br(diag['valor_max_imovel'])}*
-                
-                Se nenhuma oportunidade aparecer, é porque todos os imóveis estão acima desse teto. Aumente a entrada, mude a regra (ex: MCMV) ou revise o comprometimento.
-                """)
 
         st.markdown("---")
         renderizar_cards(
-            top,
+            top_refinado,
             sim["desconto_acordado"],
             sim["tipo_desconto"],
             sim["coluna_base"],
@@ -101,12 +97,11 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
             sim["nome_cliente"],
         )
 
-        # === BOTÃO SALVAR PROPOSTA ===
         if idx_escolhido is not None:
             st.markdown("---")
             if st.button("💾 Salvar esta unidade como Proposta no Histórico",
                          use_container_width=True, type="primary"):
-                _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS, tipo_desconto)
+                _salvar_proposta(sim, top_refinado, idx_escolhido, usuario_logado, USUARIOS, tipo_desconto)
                 st.success("✅ Proposta salva no histórico!")
                 st.rerun()
 
@@ -119,7 +114,6 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
 
 
 def _montar_dados_pdf(sim, usuario_logado, USUARIOS, tipo_desconto, top_filtrado):
-    """Monta o dicionário de dados para o PDF usando o top filtrado."""
     oportunidades = []
 
     if top_filtrado is not None and not top_filtrado.empty:
@@ -140,8 +134,8 @@ def _montar_dados_pdf(sim, usuario_logado, USUARIOS, tipo_desconto, top_filtrado
 
     return {
         "nome_cliente": sim.get("nome_cliente", ""),
-        "renda": 0,
-        "entrada": 0,
+        "renda": sim.get("renda", 0),
+        "entrada": sim.get("entrada", 0),
         "bairro": "",
         "origem": "",
         "desconto": sim.get("desconto_acordado", 0),
@@ -152,7 +146,6 @@ def _montar_dados_pdf(sim, usuario_logado, USUARIOS, tipo_desconto, top_filtrado
 
 
 def _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS, tipo_desconto):
-    """Salva um registro de proposta (só 1 unidade) no histórico."""
     from src.simulacoes_storage import salvar_simulacao
 
     top_unit = top.loc[[idx_escolhido]]
@@ -160,8 +153,8 @@ def _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS, tipo_des
 
     salvar_simulacao(
         nome_cliente=sim["nome_cliente"],
-        renda=0,
-        entrada=0,
+        renda=sim.get("renda", 0),
+        entrada=sim.get("entrada", 0),
         bairro="",
         origem="",
         desconto=sim.get("desconto_acordado", 0),

@@ -1928,5 +1928,335 @@
     "gerente": "Gerente Geral",
     "total_oportunidades": 0,
     "oportunidades": []
+  },
+  {
+    "id": "20261001184420650387",
+    "data_hora": "2026-10-01T18:44:20.650408",
+    "cliente": "Maradona",
+    "renda": 10000.0,
+    "entrada": 100000.0,
+    "bairro": "Duque de Caxias",
+    "origem": "Indicação",
+    "desconto": 90000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-001",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4607000,
+        "valor_base": 4517000.0
+      },
+      {
+        "UNIDADE": "BL 1-002",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4607000,
+        "valor_base": 4517000.0
+      },
+      {
+        "UNIDADE": "BL 1-003",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4813000,
+        "valor_base": 4723000.0
+      },
+      {
+        "UNIDADE": "BL 1-004",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4795000,
+        "valor_base": 4705000.0
+      },
+      {
+        "UNIDADE": "BL 1-005",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4807000,
+        "valor_base": 4717000.0
+      }
+    ]
+  },
+  {
+    "id": "20261001190204994480",
+    "data_hora": "2026-10-01T19:02:04.994500",
+    "cliente": "Costa",
+    "renda": 15000.0,
+    "entrada": 100000.0,
+    "bairro": "Campos dos Goytacazes",
+    "origem": "Lead",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-001",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4607000,
+        "valor_base": 4527000.0
+      },
+      {
+        "UNIDADE": "BL 1-002",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4607000,
+        "valor_base": 4527000.0
+      },
+      {
+        "UNIDADE": "BL 1-003",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4813000,
+        "valor_base": 4733000.0
+      },
+      {
+        "UNIDADE": "BL 1-004",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4795000,
+        "valor_base": 4715000.0
+      },
+      {
+        "UNIDADE": "BL 1-005",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4807000,
+        "valor_base": 4727000.0
+      }
+    ]
+  },
+  {
+    "id": "20261001190826976522",
+    "data_hora": "2026-10-01T19:08:26.976550",
+    "cliente": "Tafarell",
+    "renda": 9000.0,
+    "entrada": 100000.0,
+    "bairro": "Rio de Janeiro (Capital)",
+    "origem": "Captação Própria",
+    "desconto": 70000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-001",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4607000,
+        "valor_base": 4537000.0
+      },
+      {
+        "UNIDADE": "BL 1-002",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4607000,
+        "valor_base": 4537000.0
+      },
+      {
+        "UNIDADE": "BL 1-003",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4813000,
+        "valor_base": 4743000.0
+      },
+      {
+        "UNIDADE": "BL 1-004",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4795000,
+        "valor_base": 4725000.0
+      },
+      {
+        "UNIDADE": "BL 1-005",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4807000,
+        "valor_base": 4737000.0
+      }
+    ]
+  },
+  {
+    "id": "20261001191249039162",
+    "data_hora": "2026-10-01T19:12:49.039182",
+    "cliente": "romario",
+    "renda": 5000.0,
+    "entrada": 100000.0,
+    "bairro": "Campos dos Goytacazes",
+    "origem": "Espontâneo",
+    "desconto": 80000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-001",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4607000,
+        "valor_base": 4527000.0
+      },
+      {
+        "UNIDADE": "BL 1-002",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4607000,
+        "valor_base": 4527000.0
+      },
+      {
+        "UNIDADE": "BL 1-003",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4813000,
+        "valor_base": 4733000.0
+      },
+      {
+        "UNIDADE": "BL 1-004",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4795000,
+        "valor_base": 4715000.0
+      },
+      {
+        "UNIDADE": "BL 1-005",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4807000,
+        "valor_base": 4727000.0
+      }
+    ]
+  },
+  {
+    "id": "20261001191708167902",
+    "data_hora": "2026-10-01T19:17:08.167930",
+    "cliente": "jorginho",
+    "renda": 5000.0,
+    "entrada": 100000.0,
+    "bairro": "Campos dos Goytacazes",
+    "origem": "Espontâneo",
+    "desconto": 50000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-001",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4607000,
+        "valor_base": 4557000.0
+      },
+      {
+        "UNIDADE": "BL 1-002",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4607000,
+        "valor_base": 4557000.0
+      },
+      {
+        "UNIDADE": "BL 1-003",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4813000,
+        "valor_base": 4763000.0
+      },
+      {
+        "UNIDADE": "BL 1-004",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4795000,
+        "valor_base": 4745000.0
+      },
+      {
+        "UNIDADE": "BL 1-005",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4807000,
+        "valor_base": 4757000.0
+      }
+    ]
+  },
+  {
+    "id": "20261001191910021401",
+    "data_hora": "2026-10-01T19:19:10.021419",
+    "cliente": "branco",
+    "renda": 5000.0,
+    "entrada": 100000.0,
+    "bairro": "Petrópolis",
+    "origem": "Indicação",
+    "desconto": 90000.0,
+    "tipo_desconto": "PREÇO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": "BL 1-001",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4607000,
+        "valor_base": 4517000.0
+      },
+      {
+        "UNIDADE": "BL 1-002",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4607000,
+        "valor_base": 4517000.0
+      },
+      {
+        "UNIDADE": "BL 1-003",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4813000,
+        "valor_base": 4723000.0
+      },
+      {
+        "UNIDADE": "BL 1-004",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4795000,
+        "valor_base": 4705000.0
+      },
+      {
+        "UNIDADE": "BL 1-005",
+        "TIPOLOGIA": "GARDEN",
+        "BLOCO": 1,
+        "AVALIAÇÃO": 390000.0,
+        "PREÇO": 4807000,
+        "valor_base": 4717000.0
+      }
+    ]
   }
 ]
