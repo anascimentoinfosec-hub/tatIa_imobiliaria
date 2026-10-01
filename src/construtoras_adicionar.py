@@ -153,11 +153,33 @@ def _processar_nova_construtora(CONSTRUTORAS, nome, tipo_desconto, produto_nome,
         st.warning("⚠️ Digite o nome da construtora!")
         return
 
+    # === VALIDAÇÃO #019 ===
+    if produto_nome and not mapeamento_str.strip():
+        st.error(
+            "❌ **Mapeamento vazio.** Você precisa preencher o mapeamento (ou usar a BIA) "
+            "para que o simulador saiba quais colunas usar. "
+            "Se não quiser cadastrar produto agora, deixe o campo 'Nome do Produto' em branco."
+        )
+        return
+
+    if produto_nome and not cidade_selecionada:
+        st.error("❌ Selecione a **cidade** do produto.")
+        return
+
     try:
         nova_construtora = {"tipo_desconto": tipo_desconto, "produtos": {}}
 
         if produto_nome and cidade_selecionada:
-            mapeamento = json.loads(mapeamento_str) if mapeamento_str else {}
+            try:
+                mapeamento = json.loads(mapeamento_str)
+            except json.JSONDecodeError:
+                st.error("❌ O mapeamento não é um JSON válido. Verifique as chaves e vírgulas.")
+                return
+
+            if not mapeamento:
+                st.error("❌ O mapeamento está vazio. Adicione pelo menos uma coluna.")
+                return
+
             colunas_ordem = [c.strip() for c in colunas_ordem_str.split(",") if c.strip()]
             colunas_numericas = [c.strip() for c in colunas_numericas_str.split(",") if c.strip()]
 
@@ -169,19 +191,17 @@ def _processar_nova_construtora(CONSTRUTORAS, nome, tipo_desconto, produto_nome,
                 "colunas_para_converter": colunas_numericas,
             }
 
+        if nome in CONSTRUTORAS:
+            st.error(f"❌ Já existe uma construtora com o nome '{nome}'.")
+            return
+
         CONSTRUTORAS[nome] = nova_construtora
         salvar_construtoras(CONSTRUTORAS)
-
-        # Limpa chaves do session_state
         _limpar_chaves_form_construtora()
-
         st.success(f"✅ Construtora '{nome}' adicionada com sucesso!")
         st.rerun()
-    except json.JSONDecodeError:
-        st.error("❌ Erro no mapeamento: formato JSON inválido!")
     except Exception as e:
         st.error(f"❌ Erro: {str(e)}")
-
 
 def _limpar_chaves_form_construtora():
     """Limpa as chaves do session_state usadas no formulário."""

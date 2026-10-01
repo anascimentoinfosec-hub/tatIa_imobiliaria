@@ -46,7 +46,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
     st.caption("Analise o potencial de entrada do cliente para as unidades da construtora.")
     st.markdown("---")
 
-    filtros = renderizar_filtros(df)
+    filtros = renderizar_filtros(df, tipo_desconto)
     if filtros is None:
         return
 

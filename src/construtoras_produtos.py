@@ -1,12 +1,10 @@
 import streamlit as st
 import json
-import pandas as pd
 from src.construtoras_storage import carregar_construtoras, salvar_construtoras
 from src.bia_planilha import analisar_planilha_com_bia
 
 
 def renderizar_aba_produtos(cidades):
-    """Renderiza a aba 'Gerenciar Produtos'."""
     st.markdown("### Gerenciar Produtos")
 
     CONSTRUTORAS_ATUALIZADO = carregar_construtoras()
@@ -21,7 +19,6 @@ def renderizar_aba_produtos(cidades):
     tipo_desconto = dados.get("tipo_desconto", "AVALIAÇÃO")
 
     st.markdown(f"#### Produtos de **{construtora_edit}**")
-
     _renderizar_editor_desconto(construtora_edit, tipo_desconto)
 
     st.markdown("---")
@@ -34,8 +31,6 @@ def renderizar_aba_produtos(cidades):
 
 
 # =========================================================
-# SELEÇÃO DE CONSTRUTORA
-# =========================================================
 def _selecionar_construtora(construtoras_lista):
     if ("construtora_edit" not in st.session_state
             or st.session_state.construtora_edit not in construtoras_lista):
@@ -45,17 +40,13 @@ def _selecionar_construtora(construtoras_lista):
         if st.session_state.construtora_edit in construtoras_lista else 0
 
     construtora_edit = st.selectbox(
-        "Selecione a construtora",
-        construtoras_lista,
-        index=index_atual,
-        key="select_construtora_produtos",
+        "Selecione a construtora", construtoras_lista,
+        index=index_atual, key="select_construtora_produtos",
     )
     st.session_state.construtora_edit = construtora_edit
     return construtora_edit
 
 
-# =========================================================
-# EDITOR DE TIPO DE DESCONTO
 # =========================================================
 def _renderizar_editor_desconto(construtora_edit, tipo_desconto):
     col_td1, col_td2 = st.columns([2, 1])
@@ -77,8 +68,6 @@ def _renderizar_editor_desconto(construtora_edit, tipo_desconto):
             st.rerun()
 
 
-# =========================================================
-# LISTAGEM DE PRODUTOS
 # =========================================================
 def _renderizar_lista_produtos(construtora_edit, produtos):
     if not produtos:
@@ -114,22 +103,15 @@ def _excluir_produto(construtora_edit, produto):
 
 
 # =========================================================
-# ADICIONAR PRODUTO (com BIA)
-# =========================================================
 def _renderizar_form_adicionar_produto(construtora_edit, cidades, tipo_desconto):
     st.markdown("#### ➕ Adicionar Produto")
 
     with st.expander("🤖 Preencher automaticamente com a BIA (opcional)", expanded=False):
-        st.caption(
-            "Suba uma planilha de referência e clique em **Analisar com BIA**. "
-            "Ela identificará a linha do cabeçalho, as colunas e sugerirá o mapeamento."
-        )
+        st.caption("Suba uma planilha de referência e clique em **Analisar com BIA**.")
 
         uploaded = st.file_uploader(
-            "Planilha de referência",
-            type=["xlsx", "xls", "csv"],
+            "Planilha de referência", type=["xlsx", "xls", "csv"],
             key="prod_bia_upload_planilha",
-            help="A planilha não será salva — serve apenas para a BIA analisar a estrutura.",
         )
 
         if st.button("🤖 Analisar com BIA", use_container_width=True, key="prod_btn_bia_analisar"):
@@ -142,78 +124,55 @@ def _renderizar_form_adicionar_produto(construtora_edit, cidades, tipo_desconto)
                 if "erro" in resultado:
                     st.error(f"❌ {resultado['erro']}")
                 else:
-                    st.session_state["prod_mapeamento_sugerido"] = json.dumps(
-                        resultado.get("mapeamento", {}), indent=2, ensure_ascii=False
-                    )
-                    st.session_state["prod_colunas_ordem_sugerido"] = ", ".join(
-                        resultado.get("colunas_ordem", [])
-                    )
-                    st.session_state["prod_colunas_num_sugerido"] = ", ".join(
-                        resultado.get("colunas_monetarias", [])
-                        + resultado.get("colunas_numericas", [])
-                    )
-                    st.session_state["prod_skiprows_sugerido"] = int(
-                        resultado.get("skiprows", resultado.get("header_row", 0))
-                    )
-                    st.session_state["prod_bia_obs"] = resultado.get("observacoes", "")
-
-                    st.success("✅ BIA preencheu o formulário abaixo! Revise antes de salvar.")
+                    st.session_state["prod_bia_resultado"] = resultado
+                    st.success("✅ BIA preencheu o formulário! Revise antes de salvar.")
                     if resultado.get("observacoes"):
                         st.info(f"💬 **Observação da BIA:** {resultado['observacoes']}")
                     st.rerun()
 
-    # === FORMULÁRIO ===
-    novo_produto = st.text_input(
-        "Nome do Produto",
-        placeholder="Ex: Torre A",
-        key="prod_novo_produto_nome",
-    )
+    # === APLICA as sugestões da BIA direto no session_state (antes dos widgets) ===
+    if "prod_bia_resultado" in st.session_state:
+        bia = st.session_state.pop("prod_bia_resultado")  # pop = aplica e remove
+        st.session_state["prod_novo_mapeamento"] = json.dumps(
+            bia.get("mapeamento", {}), indent=2, ensure_ascii=False
+        )
+        st.session_state["prod_novo_colunas_ordem"] = ", ".join(bia.get("colunas_ordem", []))
+        st.session_state["prod_novo_colunas_numericas"] = ", ".join(
+            bia.get("colunas_monetarias", []) + bia.get("colunas_numericas", [])
+        )
+        st.session_state["prod_novo_skiprows"] = int(bia.get("skiprows", bia.get("header_row", 2)))
+
+    # === FORMULÁRIO (keys puras, sem value=) ===
+    novo_produto = st.text_input("Nome do Produto", placeholder="Ex: Torre A", key="prod_novo_produto_nome")
     nova_cidade = st.selectbox("📍 Cidade", [""] + cidades, key="prod_nova_cidade_produto")
 
-    skiprows_default = st.session_state.get("prod_skiprows_sugerido", 2)
     novo_skiprows = st.number_input(
         "Linhas para pular antes do cabeçalho",
-        min_value=0,
-        value=int(skiprows_default),
-        step=1,
-        key="prod_novo_skiprows",
+        min_value=0, step=1, key="prod_novo_skiprows",
     )
 
-    mapeamento_default = st.session_state.get("prod_mapeamento_sugerido", "")
     novo_mapeamento = st.text_area(
         "Mapeamento (índice: nome)",
-        value=mapeamento_default,
         placeholder='{"0": "UNIDADE", "1": "PAVTO", "2": "PREÇO"}',
-        height=120,
-        key="prod_novo_mapeamento",
+        height=120, key="prod_novo_mapeamento",
     )
 
-    colunas_ordem_default = st.session_state.get("prod_colunas_ordem_sugerido", "")
     novo_colunas_ordem = st.text_input(
         "Colunas para exibir (separadas por vírgula)",
-        value=colunas_ordem_default,
-        placeholder="UNIDADE, PAVTO, PREÇO",
-        key="prod_novo_colunas_ordem",
+        placeholder="UNIDADE, PAVTO, PREÇO", key="prod_novo_colunas_ordem",
     )
 
-    colunas_num_default = st.session_state.get("prod_colunas_num_sugerido", "")
     novo_colunas_numericas = st.text_input(
         "Colunas monetárias/numéricas (separadas por vírgula)",
-        value=colunas_num_default,
-        placeholder="PREÇO, M², ANDAR",
-        key="prod_novo_colunas_numericas",
+        placeholder="PREÇO, M², ANDAR", key="prod_novo_colunas_numericas",
     )
 
     if st.button("💾 Salvar Produto", use_container_width=True, type="primary", key="prod_btn_salvar_produto"):
         _salvar_novo_produto(
-            construtora_edit=construtora_edit,
-            tipo_desconto=tipo_desconto,
-            novo_produto=novo_produto,
-            nova_cidade=nova_cidade,
-            novo_skiprows=novo_skiprows,
-            novo_mapeamento=novo_mapeamento,
-            novo_colunas_ordem=novo_colunas_ordem,
-            novo_colunas_numericas=novo_colunas_numericas,
+            construtora_edit=construtora_edit, tipo_desconto=tipo_desconto,
+            novo_produto=novo_produto, nova_cidade=nova_cidade,
+            novo_skiprows=novo_skiprows, novo_mapeamento=novo_mapeamento,
+            novo_colunas_ordem=novo_colunas_ordem, novo_colunas_numericas=novo_colunas_numericas,
         )
 
 
@@ -224,6 +183,14 @@ def _salvar_novo_produto(construtora_edit, tipo_desconto, novo_produto, nova_cid
         st.warning("⚠️ Digite o nome do produto!")
         return
 
+    if not novo_mapeamento.strip():
+        st.error("❌ **Mapeamento vazio.** Preencha manualmente ou use o botão '🤖 Analisar com BIA' antes de salvar.")
+        return
+
+    if not nova_cidade:
+        st.error("❌ Selecione a **cidade** do produto.")
+        return
+
     try:
         dados_atuais = carregar_construtoras()
         if construtora_edit not in dados_atuais:
@@ -231,7 +198,16 @@ def _salvar_novo_produto(construtora_edit, tipo_desconto, novo_produto, nova_cid
 
         produtos_atuais = dados_atuais[construtora_edit].get("produtos", {})
 
-        mapeamento = json.loads(novo_mapeamento) if novo_mapeamento else {}
+        try:
+            mapeamento = json.loads(novo_mapeamento)
+        except json.JSONDecodeError:
+            st.error("❌ O mapeamento não é um JSON válido.")
+            return
+
+        if not mapeamento:
+            st.error("❌ O mapeamento está vazio.")
+            return
+
         colunas_ordem = [c.strip() for c in novo_colunas_ordem.split(",") if c.strip()]
         colunas_numericas = [c.strip() for c in novo_colunas_numericas.split(",") if c.strip()]
 
@@ -248,13 +224,9 @@ def _salvar_novo_produto(construtora_edit, tipo_desconto, novo_produto, nova_cid
         }
         dados_atuais[construtora_edit]["produtos"] = produtos_atuais
         salvar_construtoras(dados_atuais)
-
         _limpar_chaves_form_produto()
-
         st.success(f"✅ Produto '{novo_produto}' adicionado com sucesso!")
         st.rerun()
-    except json.JSONDecodeError:
-        st.error("❌ Erro no mapeamento: formato JSON inválido!")
     except Exception as e:
         st.error(f"❌ Erro ao adicionar produto: {str(e)}")
 
@@ -263,17 +235,13 @@ def _limpar_chaves_form_produto():
     keys = [
         "prod_novo_produto_nome", "prod_novo_skiprows", "prod_novo_mapeamento",
         "prod_novo_colunas_ordem", "prod_novo_colunas_numericas",
-        "prod_nova_cidade_produto", "prod_mapeamento_sugerido",
-        "prod_colunas_ordem_sugerido", "prod_colunas_num_sugerido",
-        "prod_skiprows_sugerido", "prod_bia_obs",
+        "prod_nova_cidade_produto", "prod_bia_resultado",
     ]
     for k in keys:
         if k in st.session_state:
             del st.session_state[k]
 
 
-# =========================================================
-# EDITAR PRODUTO
 # =========================================================
 def _renderizar_form_editar_produto(construtora_edit, cidades):
     if not st.session_state.get("editando_produto"):
@@ -298,8 +266,7 @@ def _renderizar_form_editar_produto(construtora_edit, cidades):
     with st.form("form_editar_produto"):
         novo_nome = st.text_input("Novo nome do produto", value=produto_edit)
         cidade_edit = st.selectbox(
-            "📍 Cidade",
-            [""] + cidades,
+            "📍 Cidade", [""] + cidades,
             index=([""] + cidades).index(cidade_atual) if cidade_atual in cidades else 0,
             key="prod_edit_cidade_produto",
         )
@@ -307,8 +274,7 @@ def _renderizar_form_editar_produto(construtora_edit, cidades):
         novo_mapeamento = st.text_area(
             "Mapeamento",
             value=json.dumps(config.get("mapeamento", {}), indent=2, ensure_ascii=False),
-            height=100,
-            key="prod_edit_mapeamento",
+            height=100, key="prod_edit_mapeamento",
         )
         novo_colunas_ordem = st.text_input(
             "Colunas para exibir",
@@ -325,12 +291,9 @@ def _renderizar_form_editar_produto(construtora_edit, cidades):
         with col1:
             if st.form_submit_button("💾 Salvar", use_container_width=True):
                 _salvar_edicao_produto(
-                    construtora_edit=construtora_edit,
-                    produto_edit=produto_edit,
-                    novo_nome=novo_nome,
-                    cidade_edit=cidade_edit,
-                    novo_skiprows=novo_skiprows,
-                    novo_mapeamento=novo_mapeamento,
+                    construtora_edit=construtora_edit, produto_edit=produto_edit,
+                    novo_nome=novo_nome, cidade_edit=cidade_edit,
+                    novo_skiprows=novo_skiprows, novo_mapeamento=novo_mapeamento,
                     novo_colunas_ordem=novo_colunas_ordem,
                     novo_colunas_numericas=novo_colunas_numericas,
                 )
@@ -355,8 +318,7 @@ def _salvar_edicao_produto(construtora_edit, produto_edit, novo_nome, cidade_edi
         colunas_numericas = [c.strip() for c in novo_colunas_numericas.split(",") if c.strip()]
 
         produtos_atuais[novo_nome] = {
-            "cidade": cidade_edit,
-            "skiprows": novo_skiprows,
+            "cidade": cidade_edit, "skiprows": novo_skiprows,
             "mapeamento": {str(k): v for k, v in mapeamento.items()},
             "colunas_ordem": colunas_ordem,
             "colunas_para_converter": colunas_numericas,

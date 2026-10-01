@@ -58,24 +58,105 @@
   "MRV": {
     "tipo_desconto": "AVALIAÇÃO",
     "produtos": {
-      "Estoque Mrv   25.09.2026": {
+      "PARQUE ILHABELA": {
         "cidade": "Campos dos Goytacazes",
-        "skiprows": 2,
-        "mapeamento": {},
-        "colunas_ordem": [],
-        "colunas_para_converter": []
+        "skiprows": 0,
+        "mapeamento": {
+          "0": "CIDADE",
+          "1": "EMPREEENDIMENTO",
+          "2": "BLOCO",
+          "3": "UNIDADE",
+          "4": "TIPOLOGIA",
+          "5": "VALOR_DA_AVALIACAO",
+          "6": "VALOR_DO_IMOVEL",
+          "7": "BOM_PAGADOR_TOTAL",
+          "8": "VALOR_LIQUIDO",
+          "9": "PCD_ADAPTAVEL",
+          "10": "AREA_INTERNA",
+          "11": "AREA_DO_QUINTAL",
+          "12": "AREA_DA_VARANDA",
+          "13": "TIPO_DE_ACABAMENTO",
+          "14": "STATUS_DA_UNIDADE",
+          "15": "PAGADORIA",
+          "16": "BONUS",
+          "17": "VERSAO_DA_TABELA",
+          "18": "OPORTUNIDADES_ABERTAS",
+          "19": "VAGAS_CARRO",
+          "20": "VAGAS_MOTO"
+        },
+        "colunas_ordem": [
+          "CIDADE",
+          "EMPREEENDIMENTO",
+          "BLOCO",
+          "UNIDADE",
+          "TIPOLOGIA",
+          "VALOR_DA_AVALIACAO",
+          "VALOR_DO_IMOVEL",
+          "BOM_PAGADOR_TOTAL",
+          "VALOR_LIQUIDO",
+          "PCD_ADAPTAVEL",
+          "AREA_INTERNA",
+          "AREA_DO_QUINTAL",
+          "AREA_DA_VARANDA",
+          "TIPO_DE_ACABAMENTO",
+          "STATUS_DA_UNIDADE",
+          "PAGADORIA",
+          "BONUS",
+          "VERSAO_DA_TABELA",
+          "OPORTUNIDADES_ABERTAS",
+          "VAGAS_CARRO",
+          "VAGAS_MOTO"
+        ],
+        "colunas_para_converter": [
+          "VALOR_DA_AVALIACAO",
+          "VALOR_DO_IMOVEL",
+          "VALOR_LIQUIDO",
+          "AREA_INTERNA",
+          "AREA_DO_QUINTAL",
+          "AREA_DA_VARANDA",
+          "VAGAS_CARRO",
+          "VAGAS_MOTO"
+        ]
       }
     }
   },
   "Fantasminha": {
     "tipo_desconto": "AVALIAÇÃO",
     "produtos": {
-      "Disponibilidade": {
+      "RESIDENCIAL NOVA YORK": {
         "cidade": "Barra da Tijuca",
-        "skiprows": 2,
-        "mapeamento": {},
-        "colunas_ordem": [],
-        "colunas_para_converter": []
+        "skiprows": 10,
+        "mapeamento": {
+          "0": "EMPREENDEDIMENTO",
+          "1": "UNIDADE",
+          "2": "NOME_DO_PRODUTO",
+          "3": "BLOCO",
+          "4": "UNIDADE",
+          "5": "VALOR_DE_AVALIACAO",
+          "6": "FAIXA",
+          "7": "DESCRICAO_DO_PRODUTO",
+          "8": "STATUS",
+          "9": "VAGA_DE_GARAGEM",
+          "10": "IMOVEL_CRIADO_POR"
+        },
+        "colunas_ordem": [
+          "EMPREENDEDIMENTO",
+          "UNIDADE",
+          "NOME_DO_PRODUTO",
+          "BLOCO",
+          "VALOR_DE_AVALIACAO",
+          "FAIXA",
+          "DESCRICAO_DO_PRODUTO",
+          "STATUS",
+          "VAGA_DE_GARAGEM",
+          "IMOVEL_CRIADO_POR"
+        ],
+        "colunas_para_converter": [
+          "VALOR_DE_AVALIACAO",
+          "UNIDADE",
+          "BLOCO",
+          "FAIXA"
+        ]
       }
     }
   }
