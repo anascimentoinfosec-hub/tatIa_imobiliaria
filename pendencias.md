@@ -66,6 +66,14 @@ Ex.: Jeronimo da veiga
 
 ### PENDENTES
 
+### #024 — Repensar fluxo do simulador (cliente primeiro)
+- Ideia: corretor digita o cliente → sistema varre todas as planilhas em cache
+  → mostra melhores oportunidades de TODAS as construtoras → cliente escolhe
+  um empreendimento específico se quiser drill-down
+- Atualmente: escolhe construtora+produto antes de digitar cliente (contra-intuitivo)
+- Encaixa na #014 (grande redesign do simulador)
+
+
 ### #021 - Unificar o upload das planilhas de construtoras para dentro da area de Gestão de construtoras
 
 ### #020 - Mover Upload de planilha para dentro da área de configuração das construtoras
