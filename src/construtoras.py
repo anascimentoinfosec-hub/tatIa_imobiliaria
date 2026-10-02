@@ -8,6 +8,9 @@ from src.construtoras_cidades import renderizar_aba_cidades
 
 
 def pagina_gestao_construtoras(CONSTRUTORAS):
+    from src.mensagens import exibir_mensagem_pendente
+    exibir_mensagem_pendente()  # ← mostra as mensagens pendentes AQUI
+
     st.title("🏗️ Gestão de Construtoras e Produtos")
 
     cidades = carregar_cidades()

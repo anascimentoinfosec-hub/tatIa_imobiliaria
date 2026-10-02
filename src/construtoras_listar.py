@@ -1,18 +1,10 @@
 import streamlit as st
 from src.construtoras_storage import carregar_construtoras, salvar_construtoras
+from src.mensagens import exibir_mensagem_pendente
 
 
 def renderizar_aba_listar(CONSTRUTORAS):
-    """Renderiza a aba 'Listar' com botão de excluir."""
     st.markdown("### Construtoras e Produtos")
-
-    # === MENSAGEM DE SUCESSO/ERRO PÓS-EXCLUSÃO ===
-    if st.session_state.get("msg_exclusao"):
-        msg = st.session_state.pop("msg_exclusao")
-        if "✅" in msg:
-            st.success(msg)
-        else:
-            st.error(msg)
 
     if not CONSTRUTORAS:
         st.info("Nenhuma construtora cadastrada.")
@@ -30,7 +22,6 @@ def _renderizar_card_construtora(construtora, dados):
     titulo = f"🏢 {construtora}  •  💡 {tipo_desconto}  •  📦 {qtd_produtos} produto(s)"
 
     with st.expander(titulo):
-        # Produtos
         if produtos:
             for produto, config in produtos.items():
                 cidade = config.get("cidade", "Não definida")
@@ -41,14 +32,12 @@ def _renderizar_card_construtora(construtora, dados):
 
         st.markdown("---")
 
-        # Botão de excluir
         col1, col2 = st.columns([4, 1])
         with col2:
             if st.button("🗑️ Excluir", key=f"del_construtora_{construtora}", use_container_width=True):
                 st.session_state["confirmar_exclusao"] = construtora
                 st.rerun()
 
-        # Confirmação
         if st.session_state.get("confirmar_exclusao") == construtora:
             st.warning(
                 f"⚠️ **Tem certeza?** Excluir **{construtora}** vai apagar "
@@ -69,11 +58,12 @@ def _renderizar_card_construtora(construtora, dados):
 
 
 def _excluir_construtora(construtora):
+    from src.mensagens import mostrar_msg
     try:
         dados_atuais = carregar_construtoras()
         if construtora in dados_atuais:
             del dados_atuais[construtora]
             salvar_construtoras(dados_atuais)
-            st.session_state["msg_exclusao"] = f"✅ Construtora **{construtora}** excluída com sucesso!"
+            mostrar_msg(f"Construtora **{construtora}** excluída com sucesso!", "sucesso")
     except Exception as e:
-        st.session_state["msg_exclusao"] = f"❌ Erro ao excluir: {str(e)}"
+        mostrar_msg(f"Erro ao excluir: {str(e)}", "erro")

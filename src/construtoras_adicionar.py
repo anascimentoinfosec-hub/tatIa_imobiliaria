@@ -3,17 +3,10 @@ import json
 from src.construtoras_storage import salvar_construtoras
 from src.bia_planilha import analisar_planilha_com_bia
 from src.planilha_processor import processar_planilha_e_salvar_cache
-
+from src.mensagens import exibir_mensagem_pendente, mostrar_msg
 
 def renderizar_aba_adicionar(CONSTRUTORAS, cidades):
     st.markdown("### Adicionar Nova Construtora")
-
-    # === MOSTRA MENSAGEM DE SUCESSO (vinda do rerun anterior) ===
-    if st.session_state.get("sucesso_construtora"):
-        nome_ok, msg_cache = st.session_state.pop("sucesso_construtora")
-        st.success(f"✅ Construtora **{nome_ok}** adicionada com sucesso!")
-        if msg_cache:
-            st.info(msg_cache)
 
     with st.expander("🤖 Preencher automaticamente com a BIA (opcional)", expanded=False):
         st.caption(
@@ -174,7 +167,9 @@ def _processar_nova_construtora(CONSTRUTORAS, nome, tipo_desconto, produto_nome,
             msg_cache = msg if ok else f"⚠️ {msg}"
 
         # MARCA FLAG para mostrar mensagem após rerun
-        st.session_state["sucesso_construtora"] = (nome, msg_cache)
+        mostrar_msg(f"Construtora **{nome}** adicionada com sucesso!", "sucesso")
+        if msg_cache:
+            mostrar_msg(msg_cache, "info")
 
         _limpar_chaves_form_construtora()
         st.rerun()
