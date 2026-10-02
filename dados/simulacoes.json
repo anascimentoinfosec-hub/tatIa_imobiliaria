@@ -2258,5 +2258,60 @@
         "valor_base": 4717000.0
       }
     ]
+  },
+  {
+    "id": "20261002202436459442",
+    "data_hora": "2026-10-02T20:24:36.459493",
+    "cliente": "Teste Redesign",
+    "renda": 10000.0,
+    "entrada": 50000.0,
+    "bairro": "",
+    "origem": "Lead",
+    "desconto": 0.0,
+    "tipo_desconto": "MISTO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": " APTO 104",
+        "TIPOLOGIA": "1 Q S",
+        "BLOCO": " BLOCO 20 ",
+        "AVALIAÇÃO": NaN,
+        "PREÇO": NaN,
+        "valor_base": 217540.0
+      },
+      {
+        "UNIDADE": " APTO 104",
+        "TIPOLOGIA": "1 Q S",
+        "BLOCO": " BLOCO 05 ",
+        "AVALIAÇÃO": NaN,
+        "PREÇO": NaN,
+        "valor_base": 217540.0
+      },
+      {
+        "UNIDADE": " APTO 104",
+        "TIPOLOGIA": "1 Q S",
+        "BLOCO": " BLOCO 01 ",
+        "AVALIAÇÃO": NaN,
+        "PREÇO": NaN,
+        "valor_base": 217540.0
+      },
+      {
+        "UNIDADE": " APTO 104",
+        "TIPOLOGIA": "1 Q S",
+        "BLOCO": " BLOCO 03 ",
+        "AVALIAÇÃO": NaN,
+        "PREÇO": NaN,
+        "valor_base": 217540.0
+      },
+      {
+        "UNIDADE": " APTO 104",
+        "TIPOLOGIA": "1 Q S",
+        "BLOCO": " BLOCO 07 ",
+        "AVALIAÇÃO": NaN,
+        "PREÇO": NaN,
+        "valor_base": 217540.0
+      }
+    ]
   }
 ]

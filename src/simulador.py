@@ -1,12 +1,6 @@
 import streamlit as st
 
-from src.simulador_upload import renderizar_sidebar, carregar_dataframe
-from src.simulador_filtros import (
-    renderizar_filtros,
-    aplicar_filtros,
-    calcular_preco_m2,
-    renderizar_tabela,
-)
+from src.simulador_upload import carregar_todas_planilhas, renderizar_sidebar_resumo
 from src.simulador_cliente import renderizar_area_cliente
 from src.simulador_cards import (
     renderizar_cards,
@@ -15,61 +9,40 @@ from src.simulador_cards import (
     renderizar_refinamento,
 )
 from src.compartilhar import botoes_compartilhar
-from src.utils import formatar_valor_br
 
 
 def pagina_simulador(CONSTRUTORAS, USUARIOS):
     if not CONSTRUTORAS:
-        st.warning("⚠️ Nenhuma construtora cadastrada. Cadastre uma construtora primeiro.")
+        st.warning("⚠️ Nenhuma construtora cadastrada. Cadastre uma primeiro.")
         return
 
     st.title("🏢 Simulador de Entrada de Construtora")
-    st.caption("Analise o potencial de entrada do cliente para as unidades da construtora.")
+    st.caption("Analise o potencial do cliente em **todas as construtoras** disponíveis.")
 
     usuario_logado = st.session_state.get("usuario_logado")
 
-    sidebar = renderizar_sidebar(CONSTRUTORAS, USUARIOS)
-    if sidebar is None:
-        st.warning("⚠️ Selecione um produto para visualizar os dados.")
+    # ---------- 1. Carrega TODAS as planilhas ----------
+    df_total, resumo = carregar_todas_planilhas(CONSTRUTORAS)
+
+    # Sidebar de resumo
+    renderizar_sidebar_resumo(CONSTRUTORAS)
+
+    if df_total is None or df_total.empty:
+        st.warning("⚠️ Nenhuma planilha em cache. Peça ao gerente para subir planilhas.")
         return
 
-    construtora = sidebar["construtora"]
-    produto = sidebar["produto"]
-    tipo_desconto = sidebar["tipo_desconto"]
-    config = sidebar["config"]
+    st.info(f"📦 {len(resumo)} produto(s) • {len(df_total)} unidades totais em cache")
 
-    df = carregar_dataframe(construtora, produto)
-    if df is None:
-        st.warning(f"⚠️ Nenhuma planilha disponível para '{produto}'. Faça o upload.")
-        return
+    # ---------- 2. Área do cliente ----------
+    renderizar_area_cliente(df_total, usuario_logado, USUARIOS)
 
-    st.info(f"📂 Planilha carregada do cache: {construtora} - {produto}")
-    st.session_state.df_imoveis = df
-
-    st.markdown("---")
-
-    filtros = renderizar_filtros(df, tipo_desconto)
-    if filtros is None:
-        return
-
-    preco_col = filtros["preco_col"]
-    resultado = aplicar_filtros(df, filtros)
-    resultado = calcular_preco_m2(resultado, preco_col)
-    renderizar_tabela(resultado, config, construtora, produto, tipo_desconto, preco_col)
-
-    st.markdown("---")
-
-    renderizar_area_cliente(resultado, tipo_desconto, preco_col, usuario_logado, USUARIOS)
-
-    # =========================================================
-    # RESULTADOS + REFINAMENTO
-    # =========================================================
+    # ---------- 3. Resultados (se análise ativa) ----------
     if st.session_state.get("simulacao_ativa"):
         sim = st.session_state.simulacao_ativa
 
         st.markdown("---")
 
-        # #016 — Refinamento pós-análise
+        # Refinamento
         top_refinado = renderizar_refinamento()
         sim["top_recomendacoes"] = top_refinado
 
@@ -84,7 +57,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
 
         st.markdown("---")
         st.markdown("### 📤 Compartilhar Simulação")
-        dados_pdf = _montar_dados_pdf(sim, usuario_logado, USUARIOS, tipo_desconto, top_para_pdf)
+        dados_pdf = _montar_dados_pdf(sim, usuario_logado, USUARIOS, top_para_pdf)
         botoes_compartilhar(sim["resumo"], sim["nome_cliente"], dados_pdf)
 
         st.markdown("---")
@@ -99,13 +72,14 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
 
         if idx_escolhido is not None:
             st.markdown("---")
-            if st.button("💾 Salvar esta unidade como Proposta no Histórico",
+            if st.button("💾 Salvar esta unidade como Proposta",
                          use_container_width=True, type="primary"):
-                _salvar_proposta(sim, top_refinado, idx_escolhido, usuario_logado, USUARIOS, tipo_desconto)
+                _salvar_proposta(sim, top_refinado, idx_escolhido, usuario_logado, USUARIOS)
                 st.success("✅ Proposta salva no histórico!")
                 st.rerun()
 
-    renderizar_ajuste_global(df, preco_col)
+        st.markdown("---")
+        renderizar_ajuste_global(df_total, "PREÇO")
 
     st.markdown("---")
     if st.button("💬 Perguntar à BIA (IA Imobiliária)", use_container_width=True):
@@ -113,19 +87,23 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         st.rerun()
 
 
-def _montar_dados_pdf(sim, usuario_logado, USUARIOS, tipo_desconto, top_filtrado):
+def _montar_dados_pdf(sim, usuario_logado, USUARIOS, top_filtrado):
     oportunidades = []
 
     if top_filtrado is not None and not top_filtrado.empty:
         for _, row in top_filtrado.iterrows():
             item = {}
-            for col in ["UNIDADE", "TIPOLOGIA", "BLOCO", "PAVTO", "ANDAR",
-                        "AVALIAÇÃO", "PREÇO", "valor_base", "parcela_estimada"]:
-                if col in row.index:
+            for col in row.index:
+                col_str = str(col)
+                if col_str.startswith("_"):
+                    item[col_str] = str(row[col])
+                elif col_str in ["UNIDADE", "TIPOLOGIA", "BLOCO", "PAVTO", "ANDAR",
+                                  "AVALIAÇÃO", "PREÇO", "valor_base",
+                                  "VALOR_DA_AVALIACAO", "VALOR_DO_IMOVEL"]:
                     val = row[col]
                     if hasattr(val, "item"):
                         val = val.item()
-                    item[col] = val
+                    item[col_str] = val
             oportunidades.append(item)
 
     nome_gerente = ""
@@ -139,13 +117,13 @@ def _montar_dados_pdf(sim, usuario_logado, USUARIOS, tipo_desconto, top_filtrado
         "bairro": "",
         "origem": "",
         "desconto": sim.get("desconto_acordado", 0),
-        "tipo_desconto": tipo_desconto,
+        "tipo_desconto": "MISTO",
         "nome_gerente": nome_gerente,
         "oportunidades": oportunidades,
     }
 
 
-def _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS, tipo_desconto):
+def _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS):
     from src.simulacoes_storage import salvar_simulacao
 
     top_unit = top.loc[[idx_escolhido]]
@@ -158,7 +136,7 @@ def _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS, tipo_des
         bairro="",
         origem="",
         desconto=sim.get("desconto_acordado", 0),
-        tipo_desconto=tipo_desconto,
+        tipo_desconto="MISTO",
         gerente=nome_gerente,
         top_recomendacoes=top_unit,
     )

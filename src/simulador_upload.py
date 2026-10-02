@@ -19,58 +19,58 @@ def obter_tipo_desconto(construtora, CONSTRUTORAS):
     return CONSTRUTORAS.get(construtora, {}).get("tipo_desconto", "AVALIAÇÃO")
 
 
-def renderizar_sidebar(CONSTRUTORAS, USUARIOS):
-    """Sidebar simplificada: só seleção de construtora + produto."""
-    usuario_logado = st.session_state.get("usuario_logado")
-    perfil = "corretor"
-    if usuario_logado and usuario_logado in USUARIOS:
-        perfil = USUARIOS[usuario_logado].get("perfil", "corretor")
+def carregar_todas_planilhas(CONSTRUTORAS):
+    """
+    Percorre todas as construtoras/produtos com planilha em cache
+    e retorna um DataFrame unificado com colunas extras:
+    _construtora, _produto, _tipo_desconto
+    """
+    dfs = []
+    resumo = []
+
+    for construtora, dados in CONSTRUTORAS.items():
+        tipo_desc = dados.get("tipo_desconto", "AVALIAÇÃO")
+        produtos = dados.get("produtos", {})
+
+        for produto, config in produtos.items():
+            if not tem_planilha_cache(construtora, produto):
+                continue
+
+            df = carregar_planilha_cache(construtora, produto)
+            if df is None or df.empty:
+                continue
+
+            df = df.copy()
+            df["_construtora"] = construtora
+            df["_produto"] = produto
+            df["_tipo_desconto"] = tipo_desc
+            dfs.append(df)
+            resumo.append((construtora, produto, len(df)))
+
+    if not dfs:
+        return None, []
+
+    df_total = pd.concat(dfs, ignore_index=True)
+    return df_total, resumo
+
+
+def renderizar_sidebar_resumo(CONSTRUTORAS):
+    """Mostra na sidebar um resumo das planilhas em cache."""
+    df, resumo = carregar_todas_planilhas(CONSTRUTORAS)
 
     with st.sidebar:
-        st.header("⚙️ Configurações")
-        construtora = st.selectbox("🏗️ Selecione a construtora", options=list(CONSTRUTORAS.keys()))
-        tipo_desconto = obter_tipo_desconto(construtora, CONSTRUTORAS)
+        st.header("📦 Planilhas em cache")
 
-        produtos = CONSTRUTORAS[construtora].get("produtos", {})
-        produtos_lista = list(produtos.keys())
-        if produtos_lista:
-            produto = st.selectbox("📦 Selecione o produto", options=produtos_lista)
+        if not resumo:
+            st.warning("⚠️ Nenhuma planilha disponível.")
+            st.caption(
+                "Vá em **⚙️ Gestão → 🏗️ Construtoras → 📦 Gerenciar Produtos** "
+                "para subir planilhas."
+            )
         else:
-            st.warning("⚠️ Nenhum produto cadastrado para esta construtora.")
-            return None
+            st.success(f"✅ {len(resumo)} produto(s) • {sum(r[2] for r in resumo)} unidades")
 
-        st.markdown("---")
-        st.caption(f"Versão 6.4 - Desconto sobre: {tipo_desconto}")
+            for construtora, produto, qtd in resumo:
+                st.caption(f"• **{construtora}** → {produto} ({qtd})")
 
-        # Verifica se há planilha no cache
-        if tem_planilha_cache(construtora, produto):
-            st.success("✅ Planilha disponível")
-        else:
-            st.warning("⚠️ Sem planilha no cache")
-            if perfil in ["gerente", "superadmin"]:
-                st.caption(
-                    "Vá em **⚙️ Gestão → 🏗️ Construtoras → 📦 Gerenciar Produtos** "
-                    "para subir a planilha."
-                )
-            else:
-                st.caption("Peça ao gerente para subir a planilha.")
-
-    return {
-        "construtora": construtora,
-        "produto": produto,
-        "tipo_desconto": tipo_desconto,
-        "config": produtos[produto],
-    }
-
-
-def carregar_dataframe(construtora, produto):
-    if not tem_planilha_cache(construtora, produto):
-        return None
-    df = carregar_planilha_cache(construtora, produto)
-    if df is None:
-        return None
-    colunas_monetarias = ["AVALIAÇÃO", "PREÇO", "VALOR", "DESCONTO"]
-    for col in colunas_monetarias:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
-    return df
+    return df, resumo

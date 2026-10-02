@@ -1,287 +1,231 @@
 import streamlit as st
-from src.construtoras_storage import carregar_cidades
-from src.compartilhar import gerar_resumo
+import pandas as pd
 from src.origens_storage import carregar_origens
 from src.simulacoes_storage import salvar_simulacao
 from src.lazer_storage import carregar_lazer
 from src.utils import campo_moeda
 
 
-def renderizar_area_cliente(resultado, tipo_desconto, preco_col, usuario_logado, USUARIOS):
-    """Renderiza a área do cliente (inputs + botão Analisar)."""
-    st.subheader("🧑 Área do Cliente")
-    st.markdown("Preencha os dados abaixo para receber recomendações personalizadas.")
+def renderizar_area_cliente(df_total, usuario_logado, USUARIOS):
+    """
+    Área do cliente no novo fluxo: cliente primeiro.
+    Recebe o DataFrame unificado de TODAS as planilhas.
+    """
+    if df_total is None or df_total.empty:
+        st.warning("⚠️ Nenhuma planilha disponível. Peça ao gerente para subir planilhas.")
+        return
+
+    st.subheader("🧑 Dados do Cliente")
+    st.caption("Preencha os dados. O sistema buscará oportunidades em **todas as construtoras** disponíveis.")
 
     with st.container():
         col1, col2 = st.columns(2)
 
         with col1:
             nome_cliente = st.text_input(
-                "Nome do Cliente",
-                placeholder="Ex: João Silva",
-                key="cliente_nome",
-                help="Nome completo do cliente. Aparecerá no resumo compartilhado.",
+                "Nome do Cliente", placeholder="Ex: João Silva",
+                key="cliente_nome", help="Nome completo do cliente.",
             )
-
             renda_cliente = campo_moeda(
-                "💰 Renda bruta mensal (R$)",
-                valor_inicial=5000.0,
-                key="cliente_renda",
-                help="Renda BRUTA mensal do cliente.",
-                placeholder="Ex: 5.000,00",
+                "💰 Renda bruta mensal (R$)", valor_inicial=5000.0,
+                key="cliente_renda", placeholder="Ex: 5.000,00",
             )
-
             entrada_cliente = campo_moeda(
-                "🏦 Valor disponível para entrada (R$)",
-                valor_inicial=100000.0,
-                key="cliente_entrada",
-                help="Quanto o cliente tem disponível para dar de entrada. Sem limite.",
-                placeholder="Ex: 100.000,00",
+                "🏦 Valor disponível para entrada (R$)", valor_inicial=100000.0,
+                key="cliente_entrada", placeholder="Ex: 100.000,00",
             )
-
             origem_cliente = _renderizar_origem_cliente()
 
         with col2:
-            cidades_disponiveis = carregar_cidades()
-            bairro_preferencia = st.selectbox(
-                "📍 Bairro de preferência", [""] + cidades_disponiveis, key="cliente_bairro",
-                help="Filtra os imóveis pelo bairro de interesse.",
-            )
             quartos_preferencia = st.selectbox(
-                "🛏️ Quantos quartos?", ["Indiferente", "1", "2", "3", "4+"], key="cliente_quartos",
-                help="Filtra os imóveis pela quantidade de quartos.",
+                "🛏️ Quantos quartos?", ["Indiferente", "1", "2", "3", "4+"],
+                key="cliente_quartos",
             )
             tipo_preferencia = st.selectbox(
-                "🏠 Tipo de imóvel", ["Indiferente", "Apartamento", "Cobertura", "Garden"], key="cliente_tipo",
-                help="Filtra os imóveis pelo tipo.",
+                "🏠 Tipo de imóvel", ["Indiferente", "Apartamento", "Cobertura", "Garden"],
+                key="cliente_tipo",
             )
-
             vagas_preferencia = st.selectbox(
-                "🚗 Vagas necessárias",
-                ["Indiferente", "1", "2", "3", "4+"],
+                "🚗 Vagas necessárias", ["Indiferente", "1", "2", "3", "4+"],
                 key="cliente_vagas",
-                help="O cliente precisa de no mínimo essa quantidade de vagas?",
             )
-
             desconto_acordado = campo_moeda(
-                "💸 Desconto acordado (R$)",
-                valor_inicial=0.0,
-                key="cliente_desconto",
-                help=f"Desconto a ser subtraído do {tipo_desconto} do imóvel.",
-                placeholder="Ex: 80.000,00",
+                "💸 Desconto acordado (R$)", valor_inicial=0.0,
+                key="cliente_desconto", placeholder="Ex: 80.000,00",
             )
 
-        lazer_preferencias = _renderizar_area_lazer()
+    # === FILTROS OPCIONAIS ===
+    st.markdown("---")
+    with st.expander("🎯 Filtros opcionais (deixe em branco para buscar em tudo)", expanded=False):
+        col_f1, col_f2 = st.columns(2)
 
-        if st.button("🔍 Analisar Oportunidades", use_container_width=True):
-            if not nome_cliente:
-                st.warning("⚠️ Por favor, informe o nome do cliente.")
-                return
+        with col_f1:
+            construtoras_unicas = ["(Todas)"] + sorted(df_total["_construtora"].unique().tolist())
+            filtro_construtora = st.selectbox(
+                "🏗️ Construtora específica", construtoras_unicas, key="cliente_filtro_construtora",
+            )
+        with col_f2:
+            if filtro_construtora == "(Todas)":
+                produtos_opcoes = ["(Todos)"] + sorted(df_total["_produto"].unique().tolist())
+            else:
+                produtos_disponiveis = df_total[df_total["_construtora"] == filtro_construtora]["_produto"].unique().tolist()
+                produtos_opcoes = ["(Todos)"] + sorted(produtos_disponiveis)
+            filtro_produto = st.selectbox("📦 Produto específico", produtos_opcoes, key="cliente_filtro_produto")
 
-            with st.spinner("Analisando oportunidades..."):
-                try:
-                    dados_simulacao = _analisar(
-                        resultado=resultado,
-                        nome_cliente=nome_cliente,
-                        renda_cliente=renda_cliente,
-                        entrada_cliente=entrada_cliente,
-                        bairro_preferencia=bairro_preferencia,
-                        quartos_preferencia=quartos_preferencia,
-                        tipo_preferencia=tipo_preferencia,
-                        vagas_preferencia=vagas_preferencia,
-                        lazer_preferencias=lazer_preferencias,
-                        desconto_acordado=desconto_acordado,
-                        tipo_desconto=tipo_desconto,
-                        preco_col=preco_col,
-                        usuario_logado=usuario_logado,
-                        USUARIOS=USUARIOS,
-                        origem_cliente=origem_cliente,
-                    )
+    # === LAZER ===
+    lazer_preferencias = _renderizar_area_lazer()
 
-                    if dados_simulacao is None:
-                        return
+    # === BOTÃO ANALISAR ===
+    if st.button("🔍 Analisar Oportunidades", use_container_width=True, type="primary"):
+        if not nome_cliente:
+            st.warning("⚠️ Por favor, informe o nome do cliente.")
+            return
 
-                    st.session_state.simulacao_ativa = dados_simulacao
+        with st.spinner("Analisando oportunidades em todas as construtoras..."):
+            try:
+                dados_simulacao = _analisar(
+                    df_total=df_total,
+                    nome_cliente=nome_cliente,
+                    renda_cliente=renda_cliente,
+                    entrada_cliente=entrada_cliente,
+                    quartos_preferencia=quartos_preferencia,
+                    tipo_preferencia=tipo_preferencia,
+                    vagas_preferencia=vagas_preferencia,
+                    lazer_preferencias=lazer_preferencias,
+                    desconto_acordado=desconto_acordado,
+                    filtro_construtora=filtro_construtora,
+                    filtro_produto=filtro_produto,
+                    usuario_logado=usuario_logado,
+                    USUARIOS=USUARIOS,
+                    origem_cliente=origem_cliente,
+                )
 
-                    nome_gerente = USUARIOS[usuario_logado]["nome"] if usuario_logado in USUARIOS else ""
-                    sim_id = salvar_simulacao(
-                        nome_cliente=nome_cliente,
-                        renda=renda_cliente,
-                        entrada=entrada_cliente,
-                        bairro=bairro_preferencia,
-                        origem=origem_cliente if origem_cliente != "(Não informado)" else "",
-                        desconto=desconto_acordado,
-                        tipo_desconto=tipo_desconto,
-                        gerente=nome_gerente,
-                        top_recomendacoes=dados_simulacao["top_recomendacoes"],
-                    )
-                    st.session_state.ultima_simulacao_id = sim_id
-                    st.toast(f"💾 Simulação salva no histórico (ID: {sim_id[-6:]})")
+                if dados_simulacao is None:
+                    return
 
-                except Exception as e:
-                    st.error(f"❌ Erro ao analisar oportunidades: {str(e)}")
+                st.session_state.simulacao_ativa = dados_simulacao
+
+                nome_gerente = USUARIOS[usuario_logado]["nome"] if usuario_logado in USUARIOS else ""
+                sim_id = salvar_simulacao(
+                    nome_cliente=nome_cliente, renda=renda_cliente, entrada=entrada_cliente,
+                    bairro="", origem=origem_cliente if origem_cliente != "(Não informado)" else "",
+                    desconto=desconto_acordado, tipo_desconto="MISTO",
+                    gerente=nome_gerente,
+                    top_recomendacoes=dados_simulacao["top_recomendacoes"],
+                )
+                st.session_state.ultima_simulacao_id = sim_id
+                st.toast(f"💾 Simulação salva (ID: {sim_id[-6:]})")
+
+            except Exception as e:
+                st.error(f"❌ Erro ao analisar oportunidades: {str(e)}")
 
 
 def _renderizar_origem_cliente():
     origens = carregar_origens()
-    opcoes = ["(Não informado)"] + origens
     return st.selectbox(
-        "🎯 Origem do Cliente",
-        opcoes,
-        key="cliente_origem",
-        help="Como esse cliente chegou até nós?",
+        "🎯 Origem do Cliente", ["(Não informado)"] + origens,
+        key="cliente_origem", help="Como esse cliente chegou até nós?",
     )
 
 
 def _renderizar_area_lazer():
     st.markdown("---")
     st.markdown("#### 🏖️ Preferências de Lazer")
-    st.caption("Selecione uma ou mais opções que o cliente procura. O filtro buscará imóveis que atendam.")
+    st.caption("Selecione uma ou mais opções que o cliente procura.")
 
     opcoes_lazer = carregar_lazer()
-
-    selecionados = st.multiselect(
-        "Opções de lazer desejadas",
-        opcoes_lazer,
-        key="cliente_lazer",
-        help="Deixe em branco para não filtrar por lazer.",
-        label_visibility="collapsed",
+    return st.multiselect(
+        "Opções de lazer desejadas", opcoes_lazer,
+        key="cliente_lazer", label_visibility="collapsed",
     )
 
-    return selecionados
 
+def _analisar(df_total, nome_cliente, renda_cliente, entrada_cliente,
+              quartos_preferencia, tipo_preferencia, vagas_preferencia,
+              lazer_preferencias, desconto_acordado, filtro_construtora,
+              filtro_produto, usuario_logado, USUARIOS, origem_cliente):
+    """Lógica de análise em todas as planilhas."""
+    df = df_total.copy()
+    etapas = [("Inicial", len(df))]
 
-def _analisar(resultado, nome_cliente, renda_cliente, entrada_cliente,
-              bairro_preferencia, quartos_preferencia, tipo_preferencia,
-              vagas_preferencia, lazer_preferencias,
-              desconto_acordado, tipo_desconto, preco_col, usuario_logado,
-              USUARIOS, origem_cliente):
-    """Lógica pura de análise. Retorna dict pronto para o session_state."""
-    df_filtrado = resultado.copy()
-    total_original = len(df_filtrado)
+    # === Filtro construtora/produto (opcional) ===
+    if filtro_construtora != "(Todas)":
+        df = df[df["_construtora"] == filtro_construtora]
+        etapas.append((f"Construtora ({filtro_construtora})", len(df)))
 
-    # Registra o total após cada etapa (para diagnóstico)
-    etapas = [("Inicial", total_original)]
+    if filtro_produto != "(Todos)":
+        df = df[df["_produto"] == filtro_produto]
+        etapas.append((f"Produto ({filtro_produto})", len(df)))
 
-    # === Filtro: Quartos ===
+    # === Filtro quartos ===
     if quartos_preferencia != "Indiferente":
         qtd = int(quartos_preferencia.replace("+", ""))
-        col_quartos = None
-        for c in ["QUARTOS", "DORMITÓRIOS", "TIPO"]:
-            if c in df_filtrado.columns:
-                col_quartos = c
+        col_q = None
+        for c in ["QUARTOS", "DORMITÓRIOS", "DORMITORIOS", "TIPO"]:
+            if c in df.columns:
+                col_q = c
                 break
-        if col_quartos:
-            df_filtrado = df_filtrado[df_filtrado[col_quartos].astype(str).str.contains(str(qtd))]
-            etapas.append((f"Quartos ({qtd})", len(df_filtrado)))
-        else:
-            etapas.append(("Quartos (ignorado - sem coluna)", len(df_filtrado)))
+        if col_q:
+            df = df[df[col_q].astype(str).str.contains(str(qtd), na=False)]
+            etapas.append((f"Quartos ({qtd})", len(df)))
 
-    # === Filtro: Tipo ===
-    if tipo_preferencia != "Indiferente" and "TIPOLOGIA" in df_filtrado.columns:
-        df_filtrado = df_filtrado[
-            df_filtrado["TIPOLOGIA"].astype(str).str.contains(tipo_preferencia, case=False, na=False)
-        ]
-        etapas.append((f"Tipo ({tipo_preferencia})", len(df_filtrado)))
+    # === Filtro tipo ===
+    if tipo_preferencia != "Indiferente" and "TIPOLOGIA" in df.columns:
+        df = df[df["TIPOLOGIA"].astype(str).str.contains(tipo_preferencia, case=False, na=False)]
+        etapas.append((f"Tipo ({tipo_preferencia})", len(df)))
 
-    # === Filtro: Vagas ===
+    # === Filtro vagas ===
     if vagas_preferencia != "Indiferente":
         vagas_min = int(vagas_preferencia.replace("+", ""))
-        col_vagas = None
+        col_v = None
         for c in ["VAGA", "VAGAS", "VAGAS_GARAGEM"]:
-            if c in df_filtrado.columns:
-                col_vagas = c
+            if c in df.columns:
+                col_v = c
                 break
-        if col_vagas:
+        if col_v:
             import re as _re
             def tem_vagas(s):
-                try:
-                    numeros = _re.findall(r"\d+", str(s))
-                    return any(int(n) >= vagas_min for n in numeros)
-                except Exception:
-                    return False
+                nums = _re.findall(r"\d+", str(s))
+                return any(int(n) >= vagas_min for n in nums)
+            df = df[df[col_v].apply(tem_vagas)]
+            etapas.append((f"Vagas >= {vagas_min}", len(df)))
 
-            df_filtrado = df_filtrado[df_filtrado[col_vagas].apply(tem_vagas)]
-            etapas.append((f"Vagas >= {vagas_min}", len(df_filtrado)))
-        else:
-            etapas.append(("Vagas (ignorado - sem coluna)", len(df_filtrado)))
-
-    # === Filtro: Lazer ===
+    # === Filtro lazer ===
     if lazer_preferencias:
-        colunas_lazer = [c for c in df_filtrado.columns if "LAZER" in c.upper()]
-
+        colunas_lazer = [c for c in df.columns if "LAZER" in c.upper()]
         if colunas_lazer:
             def atende_lazer(row):
                 texto = " ".join(str(row.get(c, "")) for c in colunas_lazer).lower()
                 return all(op.lower() in texto for op in lazer_preferencias)
+            df = df[df.apply(atende_lazer, axis=1)]
+            etapas.append((f"Lazer ({len(lazer_preferencias)})", len(df)))
 
-            df_filtrado = df_filtrado[df_filtrado.apply(atende_lazer, axis=1)]
-            etapas.append((f"Lazer ({len(lazer_preferencias)} opções)", len(df_filtrado)))
-        else:
-            etapas.append(("Lazer (ignorado - sem coluna)", len(df_filtrado)))
+    # === Aplica desconto POR LINHA (respeita _tipo_desconto) ===
+    df = _aplicar_desconto_por_linha(df, desconto_acordado)
 
-    # === Aplica desconto ===
-    coluna_base_desejada = "AVALIAÇÃO" if tipo_desconto == "AVALIAÇÃO" else "PREÇO"
+    if df.empty:
+        _renderizar_diagnostico_vazio(etapas, df_total)
+        return None
 
-    if coluna_base_desejada not in df_filtrado.columns:
-        coluna_encontrada = None
-        for c in ["AVALIAÇÃO", "PREÇO", "VALOR"]:
-            if c in df_filtrado.columns:
-                coluna_encontrada = c
-                break
+    if "R$/m²" in df.columns:
+        df = df.sort_values("R$/m²")
+    elif "VALOR_DA_AVALIACAO" in df.columns:
+        df = df.sort_values("VALOR_DA_AVALIACAO")
+    elif "PREÇO" in df.columns:
+        df = df.sort_values("PREÇO")
 
-        if coluna_encontrada is None:
-            st.error(
-                f"❌ Nenhuma coluna de valor encontrada. "
-                f"Colunas: {list(df_filtrado.columns)}"
-            )
-            return None
-
-        coluna_base = coluna_encontrada
-        st.warning(
-            f"⚠️ Construtora configurada com **{coluna_base_desejada}**, "
-            f"mas usando **{coluna_encontrada}** (fallback)."
-        )
-    else:
-        coluna_base = coluna_base_desejada
-
-    df_filtrado["valor_base"] = df_filtrado[coluna_base] - desconto_acordado
-    df_filtrado["valor_base"] = df_filtrado["valor_base"].clip(lower=0)
-
-    if "R$/m²" in df_filtrado.columns:
-        df_filtrado = df_filtrado.sort_values("R$/m²")
-
-    top_recomendacoes = df_filtrado.head(5)
-
-    # =========================================================
-    # DIAGNÓSTICO — se ficou vazio, mostra onde paramos
-    # =========================================================
-    if df_filtrado.empty:
-        _renderizar_diagnostico_vazio(etapas, resultado, vagas_preferencia,
-                                       quartos_preferencia, tipo_preferencia,
-                                       lazer_preferencias)
-
-    resumo = gerar_resumo(
-        nome_cliente,
-        renda_cliente,
-        entrada_cliente,
-        bairro_preferencia,
-        top_recomendacoes,
-        nome_gerente=USUARIOS[usuario_logado]["nome"] if usuario_logado in USUARIOS else "",
-        desconto=desconto_acordado,
-        tipo_desconto=tipo_desconto,
-        origem=origem_cliente,
-    )
+    top_recomendacoes = df.head(5)
 
     return {
         "top_recomendacoes": top_recomendacoes,
-        "df_filtrado_completo": df_filtrado,  # ← NOVO (para refinamento)
+        "df_filtrado_completo": df,
         "desconto_acordado": desconto_acordado,
-        "tipo_desconto": tipo_desconto,
-        "coluna_base": coluna_base,
-        "preco_col": preco_col,
+        "tipo_desconto": "MISTO",
+        "coluna_base": "PREÇO",
+        "preco_col": "PREÇO",
         "nome_cliente": nome_cliente,
-        "resumo": resumo,
+        "resumo": _gerar_resumo_simples(nome_cliente, renda_cliente, entrada_cliente,
+                                          origem_cliente, top_recomendacoes),
         "renda": renda_cliente,
         "entrada": entrada_cliente,
         "vagas_preferencia": vagas_preferencia,
@@ -289,38 +233,80 @@ def _analisar(resultado, nome_cliente, renda_cliente, entrada_cliente,
     }
 
 
-def _renderizar_diagnostico_vazio(etapas, resultado, vagas_pref,
-                                   quartos_pref, tipo_pref, lazer_pref):
-    """Mostra um diagnóstico quando 0 imóveis passaram nos filtros."""
-    st.warning("⚠️ Nenhuma oportunidade encontrada. Diagnóstico:")
+def _aplicar_desconto_por_linha(df, desconto):
+    """Aplica o desconto em cada linha respeitando a regra da construtora."""
+    if desconto <= 0:
+        # Sem desconto: valor_base = valor principal (AVALIAÇÃO ou PREÇO)
+        def _sem_desc(row):
+            for c in ["AVALIAÇÃO", "AVALIACAO", "VALOR_DA_AVALIACAO", "PREÇO", "PRECO", "VALOR"]:
+                if c in row.index and pd.notna(row[c]):
+                    try:
+                        return float(row[c])
+                    except (ValueError, TypeError):
+                        continue
+            return 0.0
+        df["valor_base"] = df.apply(_sem_desc, axis=1)
+        return df
 
-    with st.expander("🔍 Ver detalhes dos filtros aplicados", expanded=True):
+    def _com_desc(row):
+        tipo = str(row.get("_tipo_desconto", "AVALIAÇÃO")).upper()
+        if "AVALIA" in tipo:
+            candidatos = ["AVALIAÇÃO", "AVALIACAO", "VALOR_DA_AVALIACAO", "VALOR_DE_AVALIACAO"]
+        else:
+            candidatos = ["PREÇO", "PRECO", "VALOR_DO_IMOVEL", "VALOR"]
+
+        base = None
+        for c in candidatos:
+            if c in row.index and pd.notna(row[c]):
+                try:
+                    base = float(row[c])
+                    break
+                except (ValueError, TypeError):
+                    continue
+
+        if base is None:
+            # Fallback: pega qualquer coluna com valor
+            for c in ["AVALIAÇÃO", "PREÇO", "VALOR_DA_AVALIACAO", "VALOR_DO_IMOVEL", "VALOR"]:
+                if c in row.index and pd.notna(row[c]):
+                    try:
+                        base = float(row[c])
+                        break
+                    except (ValueError, TypeError):
+                        continue
+
+        if base is None:
+            return 0.0
+        return max(0.0, base - desconto)
+
+    df["valor_base"] = df.apply(_com_desc, axis=1)
+    return df
+
+
+def _renderizar_diagnostico_vazio(etapas, df_original):
+    st.warning("⚠️ Nenhuma oportunidade encontrada. Diagnóstico:")
+    with st.expander("🔍 Ver detalhes", expanded=True):
         for nome, qtd in etapas:
             icon = "🔴" if qtd == 0 else "🟢"
             st.write(f"{icon} **{nome}:** {qtd} imóveis")
+        st.caption("💡 Dica: diminua filtros (vagas, quartos) ou remova o filtro de lazer.")
 
-        st.markdown("---")
-        st.markdown("**Dicas para tentar de novo:**")
 
-        if vagas_pref != "Indiferente":
-            if "VAGA" in resultado.columns:
-                valores = resultado["VAGA"].dropna().unique().tolist()[:5]
-                st.write(f"• 🚗 As unidades têm estas vagas disponíveis: **{valores}**. "
-                         f"Você pediu **{vagas_pref}**. Tente diminuir o filtro.")
-
-        if quartos_pref != "Indiferente":
-            for c in ["QUARTOS", "DORMITÓRIOS", "TIPO"]:
-                if c in resultado.columns:
-                    valores = resultado[c].dropna().unique().tolist()[:5]
-                    st.write(f"• 🛏️ Valores de quartos encontrados: **{valores}**")
-                    break
-
-        if lazer_pref:
-            colunas_lazer = [c for c in resultado.columns if "LAZER" in c.upper()]
-            if not colunas_lazer:
-                st.write("• 🏖️ A planilha **não tem coluna de lazer**. Remova o filtro de lazer.")
-            else:
-                st.write(f"• 🏖️ Colunas de lazer encontradas: {colunas_lazer}")
-
-        st.write("• 💸 Tente **aumentar a entrada** ou **ajustar o desconto acordado**.")
-        st.write("• 📍 Tente remover o filtro de **bairro**.")
+def _gerar_resumo_simples(nome_cliente, renda, entrada, origem, top_imoveis):
+    """Gera resumo textual simples para compartilhar."""
+    from src.utils import formatar_valor_br
+    linhas = [f"SIMULAÇÃO — {nome_cliente}", "=" * 40]
+    if origem and origem != "(Não informado)":
+        linhas.append(f"Origem: {origem}")
+    linhas.append(f"Renda: {formatar_valor_br(renda)}")
+    linhas.append(f"Entrada: {formatar_valor_br(entrada)}")
+    linhas.append("")
+    if top_imoveis is not None and not top_imoveis.empty:
+        linhas.append("TOP OPORTUNIDADES:")
+        for i, (_, row) in enumerate(top_imoveis.iterrows(), 1):
+            unidade = row.get("UNIDADE", "N/A")
+            construtora = row.get("_construtora", "")
+            produto = row.get("_produto", "")
+            valor = row.get("valor_base", 0)
+            linhas.append(f"{i}. {construtora} • {produto} • Unidade {unidade}")
+            linhas.append(f"   Valor: {formatar_valor_br(valor)}")
+    return "\n".join(linhas)
