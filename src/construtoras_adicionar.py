@@ -8,6 +8,13 @@ from src.planilha_processor import processar_planilha_e_salvar_cache
 def renderizar_aba_adicionar(CONSTRUTORAS, cidades):
     st.markdown("### Adicionar Nova Construtora")
 
+    # === MOSTRA MENSAGEM DE SUCESSO (vinda do rerun anterior) ===
+    if st.session_state.get("sucesso_construtora"):
+        nome_ok, msg_cache = st.session_state.pop("sucesso_construtora")
+        st.success(f"✅ Construtora **{nome_ok}** adicionada com sucesso!")
+        if msg_cache:
+            st.info(msg_cache)
+
     with st.expander("🤖 Preencher automaticamente com a BIA (opcional)", expanded=False):
         st.caption(
             "Suba a planilha da construtora, clique em **Analisar com BIA** "
@@ -34,7 +41,7 @@ def renderizar_aba_adicionar(CONSTRUTORAS, cidades):
                     st.session_state["bia_arquivo_nome"] = uploaded.name
                     st.session_state["bia_arquivo_produto_sugerido"] = _sugerir_nome_produto(uploaded.name)
 
-                    # === Seta direto nas KEYS DOS WIDGETS ===
+                    # Seta direto nas KEYS DOS WIDGETS
                     st.session_state["nova_produto_mapeamento_input_final"] = json.dumps(
                         resultado.get("mapeamento", {}), indent=2, ensure_ascii=False
                     )
@@ -54,7 +61,7 @@ def renderizar_aba_adicionar(CONSTRUTORAS, cidades):
                         st.info(f"💬 **Observação da BIA:** {resultado['observacoes']}")
                     st.rerun()
 
-    # === FORMULÁRIO (sem value=, só key=) ===
+    # === FORMULÁRIO ===
     nome = st.text_input("Nome da Construtora", key="nova_construtora_nome", placeholder="Ex: Construtora XYZ")
     tipo_desconto = st.selectbox(
         "💡 Desconto será aplicado sobre:",
@@ -103,7 +110,6 @@ def renderizar_aba_adicionar(CONSTRUTORAS, cidades):
         )
 
 
-# =========================================================
 def _sugerir_nome_produto(nome_arquivo):
     base = nome_arquivo.rsplit(".", 1)[0]
     return base.replace("_", " ").replace("-", " ").title()
@@ -126,6 +132,7 @@ def _processar_nova_construtora(CONSTRUTORAS, nome, tipo_desconto, produto_nome,
 
     try:
         nova_construtora = {"tipo_desconto": tipo_desconto, "produtos": {}}
+        config_produto = None
 
         if produto_nome and cidade_selecionada:
             try:
@@ -157,21 +164,19 @@ def _processar_nova_construtora(CONSTRUTORAS, nome, tipo_desconto, produto_nome,
         CONSTRUTORAS[nome] = nova_construtora
         salvar_construtoras(CONSTRUTORAS)
 
-        # === SALVA A PLANILHA NO CACHE (se a BIA foi usada) ===
-        if produto_nome and "bia_arquivo_bytes" in st.session_state:
-            file_bytes = st.session_state["bia_arquivo_bytes"]
-            file_name = st.session_state["bia_arquivo_nome"]
+        msg_cache = ""
+        if produto_nome and config_produto and "bia_arquivo_bytes" in st.session_state:
             ok, msg = processar_planilha_e_salvar_cache(
-                file_bytes=file_bytes, file_name=file_name,
+                file_bytes=st.session_state["bia_arquivo_bytes"],
+                file_name=st.session_state["bia_arquivo_nome"],
                 config=config_produto, construtora=nome, produto=produto_nome,
             )
-            if ok:
-                st.success(f"✅ Construtora criada + planilha no cache: {msg}")
-            else:
-                st.warning(f"⚠️ Construtora criada, mas: {msg}")
+            msg_cache = msg if ok else f"⚠️ {msg}"
+
+        # MARCA FLAG para mostrar mensagem após rerun
+        st.session_state["sucesso_construtora"] = (nome, msg_cache)
 
         _limpar_chaves_form_construtora()
-        st.success(f"✅ Construtora '{nome}' adicionada com sucesso!")
         st.rerun()
     except Exception as e:
         st.error(f"❌ Erro: {str(e)}")
