@@ -35,6 +35,7 @@ cd $env:USERPROFILE\\Downloads
 .\\ngrok http 8080 --domain=predefine-endeared-protector.ngrok-free.dev
 
 
+
 ✅ Deixe esse terminal aberto também.
 
 \---

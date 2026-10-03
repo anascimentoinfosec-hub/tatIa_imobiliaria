@@ -13,6 +13,7 @@ from src.simulacoes_historico import renderizar_historico
 from src.regras_gerenciar import renderizar_gestao_regras
 from src.vendas_gerenciar import renderizar_gestao_vendas
 from src.vendas_dashboard import renderizar_dashboard_vendas
+from src.bia_operacional import pagina_bia_operacional
 
 st.set_page_config(
     page_title="Simulador de Crédito",
@@ -246,11 +247,14 @@ else:
         if pagina == "Simulador":
             pagina_simulador(CONSTRUTORAS, USUARIOS)
         elif pagina == "Vendas":
-            renderizar_gestao_vendas()
+            renderizar_gestao_vendas(usuario_logado=st.session_state.usuario_logado, USUARIOS=USUARIOS)
         elif pagina == "Histórico":
-            renderizar_historico()
+            renderizar_historico(usuario_logado=st.session_state.usuario_logado, USUARIOS=USUARIOS)
         elif pagina == "ChatIA":
-            pagina_bia()
+            pagina_bia_operacional(
+            usuario_logado=st.session_state.usuario_logado,
+            USUARIOS=USUARIOS,
+        )
         elif pagina == "Dashboard":
             pagina_dashboard(CONSTRUTORAS, USUARIOS)
         elif pagina == "DashboardVendas":

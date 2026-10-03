@@ -65,16 +65,13 @@ Ex.: Jeronimo da veiga
 
 
 ### PENDENTES
+### #025 /Na area do corretor ele so podera ver as vendas dele e sem graficos estrategicos
 
-### #024 — Repensar fluxo do simulador (cliente primeiro)
-- Ideia: corretor digita o cliente → sistema varre todas as planilhas em cache
-  → mostra melhores oportunidades de TODAS as construtoras → cliente escolhe
-  um empreendimento específico se quiser drill-down
-- Atualmente: escolhe construtora+produto antes de digitar cliente (contra-intuitivo)
-- Encaixa na #014 (grande redesign do simulador)
+### #026 Historico de simulacoes tambem o corretor so podera ver as deles
+
+### #027 O botao BIA na area Operacional nao devera ter relacao com a Bia de criacao de produtos/construtora
 
 
-### #021 - Unificar o upload das planilhas de construtoras para dentro da area de Gestão de construtoras
 
 ### #020 - Mover Upload de planilha para dentro da área de configuração das construtoras
 
@@ -126,6 +123,17 @@ Ex.: Jeronimo da veiga
 ---
 
 ## ✅ Concluídos Recentemente
+
+- ✅024 — Repensar fluxo do simulador (cliente primeiro)
+    - Ideia: corretor digita o cliente → sistema varre todas as planilhas em cache
+  → mostra melhores oportunidades de TODAS as construtoras → cliente escolhe
+  um empreendimento específico se quiser drill-down
+    - Atualmente: escolhe construtora+produto antes de digitar cliente (contra-intuitivo)
+    - Encaixa na #014 (grande redesign do simulador)
+
+- ✅23 Botão excluir construtora
+
+- ✅021 - Unificar o upload das planilhas de construtoras para dentro da area de Gestão de construtoras
 
 - ✅ Módulo de Vendas (CRUD + Kanban + Dashboard VGV)
 - ✅ Monitor de taxas via BIA (Tavily)
