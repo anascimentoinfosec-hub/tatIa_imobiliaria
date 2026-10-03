@@ -2,13 +2,14 @@ import streamlit as st
 import pandas as pd
 import re
 from src.utils import formatar_valor_br
+from src.regras_entrada_storage import obter_regra_construtora
+from src.regras_entrada_calculo import calcular_plano_entrada, sugerir_parcelas
 
 
 # =========================================================
 # REFINAMENTO
 # =========================================================
 def renderizar_refinamento():
-    """Filtros de refinamento pós-análise, incluindo Construtora/Produto."""
     sim = st.session_state.get("simulacao_ativa", {})
     df_completo = sim.get("df_filtrado_completo")
 
@@ -21,7 +22,6 @@ def renderizar_refinamento():
             "Ajuste abaixo — os cards atualizam automaticamente."
         )
 
-        # Linha 1: Construtora + Produto + Cidade
         col1, col2, col3 = st.columns(3)
 
         with col1:
@@ -55,7 +55,6 @@ def renderizar_refinamento():
             else:
                 filtro_cidade = "Todas"
 
-        # Linha 2: Tipologia + Preço + Vagas + Andar + Qtd
         col4, col5, col6 = st.columns(3)
 
         with col4:
@@ -88,9 +87,7 @@ def renderizar_refinamento():
                     col_vaga = c
                     break
             if col_vaga:
-                filtro_vagas = st.number_input(
-                    "🚗 Vagas mínimas", min_value=0, value=0, step=1, key="ref_vagas",
-                )
+                filtro_vagas = st.number_input("🚗 Vagas mínimas", min_value=0, value=0, step=1, key="ref_vagas")
             else:
                 filtro_vagas = 0
 
@@ -102,37 +99,26 @@ def renderizar_refinamento():
                     col_andar = c
                     break
             if col_andar:
-                filtro_andar = st.number_input(
-                    "📌 Andar mínimo", min_value=0, value=0, step=1, key="ref_andar",
-                )
+                filtro_andar = st.number_input("📌 Andar mínimo", min_value=0, value=0, step=1, key="ref_andar")
             else:
                 filtro_andar = 0
 
         with col8:
-            qtd_exibir = st.number_input(
-                "📋 Cards a exibir", min_value=1, max_value=30, value=5, step=1,
-                key="ref_qtd",
-            )
+            qtd_exibir = st.number_input("📋 Cards a exibir", min_value=1, max_value=30, value=5, step=1, key="ref_qtd")
 
-        # === APLICA FILTROS ===
         df = df_completo.copy()
 
         if filtro_construtora != "Todas" and "_construtora" in df.columns:
             df = df[df["_construtora"] == filtro_construtora]
-
         if filtro_produto != "Todos" and "_produto" in df.columns:
             df = df[df["_produto"] == filtro_produto]
-
         if filtro_cidade != "Todas" and col_cidade:
             df = df[df[col_cidade] == filtro_cidade]
-
         if filtro_tipo != "Todas" and "TIPOLOGIA" in df.columns:
             df = df[df["TIPOLOGIA"] == filtro_tipo]
-
         if filtro_preco is not None and col_preco:
             df[col_preco] = pd.to_numeric(df[col_preco], errors="coerce").fillna(0)
             df = df[df[col_preco] <= filtro_preco]
-
         if filtro_vagas > 0 and col_vaga:
             def tem_vagas(s):
                 try:
@@ -141,18 +127,15 @@ def renderizar_refinamento():
                 except Exception:
                     return False
             df = df[df[col_vaga].apply(tem_vagas)]
-
         if filtro_andar > 0 and col_andar:
             df[col_andar] = pd.to_numeric(df[col_andar], errors="coerce").fillna(0)
             df = df[df[col_andar] >= filtro_andar]
 
         st.caption(f"🎯 **{len(df)} unidades** após refinamento")
-
         return df.head(int(qtd_exibir))
 
 
 def _detectar_coluna_preco(df):
-    """Procura a melhor coluna de valor (prioridade: AVALIAÇÃO > PREÇO > VALOR)."""
     for k in ["AVALIA", "VALOR_DA_AVALIA"]:
         for c in df.columns:
             if k in str(c).upper():
@@ -195,8 +178,7 @@ def renderizar_seletor_proposta(top_recomendacoes):
         indices.append(idx)
 
     escolha = st.radio(
-        "Selecione uma opção:",
-        range(len(opcoes)),
+        "Selecione uma opção:", range(len(opcoes)),
         format_func=lambda i: opcoes[i],
         key="seletor_proposta_radio",
         label_visibility="collapsed",
@@ -216,6 +198,10 @@ def renderizar_cards(top_recomendacoes, desconto_acordado, tipo_desconto,
 
     st.success(f"✅ {len(top_recomendacoes)} oportunidades encontradas para {nome_cliente}!")
 
+    sim = st.session_state.get("simulacao_ativa", {})
+    renda = sim.get("renda", 0)
+    entrada = sim.get("entrada", 0)
+
     escolhida_idx = st.session_state.get("unidade_escolhida_idx")
 
     for idx, row in top_recomendacoes.iterrows():
@@ -223,11 +209,13 @@ def renderizar_cards(top_recomendacoes, desconto_acordado, tipo_desconto,
             idx=idx, row=row, desconto_acordado=desconto_acordado,
             tipo_desconto=tipo_desconto, coluna_base=coluna_base,
             preco_col=preco_col, destacado=(idx == escolhida_idx),
+            renda=renda, entrada=entrada,
         )
 
 
 def _renderizar_card_imovel(idx, row, desconto_acordado, tipo_desconto,
-                            coluna_base, preco_col, destacado=False):
+                            coluna_base, preco_col, destacado=False,
+                            renda=0, entrada=0):
     with st.container():
         st.markdown("---")
         col_a, col_b = st.columns([3, 2])
@@ -237,7 +225,7 @@ def _renderizar_card_imovel(idx, row, desconto_acordado, tipo_desconto,
                                      coluna_base, preco_col, destacado)
 
         with col_b:
-            _renderizar_resumo_unidade(row)
+            _renderizar_plano_entrada(idx, row, renda, entrada)
 
 
 def _renderizar_info_imovel(row, desconto_acordado, tipo_desconto, coluna_base,
@@ -249,7 +237,6 @@ def _renderizar_info_imovel(row, desconto_acordado, tipo_desconto, coluna_base,
     else:
         st.markdown(f"**🏢 Unidade {unidade}**")
 
-    # Construtora + Produto (sempre mostrar no novo fluxo)
     construtora = row.get("_construtora", "")
     produto = row.get("_produto", "")
     if construtora or produto:
@@ -260,7 +247,6 @@ def _renderizar_info_imovel(row, desconto_acordado, tipo_desconto, coluna_base,
             linha.append(f"📦 {produto}")
         st.caption(" • ".join(linha))
 
-    # Tipo de desconto DESTA linha (não mais global)
     tipo_linha = row.get("_tipo_desconto", tipo_desconto)
     st.caption(f"💡 Desconto sobre: {tipo_linha}")
 
@@ -274,7 +260,6 @@ def _renderizar_info_imovel(row, desconto_acordado, tipo_desconto, coluna_base,
             partes.append(f"Andar: {pavto}")
         st.write(f"📍 **{' | '.join(partes)}**")
 
-    # Mostra avaliação e/ou preço original quando existirem
     for col in ["AVALIAÇÃO", "AVALIACAO", "VALOR_DA_AVALIACAO", "VALOR_DE_AVALIACAO"]:
         if col in row.index and pd.notna(row[col]):
             try:
@@ -300,11 +285,78 @@ def _renderizar_info_imovel(row, desconto_acordado, tipo_desconto, coluna_base,
         st.write(f"🚗 **Vagas:** {row['VAGA']}")
 
 
-def _renderizar_resumo_unidade(row):
-    valor_base = row.get("valor_base", 0)
-    st.markdown("##### 💰 Resumo da unidade")
-    st.write(f"💰 **Valor base:** {formatar_valor_br(valor_base)}")
-    st.caption("💡 Financiamento será calculado após regras de entrada por construtora.")
+def _renderizar_plano_entrada(idx, row, renda, entrada):
+    """Coluna direita: plano de entrada com regras da construtora."""
+    valor_base = float(row.get("valor_base", 0))
+    construtora = row.get("_construtora", "")
+
+    if valor_base <= 0 or renda <= 0:
+        st.markdown("##### 💰 Plano de Entrada")
+        st.caption("💡 Informe renda e entrada do cliente para calcular.")
+        return
+
+    # Pega a regra da construtora
+    regra = obter_regra_construtora(construtora)
+
+    # Sugere num_pre/num_pos baseado no que cabe
+    num_pre_sug, num_pos_sug = sugerir_parcelas(valor_base, renda, entrada, regra)
+
+    # Permite o usuário ajustar
+    st.markdown("##### 💰 Plano de Entrada")
+
+    col_p1, col_p2 = st.columns(2)
+    with col_p1:
+        num_pre = st.number_input(
+            "Parcelas pré", min_value=0, max_value=120, value=int(num_pre_sug),
+            step=1, key=f"plano_pre_{idx}",
+        )
+    with col_p2:
+        num_pos = st.number_input(
+            "Parcelas pós", min_value=0, max_value=120, value=int(num_pos_sug),
+            step=1, key=f"plano_pos_{idx}",
+        )
+
+    plano = calcular_plano_entrada(valor_base, renda, entrada, regra, num_pre, num_pos)
+
+    # === RESUMO ===
+    st.markdown("---")
+    st.write(f"💵 **Ato mínimo:** {formatar_valor_br(plano['ato'])}")
+    st.write(
+        f"💼 **Comissão:** {plano['comissao_pct']}% + {formatar_valor_br(plano['comissao_fixa'])} "
+        f"= **{formatar_valor_br(plano['comissao_total'])}**"
+    )
+    st.write(f"🏦 **Entrada aplicada:** {formatar_valor_br(plano['entrada_efetiva'])}")
+    st.write(f"📦 **A parcelar:** {formatar_valor_br(plano['a_parcelar'])}")
+
+    st.markdown("**⏳ Pré-chaves**")
+    if plano["num_pre"] > 0:
+        st.write(
+            f"{plano['num_pre']}x de **{formatar_valor_br(plano['valor_pre'])}** "
+            f"(máx {plano['pre_pct']}% renda)"
+        )
+    else:
+        st.caption("Sem parcelas pré-chaves")
+
+    st.markdown("**🔑 Pós-chaves**")
+    if plano["num_pos"] > 0:
+        st.write(
+            f"{plano['num_pos']}x de **{formatar_valor_br(plano['valor_pos'])}** "
+            f"(máx {plano['pos_pct']}% renda)"
+        )
+    else:
+        st.caption("Sem parcelas pós-chaves")
+
+    # === ALERTAS ===
+    if plano["alertas"]:
+        for a in plano["alertas"]:
+            if "🟢" in a:
+                st.success(a)
+            elif "🔴" in a:
+                st.error(a)
+            else:
+                st.warning(a)
+    else:
+        st.success("✅ Plano viável dentro das regras da construtora.")
 
 
 # =========================================================
@@ -316,8 +368,7 @@ def renderizar_ajuste_global(df, preco_col):
     st.caption("Média de todos os imóveis em cache.")
 
     entrada_percentual_global = st.slider(
-        "Percentual de entrada (%)",
-        min_value=20, max_value=50, value=20, step=5,
+        "Percentual de entrada (%)", min_value=20, max_value=50, value=20, step=5,
         key="entrada_global",
     )
 

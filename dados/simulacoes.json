@@ -2336,5 +2336,60 @@
         "valor_base": 185400.0
       }
     ]
+  },
+  {
+    "id": "20261003182900415595",
+    "data_hora": "2026-10-03T18:29:00.415615",
+    "cliente": "Ronaldinho Gaúcho",
+    "renda": 2000.0,
+    "entrada": 1000.0,
+    "bairro": "",
+    "origem": "Espontâneo",
+    "desconto": 80000.0,
+    "tipo_desconto": "MISTO",
+    "gerente": "Gerente Geral",
+    "total_oportunidades": 5,
+    "oportunidades": [
+      {
+        "UNIDADE": " APTO 104",
+        "TIPOLOGIA": "1 Q S",
+        "BLOCO": " BLOCO 20 ",
+        "AVALIAÇÃO": NaN,
+        "PREÇO": NaN,
+        "valor_base": 137540.0
+      },
+      {
+        "UNIDADE": " APTO 104",
+        "TIPOLOGIA": "1 Q S",
+        "BLOCO": " BLOCO 05 ",
+        "AVALIAÇÃO": NaN,
+        "PREÇO": NaN,
+        "valor_base": 137540.0
+      },
+      {
+        "UNIDADE": " APTO 104",
+        "TIPOLOGIA": "1 Q S",
+        "BLOCO": " BLOCO 01 ",
+        "AVALIAÇÃO": NaN,
+        "PREÇO": NaN,
+        "valor_base": 137540.0
+      },
+      {
+        "UNIDADE": " APTO 104",
+        "TIPOLOGIA": "1 Q S",
+        "BLOCO": " BLOCO 03 ",
+        "AVALIAÇÃO": NaN,
+        "PREÇO": NaN,
+        "valor_base": 137540.0
+      },
+      {
+        "UNIDADE": " APTO 104",
+        "TIPOLOGIA": "1 Q S",
+        "BLOCO": " BLOCO 07 ",
+        "AVALIAÇÃO": NaN,
+        "PREÇO": NaN,
+        "valor_base": 137540.0
+      }
+    ]
   }
 ]
