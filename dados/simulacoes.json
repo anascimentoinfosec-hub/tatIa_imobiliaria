@@ -2313,5 +2313,28 @@
         "valor_base": 217540.0
       }
     ]
+  },
+  {
+    "id": "20261003142149192741",
+    "data_hora": "2026-10-03T14:21:49.192781",
+    "cliente": "Dodo",
+    "renda": 1500.0,
+    "entrada": 1000.0,
+    "bairro": "",
+    "origem": "",
+    "desconto": 80000.0,
+    "tipo_desconto": "MISTO",
+    "gerente": "corretor",
+    "total_oportunidades": 1,
+    "oportunidades": [
+      {
+        "UNIDADE": " APTO 702",
+        "TIPOLOGIA": "2 Q",
+        "BLOCO": " BLOCO 02 ",
+        "AVALIAÇÃO": 0.0,
+        "PREÇO": NaN,
+        "valor_base": 185400.0
+      }
+    ]
   }
 ]

@@ -304,7 +304,7 @@ def _renderizar_resumo_unidade(row):
     valor_base = row.get("valor_base", 0)
     st.markdown("##### 💰 Resumo da unidade")
     st.write(f"💰 **Valor base:** {formatar_valor_br(valor_base)}")
-    st.caption("💡 Financiamento será calculado após regras de entrada por construtora (#014).")
+    st.caption("💡 Financiamento será calculado após regras de entrada por construtora.")
 
 
 # =========================================================

@@ -14,6 +14,7 @@ from src.regras_gerenciar import renderizar_gestao_regras
 from src.vendas_gerenciar import renderizar_gestao_vendas
 from src.vendas_dashboard import renderizar_dashboard_vendas
 from src.bia_operacional import pagina_bia_operacional
+from src.regras_entrada_gerenciar import renderizar_gestao_regras_entrada
 
 st.set_page_config(
     page_title="Simulador de Crédito",
@@ -193,6 +194,10 @@ with st.sidebar:
                 st.session_state.pagina = "Regras"
                 st.rerun()
 
+            if st.button("📋 Regras de Entrada", use_container_width=True):
+                st.session_state.pagina = "RegrasEntrada"
+                st.rerun()
+
             if st.button("🎯 Origens", use_container_width=True):
                 st.session_state.pagina = "Origens"
                 st.rerun()
@@ -229,7 +234,7 @@ else:
 
     paginas_gestao = [
         "Dashboard", "DashboardVendas",
-        "Construtoras", "Origens", "Usuários", "Regras",
+        "Construtoras", "Origens", "Usuários", "Regras", "RegrasEntrada",
     ]
     paginas_admin = ["SuperAdmin", "Creditos"]
 
@@ -267,6 +272,8 @@ else:
             pagina_gestao_construtoras(CONSTRUTORAS)
         elif pagina == "Regras":
             renderizar_gestao_regras()
+        elif pagina == "RegrasEntrada":
+            renderizar_gestao_regras_entrada()
         elif pagina == "Origens":
             renderizar_gestao_origens()
         elif pagina == "Creditos":
