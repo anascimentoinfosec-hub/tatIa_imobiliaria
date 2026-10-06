@@ -9,6 +9,8 @@ from src.simulador_cards import (
     renderizar_refinamento,
 )
 from src.compartilhar import botoes_compartilhar
+from src.regras_entrada_storage import obter_regra_construtora
+from src.regras_entrada_calculo import calcular_plano_entrada
 
 
 def pagina_simulador(CONSTRUTORAS, USUARIOS):
@@ -23,8 +25,6 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
 
     # ---------- 1. Carrega TODAS as planilhas ----------
     df_total, resumo = carregar_todas_planilhas(CONSTRUTORAS)
-
-    # Sidebar de resumo
     renderizar_sidebar_resumo(CONSTRUTORAS)
 
     if df_total is None or df_total.empty:
@@ -36,30 +36,47 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
     # ---------- 2. Área do cliente ----------
     renderizar_area_cliente(df_total, usuario_logado, USUARIOS)
 
-    # ---------- 3. Resultados (se análise ativa) ----------
+    # ---------- 3. Resultados ----------
     if st.session_state.get("simulacao_ativa"):
         sim = st.session_state.simulacao_ativa
 
         st.markdown("---")
-
-        # Refinamento
         top_refinado = renderizar_refinamento()
         sim["top_recomendacoes"] = top_refinado
 
-        # Seletor de proposta
         idx_escolhido = renderizar_seletor_proposta(top_refinado)
         st.session_state.unidade_escolhida_idx = idx_escolhido
 
+        # === PLANO DE ENTRADA (calculado UMA vez para PDF e Proposta) ===
+        plano = None
         if idx_escolhido is not None and top_refinado is not None and not top_refinado.empty:
             top_para_pdf = top_refinado.loc[[idx_escolhido]]
+            num_pre = st.session_state.get(f"plano_pre_{idx_escolhido}", 0)
+            num_pos = st.session_state.get(f"plano_pos_{idx_escolhido}", 0)
+
+            row = top_para_pdf.iloc[0]
+            valor_base = float(row.get("valor_base", 0) or 0)
+            construtora = str(row.get("_construtora", ""))
+            renda = float(sim.get("renda", 0) or 0)
+            entrada = float(sim.get("entrada", 0) or 0)
+
+            regra = obter_regra_construtora(construtora)
+            plano = calcular_plano_entrada(
+                entrada, renda, regra,
+                valor_final_imovel=valor_base,
+                num_pre=int(num_pre), num_pos=int(num_pos),
+            )
         else:
             top_para_pdf = top_refinado
 
+        # === COMPARTILHAR (agora com plano) ===
         st.markdown("---")
         st.markdown("### 📤 Compartilhar Simulação")
-        dados_pdf = _montar_dados_pdf(sim, usuario_logado, USUARIOS, top_para_pdf)
-        botoes_compartilhar(sim["resumo"], sim["nome_cliente"], dados_pdf)
+        dados_pdf = _montar_dados_pdf(sim, usuario_logado, USUARIOS, top_para_pdf, plano)
+        resumo_texto = _montar_resumo_texto(sim, usuario_logado, USUARIOS, top_para_pdf, plano)
+        botoes_compartilhar(resumo_texto, sim["nome_cliente"], dados_pdf)
 
+        # === CARDS ===
         st.markdown("---")
         renderizar_cards(
             top_refinado,
@@ -70,12 +87,26 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
             sim["nome_cliente"],
         )
 
+        # === ENVIAR PROPOSTA ===
         if idx_escolhido is not None:
             st.markdown("---")
-            if st.button("💾 Salvar esta unidade como Proposta",
-                         use_container_width=True, type="primary"):
-                _salvar_proposta(sim, top_refinado, idx_escolhido, usuario_logado, USUARIOS)
-                st.success("✅ Proposta salva no histórico!")
+            st.info(
+                "💡 **Revise o plano de entrada** no card acima (pré/pós-chaves e ato) "
+                "antes de enviar. A proposta só é registrada agora."
+            )
+
+            if st.button(
+                "📤 Enviar Proposta ao Gerente",
+                use_container_width=True,
+                type="primary",
+            ):
+                num_pre = st.session_state.get(f"plano_pre_{idx_escolhido}", 0)
+                num_pos = st.session_state.get(f"plano_pos_{idx_escolhido}", 0)
+                _salvar_proposta(
+                    sim, top_refinado, idx_escolhido, usuario_logado, USUARIOS,
+                    num_pre=num_pre, num_pos=num_pos,
+                )
+                st.success("✅ Proposta enviada! **O gerente foi notificado.**")
                 st.rerun()
 
         st.markdown("---")
@@ -87,7 +118,11 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         st.rerun()
 
 
-def _montar_dados_pdf(sim, usuario_logado, USUARIOS, top_filtrado):
+# =========================================================
+# MONTAR DADOS PARA PDF
+# =========================================================
+def _montar_dados_pdf(sim, usuario_logado, USUARIOS, top_filtrado, plano=None):
+    """Monta o dicionário de dados para o PDF."""
     oportunidades = []
 
     if top_filtrado is not None and not top_filtrado.empty:
@@ -95,15 +130,12 @@ def _montar_dados_pdf(sim, usuario_logado, USUARIOS, top_filtrado):
             item = {}
             for col in row.index:
                 col_str = str(col)
-                if col_str.startswith("_"):
-                    item[col_str] = str(row[col])
-                elif col_str in ["UNIDADE", "TIPOLOGIA", "BLOCO", "PAVTO", "ANDAR",
-                                  "AVALIAÇÃO", "PREÇO", "valor_base",
-                                  "VALOR_DA_AVALIACAO", "VALOR_DO_IMOVEL"]:
-                    val = row[col]
-                    if hasattr(val, "item"):
-                        val = val.item()
-                    item[col_str] = val
+                val = row[col]
+                if hasattr(val, "item"):
+                    val = val.item()
+                if isinstance(val, float) and (val != val):  # NaN check
+                    val = ""
+                item[col_str] = val
             oportunidades.append(item)
 
     nome_gerente = ""
@@ -112,31 +144,116 @@ def _montar_dados_pdf(sim, usuario_logado, USUARIOS, top_filtrado):
 
     return {
         "nome_cliente": sim.get("nome_cliente", ""),
+        "data_nascimento": sim.get("data_nascimento", ""),
         "renda": sim.get("renda", 0),
         "entrada": sim.get("entrada", 0),
+        "fgts": sim.get("fgts", 0),
+        "subsidio": sim.get("subsidio", 0),
+        "financiamento_caixa": sim.get("financiamento_caixa", 0),
+        "parcela_morando": sim.get("parcela_morando", 0),
+        "documentacao_paga": sim.get("documentacao_paga", False),
         "bairro": "",
         "origem": "",
         "desconto": sim.get("desconto_acordado", 0),
         "tipo_desconto": "MISTO",
         "nome_gerente": nome_gerente,
         "oportunidades": oportunidades,
+        "plano_entrada": plano,
     }
 
 
-def _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS):
+# =========================================================
+# MONTAR RESUMO TEXTO (WhatsApp/TXT)
+# =========================================================
+def _montar_resumo_texto(sim, usuario_logado, USUARIOS, top_filtrado, plano=None):
+    from src.compartilhar import gerar_resumo
+
+    nome_gerente = ""
+    if usuario_logado and usuario_logado in USUARIOS:
+        nome_gerente = USUARIOS[usuario_logado].get("nome", "")
+
+    return gerar_resumo(
+        nome_cliente=sim.get("nome_cliente", ""),
+        renda=sim.get("renda", 0),
+        entrada=sim.get("entrada", 0),
+        bairro="",
+        top_imoveis=top_filtrado,
+        nome_gerente=nome_gerente,
+        desconto=sim.get("desconto_acordado", 0),
+        tipo_desconto="MISTO",
+        origem="",
+        fgts=sim.get("fgts", 0),
+        subsidio=sim.get("subsidio", 0),
+        financiamento_caixa=sim.get("financiamento_caixa", 0),
+        parcela_morando=sim.get("parcela_morando", 0),
+        data_nascimento=sim.get("data_nascimento", ""),
+        documentacao_paga=sim.get("documentacao_paga", False),
+        plano_entrada=plano,
+    )
+
+
+# =========================================================
+# SALVAR PROPOSTA
+# =========================================================
+def _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS,
+                     num_pre=0, num_pos=0):
     from src.simulacoes_storage import salvar_simulacao
 
     top_unit = top.loc[[idx_escolhido]]
     nome_gerente = USUARIOS[usuario_logado]["nome"] if usuario_logado in USUARIOS else ""
 
-    salvar_simulacao(
+    row = top_unit.iloc[0]
+    valor_base = float(row.get("valor_base", 0) or 0)
+    construtora = str(row.get("_construtora", ""))
+    renda = float(sim.get("renda", 0) or 0)
+    entrada = float(sim.get("entrada", 0) or 0)
+
+    regra = obter_regra_construtora(construtora)
+    plano = calcular_plano_entrada(
+        entrada, renda, regra,
+        valor_final_imovel=valor_base,
+        num_pre=int(num_pre), num_pos=int(num_pos),
+    )
+
+    top_unit = top_unit.copy()
+    top_unit["num_pre"] = num_pre
+    top_unit["num_pos"] = num_pos
+
+    dados_extra = {
+        "data_nascimento": sim.get("data_nascimento", ""),
+        "fgts": sim.get("fgts", 0),
+        "subsidio": sim.get("subsidio", 0),
+        "parcela_morando": sim.get("parcela_morando", 0),
+        "financiamento_caixa": sim.get("financiamento_caixa", 0),
+        "documentacao_paga": sim.get("documentacao_paga", False),
+        "plano_entrada": _serializar_plano(plano),
+    }
+
+    sim_id = salvar_simulacao(
         nome_cliente=sim["nome_cliente"],
-        renda=sim.get("renda", 0),
-        entrada=sim.get("entrada", 0),
+        renda=renda,
+        entrada=entrada,
         bairro="",
         origem="",
         desconto=sim.get("desconto_acordado", 0),
         tipo_desconto="MISTO",
         gerente=nome_gerente,
         top_recomendacoes=top_unit,
+        status_proposta="pendente",
+        dados_extra=dados_extra,
     )
+    st.toast(f"📤 Proposta enviada (ID: {sim_id[-6:]})")
+
+
+def _serializar_plano(plano):
+    if not isinstance(plano, dict):
+        return {}
+    resultado = {}
+    for k, v in plano.items():
+        if isinstance(v, (str, int, float, bool)) or v is None:
+            resultado[k] = v
+        elif isinstance(v, list):
+            resultado[k] = [str(x) for x in v]
+        else:
+            resultado[k] = str(v)
+    return resultado

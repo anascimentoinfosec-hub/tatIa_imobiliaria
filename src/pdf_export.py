@@ -3,10 +3,8 @@ from datetime import datetime
 
 
 class SimulacaoPDF(FPDF):
-    """Classe base com header/footer personalizados."""
-
     def header(self):
-        self.set_fill_color(26, 115, 232)  # azul #1a73e8
+        self.set_fill_color(26, 115, 232)
         self.rect(0, 0, 210, 25, "F")
         self.set_font("Helvetica", "B", 16)
         self.set_text_color(255, 255, 255)
@@ -22,28 +20,11 @@ class SimulacaoPDF(FPDF):
 
 
 def gerar_pdf_simulacao(dados, nome_arquivo="simulacao.pdf"):
-    """
-    Gera um PDF com a simulação.
-
-    dados = {
-        "nome_cliente": str,
-        "renda": float,
-        "entrada": float,
-        "bairro": str,
-        "origem": str,
-        "desconto": float,
-        "tipo_desconto": str,
-        "nome_gerente": str,
-        "oportunidades": list[dict],  # cada dict com UNIDADE, TIPOLOGIA, AVALIACAO, PRECO, VALOR_BASE, etc.
-    }
-    """
     pdf = SimulacaoPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=20)
 
-    # =========================================================
-    # DADOS DO CLIENTE
-    # =========================================================
+    # === DADOS DO CLIENTE ===
     pdf.set_font("Helvetica", "B", 13)
     pdf.set_text_color(13, 43, 62)
     pdf.cell(0, 8, "Dados do Cliente", ln=True)
@@ -53,84 +34,112 @@ def gerar_pdf_simulacao(dados, nome_arquivo="simulacao.pdf"):
     pdf.set_text_color(60, 60, 60)
 
     _linha_info(pdf, "Cliente", dados.get("nome_cliente", "-"))
+    if dados.get("data_nascimento"):
+        _linha_info(pdf, "Data de nascimento", dados["data_nascimento"])
     if dados.get("origem"):
         _linha_info(pdf, "Origem", dados["origem"])
     if dados.get("bairro"):
-        _linha_info(pdf, "Bairro de preferencia", dados["bairro"])
-    _linha_info(pdf, "Renda mensal", _formatar_brl(dados.get("renda", 0)))
-    _linha_info(pdf, "Entrada disponivel", _formatar_brl(dados.get("entrada", 0)))
+        _linha_info(pdf, "Bairro", dados["bairro"])
+    _linha_info(pdf, "Renda bruta", _formatar_brl(dados.get("renda", 0)))
+    _linha_info(pdf, "Entrada", _formatar_brl(dados.get("entrada", 0)))
+    if dados.get("fgts", 0) > 0:
+        _linha_info(pdf, "FGTS", _formatar_brl(dados["fgts"]))
+    if dados.get("subsidio", 0) > 0:
+        _linha_info(pdf, "Subsidio", _formatar_brl(dados["subsidio"]))
+    if dados.get("financiamento_caixa", 0) > 0:
+        _linha_info(pdf, "Financiamento Caixa", _formatar_brl(dados["financiamento_caixa"]))
+    if dados.get("parcela_morando", 0) > 0:
+        _linha_info(pdf, "Parcela morando", _formatar_brl(dados["parcela_morando"]))
     if dados.get("desconto", 0) > 0:
         _linha_info(
-            pdf,
-            "Desconto acordado",
+            pdf, "Desconto acordado",
             f"{_formatar_brl(dados['desconto'])} (sobre {dados.get('tipo_desconto', 'AVALIACAO')})",
         )
+    if dados.get("documentacao_paga"):
+        _linha_info(pdf, "Documentacao", "JA PAGA pelo cliente")
     if dados.get("nome_gerente"):
-        _linha_info(pdf, "Gerente responsavel", dados["nome_gerente"])
+        _linha_info(pdf, "Responsavel", dados["nome_gerente"])
 
-    pdf.ln(8)
+    pdf.ln(6)
 
-    # =========================================================
-    # OPORTUNIDADES
-    # =========================================================
-    pdf.set_font("Helvetica", "B", 13)
-    pdf.set_text_color(13, 43, 62)
-    pdf.cell(0, 8, "Oportunidades Recomendadas", ln=True)
-    pdf.ln(3)
-
+    # === OPORTUNIDADE ESCOLHIDA ===
     oportunidades = dados.get("oportunidades", [])
-    if not oportunidades:
-        pdf.set_font("Helvetica", "I", 10)
-        pdf.set_text_color(120, 120, 120)
-        pdf.cell(0, 8, "Nenhuma oportunidade encontrada.", ln=True)
-    else:
+    if oportunidades:
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.set_text_color(13, 43, 62)
+        pdf.cell(0, 8, "Oportunidade Escolhida", ln=True)
+        pdf.ln(3)
         for i, op in enumerate(oportunidades, 1):
             _renderizar_oportunidade_pdf(pdf, i, op)
 
-    # =========================================================
-    # RODAPÉ INFORMATIVO
-    # =========================================================
-    pdf.ln(5)
-    pdf.set_font("Helvetica", "I", 8)
-    pdf.set_text_color(140, 140, 140)
-    pdf.multi_cell(
-        0, 5,
-        "Parcelas calculadas pela Tabela Price (taxa 10% a.a., prazo de 420 meses). "
-        "Valores sujeitos a analise de credito e aprovacao."
-    )
+    # === PLANO DE ENTRADA ===
+    plano = dados.get("plano_entrada")
+    if plano:
+        pdf.ln(4)
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.set_text_color(13, 43, 62)
+        pdf.cell(0, 8, "Plano de Entrada", ln=True)
+        pdf.ln(2)
+
+        pdf.set_font("Helvetica", "", 10)
+        pdf.set_text_color(60, 60, 60)
+
+        _linha_info(pdf, "Ato minimo", _formatar_brl(plano.get("ato", 0)))
+        _linha_info(pdf, "Comissao", _formatar_brl(plano.get("comissao_total", 0)))
+        if plano.get("teto_parcelamento"):
+            _linha_info(
+                pdf,
+                f"Teto ({plano.get('teto_pct', 15)}%)",
+                _formatar_brl(plano["teto_parcelamento"]),
+            )
+        _linha_info(pdf, "A parcelar", _formatar_brl(plano.get("a_parcelar", 0)))
+
+        pdf.ln(2)
+        if plano.get("num_pre", 0) > 0:
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.cell(0, 6, f"Pre-chaves: {plano['num_pre']}x de {_formatar_brl(plano.get('valor_pre', 0))}", ln=True)
+        if plano.get("num_pos", 0) > 0:
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.cell(0, 6, f"Pos-chaves: {plano['num_pos']}x de {_formatar_brl(plano.get('valor_pos', 0))}", ln=True)
+
+        alertas = plano.get("alertas", [])
+        if alertas:
+            pdf.ln(2)
+            pdf.set_font("Helvetica", "", 9)
+            for a in alertas:
+                pdf.multi_cell(0, 5, a)
+                pdf.ln(1)
 
     pdf.output(nome_arquivo)
     return nome_arquivo
 
 
 # =========================================================
-# HELPERS
-# =========================================================
 def _linha_info(pdf, label, valor):
     pdf.set_font("Helvetica", "B", 10)
     pdf.set_text_color(80, 80, 80)
-    pdf.cell(55, 7, f"{label}:", border=0)
+    pdf.cell(60, 7, f"{label}:", border=0)
     pdf.set_font("Helvetica", "", 10)
     pdf.set_text_color(40, 40, 40)
     pdf.cell(0, 7, str(valor), border=0, ln=True)
 
 
 def _renderizar_oportunidade_pdf(pdf, idx, op):
-    """Renderiza um bloco de oportunidade."""
     unidade = str(op.get("UNIDADE", "N/A"))
     tipologia = str(op.get("TIPOLOGIA", ""))
     bloco = str(op.get("BLOCO", ""))
     pavto = str(op.get("PAVTO", op.get("ANDAR", "")))
+    construtora = str(op.get("_construtora", ""))
+    produto = str(op.get("_produto", ""))
 
-    # Título da unidade
     local_partes = []
-    if bloco:
+    if bloco and bloco.lower() != "nan":
         local_partes.append(f"Bloco {bloco}")
-    if pavto:
+    if pavto and pavto.lower() != "nan":
         local_partes.append(f"Andar {pavto}")
     local = f" ({' - '.join(local_partes)})" if local_partes else ""
 
-    pdf.set_fill_color(232, 240, 254)  # azul claro
+    pdf.set_fill_color(232, 240, 254)
     pdf.set_text_color(13, 43, 62)
     pdf.set_font("Helvetica", "B", 11)
     pdf.cell(0, 8, f"  {idx}. Unidade {unidade}{local}", ln=True, fill=True)
@@ -139,49 +148,27 @@ def _renderizar_oportunidade_pdf(pdf, idx, op):
     pdf.set_font("Helvetica", "", 10)
     pdf.set_text_color(60, 60, 60)
 
-    col_w = 95
+    if construtora:
+        _linha_info(pdf, "Construtora", construtora)
+    if produto:
+        _linha_info(pdf, "Produto", produto)
 
-    # Linha 1: Avaliação | Valor Base
-    if op.get("AVALIAÇÃO", 0):
-        _celula_dupla(pdf, "Avaliacao", _formatar_brl(op["AVALIAÇÃO"]),
-                      "Valor Base", _formatar_brl(op.get("valor_base", 0)))
-    else:
-        _celula_dupla(pdf, "Preco", _formatar_brl(op.get("PREÇO", 0)),
-                      "Valor Base", _formatar_brl(op.get("valor_base", 0)))
+    avaliacao = op.get("AVALIAÇÃO", 0) or op.get("AVALIACAO", 0)
+    preco = op.get("PREÇO", 0) or op.get("PRECO", 0)
+    valor_base = op.get("valor_base", 0)
 
-    # Linha 2: Tipologia | Parcela Estimada
-    if tipologia or op.get("parcela_estimada"):
-        _celula_dupla(pdf, "Tipologia", tipologia or "-",
-                      "Parcela Estimada", _formatar_brl(op.get("parcela_estimada", 0)))
+    if avaliacao:
+        _linha_info(pdf, "Avaliacao", _formatar_brl(avaliacao))
+    if preco:
+        _linha_info(pdf, "Preco (tabela)", _formatar_brl(preco))
+    _linha_info(pdf, "Valor Final", _formatar_brl(valor_base))
+    if tipologia:
+        _linha_info(pdf, "Tipologia", tipologia)
 
-    pdf.ln(4)
-
-
-def _celula_dupla(pdf, label1, valor1, label2, valor2):
-    """Escreve duas colunas de label/valor lado a lado."""
-    col_w = 95
-
-    # Coluna 1
-    pdf.set_font("Helvetica", "B", 10)
-    pdf.set_text_color(100, 100, 100)
-    pdf.cell(35, 7, f"{label1}:", border=0)
-
-    pdf.set_font("Helvetica", "", 10)
-    pdf.set_text_color(40, 40, 40)
-    pdf.cell(col_w - 35, 7, str(valor1), border=0)
-
-    # Coluna 2
-    pdf.set_font("Helvetica", "B", 10)
-    pdf.set_text_color(100, 100, 100)
-    pdf.cell(35, 7, f"{label2}:", border=0)
-
-    pdf.set_font("Helvetica", "", 10)
-    pdf.set_text_color(40, 40, 40)
-    pdf.cell(0, 7, str(valor2), border=0, ln=True)
+    pdf.ln(3)
 
 
 def _formatar_brl(valor):
-    """Formata float como R$ 1.234,56 (ASCII safe)."""
     try:
         v = float(valor)
         formatado = f"{v:,.2f}"

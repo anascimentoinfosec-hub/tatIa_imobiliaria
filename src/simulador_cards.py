@@ -286,22 +286,18 @@ def _renderizar_info_imovel(row, desconto_acordado, tipo_desconto, coluna_base,
 
 
 def _renderizar_plano_entrada(idx, row, renda, entrada):
-    """Coluna direita: plano de entrada com regras da construtora."""
+    """Coluna direita: plano de entrada (parcela a ENTRADA, não o imóvel)."""
     valor_base = float(row.get("valor_base", 0))
     construtora = row.get("_construtora", "")
 
-    if valor_base <= 0 or renda <= 0:
+    if renda <= 0 or entrada <= 0:
         st.markdown("##### 💰 Plano de Entrada")
-        st.caption("💡 Informe renda e entrada do cliente para calcular.")
+        st.caption("💡 Informe a **entrada** (do simulador da Caixa) e a renda do cliente.")
         return
 
-    # Pega a regra da construtora
     regra = obter_regra_construtora(construtora)
+    num_pre_sug, num_pos_sug = sugerir_parcelas(entrada, renda, regra)
 
-    # Sugere num_pre/num_pos baseado no que cabe
-    num_pre_sug, num_pos_sug = sugerir_parcelas(valor_base, renda, entrada, regra)
-
-    # Permite o usuário ajustar
     st.markdown("##### 💰 Plano de Entrada")
 
     col_p1, col_p2 = st.columns(2)
@@ -316,16 +312,19 @@ def _renderizar_plano_entrada(idx, row, renda, entrada):
             step=1, key=f"plano_pos_{idx}",
         )
 
-    plano = calcular_plano_entrada(valor_base, renda, entrada, regra, num_pre, num_pos)
+    plano = calcular_plano_entrada(entrada, renda, regra,
+                                    valor_final_imovel=valor_base,
+                                    num_pre=num_pre, num_pos=num_pos)
 
     # === RESUMO ===
     st.markdown("---")
-    st.write(f"💵 **Ato mínimo:** {formatar_valor_br(plano['ato'])}")
+    st.caption(f"🏢 Valor do imóvel: **{formatar_valor_br(valor_base)}** _(informativo)_")
+    st.write(f"💵 **Entrada:** {formatar_valor_br(plano['valor_entrada'])}")
+    st.write(f"📌 **Ato mínimo:** {formatar_valor_br(plano['ato'])}")
     st.write(
         f"💼 **Comissão:** {plano['comissao_pct']}% + {formatar_valor_br(plano['comissao_fixa'])} "
         f"= **{formatar_valor_br(plano['comissao_total'])}**"
     )
-    st.write(f"🏦 **Entrada aplicada:** {formatar_valor_br(plano['entrada_efetiva'])}")
     st.write(f"📦 **A parcelar:** {formatar_valor_br(plano['a_parcelar'])}")
 
     st.markdown("**⏳ Pré-chaves**")
@@ -355,6 +354,13 @@ def _renderizar_plano_entrada(idx, row, renda, entrada):
                 st.error(a)
             else:
                 st.warning(a)
+
+        if plano.get("sugestao_entrada"):
+            st.info(
+                f"💡 **Sugestão:** com esse plano, a entrada máxima seria "
+                f"**{formatar_valor_br(plano['sugestao_entrada'])}**. "
+                f"Acima disso, as parcelas estouram o limite da renda."
+            )
     else:
         st.success("✅ Plano viável dentro das regras da construtora.")
 

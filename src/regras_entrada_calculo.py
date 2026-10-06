@@ -1,36 +1,34 @@
 import math
 
 
-def calcular_plano_entrada(valor_base, renda_mensal, entrada_disponivel, regra,
-                            num_pre=36, num_pos=24):
+def calcular_plano_entrada(valor_entrada, renda_mensal, regra,
+                            valor_final_imovel=0, num_pre=36, num_pos=24):
     """
-    Calcula o plano de entrada respeitando as regras da construtora.
+    Parcela a ENTRADA respeitando as regras da construtora.
 
     Args:
-        valor_base: valor total do imóvel
-        renda_mensal: renda bruta mensal do cliente
-        entrada_disponivel: quanto o cliente tem pra dar de entrada
-        regra: dict com as regras da construtora
-        num_pre: número de parcelas pré-chaves
-        num_pos: número de parcelas pós-chaves
-
-    Returns:
-        dict com o plano completo + validações
+        valor_entrada: valor que o cliente dará de entrada
+        renda_mensal: renda bruta mensal
+        regra: dict com regras
+        valor_final_imovel: valor final do imóvel (para validar teto)
+        num_pre, num_pos: número de parcelas
     """
     ato = float(regra.get("ato_minimo", 1000))
     comissao_pct = float(regra.get("comissao_pct", 4.2))
     comissao_fixa = float(regra.get("comissao_fixa", 1000))
+    teto_pct = float(regra.get("teto_parcelamento_pct", 15.0))
 
     pre_pct = float(regra.get("pre_chaves", {}).get("parcela_max_pct_renda", 30))
-    pre_inter_pct = float(regra.get("pre_chaves", {}).get("intermediaria_max_pct_renda", 80))
     pos_pct = float(regra.get("pos_chaves", {}).get("parcela_max_pct_renda", 5))
-    pos_inter_pct = float(regra.get("pos_chaves", {}).get("intermediaria_max_pct_renda", 30))
     soma_max = int(regra.get("soma_max_parcelas", 60))
 
-    comissao_total = valor_base * (comissao_pct / 100) + comissao_fixa
+    # === TETO DE PARCELAMENTO ===
+    teto_parcelamento = (valor_final_imovel * (teto_pct / 100)) if valor_final_imovel > 0 else None
+    excede_teto = teto_parcelamento is not None and valor_entrada > teto_parcelamento
 
-    entrada_efetiva = min(float(entrada_disponivel), valor_base)
-    a_parcelar = max(0, valor_base - ato - comissao_total - entrada_efetiva)
+    # === CÁLCULO ===
+    comissao_total = valor_entrada * (comissao_pct / 100) + comissao_fixa
+    a_parcelar = max(0, valor_entrada - ato - comissao_total)
 
     parcela_pre_max = renda_mensal * (pre_pct / 100)
     parcela_pos_max = renda_mensal * (pos_pct / 100)
@@ -42,14 +40,20 @@ def calcular_plano_entrada(valor_base, renda_mensal, entrada_disponivel, regra,
     valor_pre = a_parcelar / num_pre if num_pre > 0 else 0
     valor_pos = a_parcelar / num_pos if num_pos > 0 else 0
 
-    # =========================================================
-    # VALIDAÇÕES
-    # =========================================================
+    # === ALERTAS ===
     alertas = []
+
+    if excede_teto:
+        valor_excedente = valor_entrada - teto_parcelamento
+        alertas.append(
+            f"🔴 Entrada (R$ {valor_entrada:,.2f}) excede o teto de parcelamento da construtora "
+            f"({teto_pct}% = R$ {teto_parcelamento:,.2f}). "
+            f"Cliente precisa dar R$ {valor_excedente:,.2f} à vista."
+        )
 
     if total_parcelas > soma_max:
         alertas.append(
-            f"🔴 Soma de parcelas ({total_parcelas}) ultrapassa o máximo permitido ({soma_max})."
+            f"🔴 Soma de parcelas ({total_parcelas}) ultrapassa o máximo ({soma_max})."
         )
 
     if num_pre > 0 and valor_pre > parcela_pre_max:
@@ -64,17 +68,20 @@ def calcular_plano_entrada(valor_base, renda_mensal, entrada_disponivel, regra,
             f"{pos_pct}% da renda (R$ {parcela_pos_max:,.2f})."
         )
 
-    if a_parcelar <= 0 and entrada_efetiva >= valor_base:
-        alertas.append("🟢 Cliente pode comprar à vista (entrada cobre 100% do valor).")
+    if a_parcelar <= 0:
+        alertas.append("🟢 Entrada coberta pelo Ato + Comissão. Nada a parcelar.")
 
     return {
-        "valor_base": valor_base,
+        "valor_entrada": valor_entrada,
+        "valor_final_imovel": valor_final_imovel,
         "renda_mensal": renda_mensal,
+        "teto_parcelamento": teto_parcelamento,
+        "teto_pct": teto_pct,
+        "excede_teto": excede_teto,
         "ato": ato,
         "comissao_pct": comissao_pct,
         "comissao_fixa": comissao_fixa,
         "comissao_total": comissao_total,
-        "entrada_efetiva": entrada_efetiva,
         "a_parcelar": a_parcelar,
         "num_pre": num_pre,
         "num_pos": num_pos,
@@ -87,15 +94,12 @@ def calcular_plano_entrada(valor_base, renda_mensal, entrada_disponivel, regra,
         "pos_pct": pos_pct,
         "soma_max": soma_max,
         "alertas": alertas,
-        "viavel": len(alertas) == 0 or (len(alertas) == 1 and "à vista" in alertas[0]),
+        "viavel": not any("🔴" in a for a in alertas),
     }
 
 
-def sugerir_parcelas(valor_base, renda_mensal, entrada_disponivel, regra):
-    """
-    Retorna uma sugestão inteligente de (num_pre, num_pos)
-    respeitando os limites de parcela.
-    """
+def sugerir_parcelas(valor_entrada, renda_mensal, regra):
+    """Sugere (num_pre, num_pos) que caibam nas regras."""
     ato = float(regra.get("ato_minimo", 1000))
     comissao_pct = float(regra.get("comissao_pct", 4.2))
     comissao_fixa = float(regra.get("comissao_fixa", 1000))
@@ -104,9 +108,8 @@ def sugerir_parcelas(valor_base, renda_mensal, entrada_disponivel, regra):
     pre_pct = float(regra.get("pre_chaves", {}).get("parcela_max_pct_renda", 30))
     pos_pct = float(regra.get("pos_chaves", {}).get("parcela_max_pct_renda", 5))
 
-    comissao_total = valor_base * (comissao_pct / 100) + comissao_fixa
-    entrada_efetiva = min(float(entrada_disponivel), valor_base)
-    a_parcelar = max(0, valor_base - ato - comissao_total - entrada_efetiva)
+    comissao_total = valor_entrada * (comissao_pct / 100) + comissao_fixa
+    a_parcelar = max(0, valor_entrada - ato - comissao_total)
 
     if a_parcelar <= 0:
         return 0, 0
@@ -114,18 +117,13 @@ def sugerir_parcelas(valor_base, renda_mensal, entrada_disponivel, regra):
     parcela_pre_max = renda_mensal * (pre_pct / 100)
     parcela_pos_max = renda_mensal * (pos_pct / 100)
 
-    # Estratégia: usar 50% pra pré (parcela maior) e 50% pra pós (parcela menor)
-    # Testa combinações até achar a melhor
     for num_pre in range(soma_max, -1, -1):
         num_pos = soma_max - num_pre
         if num_pos == 0:
             continue
         valor_pre = a_parcelar / num_pre if num_pre > 0 else 0
         valor_pos = a_parcelar / num_pos if num_pos > 0 else 0
-
         if valor_pre <= parcela_pre_max and valor_pos <= parcela_pos_max:
             return num_pre, num_pos
 
-    # Fallback: tudo em pós (parcela menor)
-    num_pos = soma_max
-    return 0, num_pos
+    return 0, soma_max

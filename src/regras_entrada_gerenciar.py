@@ -83,6 +83,12 @@ def _renderizar_card_regra(nome, dados):
                 key=f"re_ato_{nome}",
                 help="Valor mínimo do ato. Padrão: R$ 1.000.",
             )
+            novoTetoParcel = st.number_input(
+                "Teto de parcelamento (% do valor final)", min_value=0.0, max_value=100.0,
+                value=float(dados.get("teto_parcelamento_pct", 15.0)),
+                step=1.0, format="%.1f", key=f"re_teto_{nome}",
+                help="Máximo do valor final do imóvel que pode ser parcelado. Padrão: 15%.",
+            )
 
         with col2:
             st.markdown("**⏳ Pré-chaves**")
@@ -137,6 +143,7 @@ def _renderizar_card_regra(nome, dados):
                     "comissao_pct": novo_pct,
                     "comissao_fixa": nova_fixa,
                     "ato_minimo": novo_ato_min,
+                    "teto_parcelamento_pct": novoTetoParcel,
                     "pre_chaves": {
                         "parcela_max_pct_renda": pre_parc,
                         "intermediaria_max_pct_renda": pre_inter,

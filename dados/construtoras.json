@@ -95,5 +95,81 @@
         ]
       }
     }
+  },
+  "Jerônimo da Veiga": {
+    "tipo_desconto": "PREÇO",
+    "produtos": {
+      "Jerônimo   Tabela Reponderada   Super Califórnia Mod Ii   V3": {
+        "cidade": "Nova Iguaçu",
+        "skiprows": 6,
+        "mapeamento": {
+          "0": "BLOCO",
+          "1": "UNIDADE",
+          "2": "M²",
+          "3": "ANDAR",
+          "4": "VAGA",
+          "5": "TIPOLOGIA",
+          "6": "AVALIACAO",
+          "7": "PRECO"
+        },
+        "colunas_ordem": [
+          "UNIDADE",
+          "BLOCO",
+          "TIPOLOGIA",
+          "PRECO",
+          "AVALIACAO",
+          "M²",
+          "ANDAR",
+          "VAGA"
+        ],
+        "colunas_para_converter": [
+          "PRECO",
+          "AVALIACAO",
+          "M²",
+          "ANDAR",
+          "VAGA"
+        ]
+      }
+    }
+  },
+  "KADMA-2026": {
+    "tipo_desconto": "AVALIAÇÃO",
+    "produtos": {
+      "Tabela   Tall   Setembro De 2026 81 A 90": {
+        "cidade": "Nova Iguaçu",
+        "skiprows": 1,
+        "mapeamento": {
+          "0": "UNIDADE",
+          "1": "PAVTO",
+          "2": "TIPOLOGIA",
+          "3": "SOL",
+          "4": "M²_INTERNO",
+          "5": "M²_EXTERNO",
+          "6": "TIPO_DE_VAGA",
+          "7": "NUMERO_DA_VAGA",
+          "8": "PRECO",
+          "9": "AVALIACAO"
+        },
+        "colunas_ordem": [
+          "UNIDADE",
+          "PAVTO",
+          "TIPOLOGIA",
+          "SOL",
+          "M²_INTERNO",
+          "M²_EXTERNO",
+          "TIPO_DE_VAGA",
+          "NUMERO_DA_VAGA",
+          "PRECO",
+          "AVALIACAO"
+        ],
+        "colunas_para_converter": [
+          "PRECO",
+          "AVALIACAO",
+          "M²_INTERNO",
+          "M²_EXTERNO",
+          "NUMERO_DA_VAGA"
+        ]
+      }
+    }
   }
 }

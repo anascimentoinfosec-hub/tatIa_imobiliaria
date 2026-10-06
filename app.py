@@ -165,7 +165,7 @@ with st.sidebar:
             st.session_state.pagina = "Vendas"
             st.rerun()
 
-        if st.button("📚 Histórico", use_container_width=True):
+        if st.button("📚 Simulações", use_container_width=True):
             st.session_state.pagina = "Histórico"
             st.rerun()
 
@@ -177,6 +177,11 @@ with st.sidebar:
         if perfil in ["gerente", "superadmin"]:
             st.markdown("---")
             st.markdown("### ⚙️ Gestão")
+            # Alerta de propostas pendentes
+            from src.simulacoes_storage import contar_propostas_pendentes
+            qtd_pendentes = contar_propostas_pendentes()
+            if qtd_pendentes > 0:
+                st.warning(f"🔔 **{qtd_pendentes}** proposta(s) aguardando sua aprovação!")
 
             if st.button("📊 Dashboard", use_container_width=True):
                 st.session_state.pagina = "Dashboard"
@@ -234,7 +239,7 @@ else:
 
     paginas_gestao = [
         "Dashboard", "DashboardVendas",
-        "Construtoras", "Origens", "Usuários", "Regras", "RegrasEntrada",
+        "Construtoras", "Origens", "Usuários", "Regras", "RegrasEntrada",''
     ]
     paginas_admin = ["SuperAdmin", "Creditos"]
 

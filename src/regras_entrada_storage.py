@@ -8,6 +8,7 @@ PADRAO = {
     "comissao_pct": 4.2,
     "comissao_fixa": 1000.0,
     "ato_minimo": 1000.0,
+    "teto_parcelamento_pct": 15.0,  # ← NOVO: % máximo do valor final que pode ser parcelado
     "pre_chaves": {
         "parcela_max_pct_renda": 30.0,
         "intermediaria_max_pct_renda": 80.0,

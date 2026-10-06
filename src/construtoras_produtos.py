@@ -29,7 +29,10 @@ def renderizar_aba_produtos(cidades):
     _renderizar_form_adicionar_produto(construtora_edit, cidades, tipo_desconto)
 
     _renderizar_form_editar_produto(construtora_edit, cidades)
-
+    st.markdown("---")
+    from src.planilha_cache_ajuste import renderizar_ajuste_valores
+    with st.expander("🔧 Ajustar valores de uma planilha (caso importado errado)", expanded=False):
+        renderizar_ajuste_valores()
 
 # =========================================================
 def _selecionar_construtora(construtoras_lista):

@@ -6,71 +6,127 @@ from src.pdf_export import gerar_pdf_simulacao
 
 def gerar_resumo(nome_cliente, renda, entrada, bairro, top_imoveis,
                  nome_gerente=None, desconto=0, tipo_desconto="AVALIAÇÃO",
-                 origem=None):
+                 origem=None, fgts=0, subsidio=0,
+                 financiamento_caixa=0, parcela_morando=0,
+                 data_nascimento=None, documentacao_paga=False,
+                 plano_entrada=None):
     """Gera um resumo formatado para compartilhamento."""
     linhas = []
     linhas.append("SIMULACAO IMOBILIARIA")
     linhas.append("=" * 40)
     linhas.append("")
     linhas.append(f"Cliente: {nome_cliente}")
-
+    if data_nascimento:
+        linhas.append(f"Data de nascimento: {data_nascimento}")
     if origem and origem != "(Nao informado)":
         linhas.append(f"Origem: {origem}")
     if bairro:
         linhas.append(f"Bairro: {bairro}")
 
-    linhas.append(f"Renda: {formatar_valor_br(renda)}")
-    linhas.append(f"Entrada disponivel: {formatar_valor_br(entrada)}")
+    linhas.append("")
+    linhas.append("--- DADOS FINANCEIROS ---")
+    linhas.append(f"Renda bruta: {formatar_valor_br(renda)}")
+    linhas.append(f"Entrada: {formatar_valor_br(entrada)}")
+    if fgts and fgts > 0:
+        linhas.append(f"FGTS: {formatar_valor_br(fgts)}")
+    if subsidio and subsidio > 0:
+        linhas.append(f"Subsidio: {formatar_valor_br(subsidio)}")
+    if financiamento_caixa and financiamento_caixa > 0:
+        linhas.append(f"Financiamento Caixa: {formatar_valor_br(financiamento_caixa)}")
+    if parcela_morando and parcela_morando > 0:
+        linhas.append(f"Parcela morando (financ. Caixa): {formatar_valor_br(parcela_morando)}")
 
     if desconto > 0:
         linhas.append(f"Desconto acordado: {formatar_valor_br(desconto)} (sobre {tipo_desconto})")
+
+    if documentacao_paga:
+        linhas.append("Documentacao: JA PAGA pelo cliente")
 
     linhas.append("")
     linhas.append("=" * 40)
     linhas.append("")
 
     if top_imoveis is not None and not top_imoveis.empty:
-        linhas.append("TOP 3 OPORTUNIDADES")
+        linhas.append("OPORTUNIDADE ESCOLHIDA")
         linhas.append("")
-        for i, (idx, row) in enumerate(top_imoveis.head(3).iterrows()):
-            preco = row.get("PREÇO", 0)
-            parcela = preco * 0.005 if preco else 0
+        for i, (idx, row) in enumerate(top_imoveis.iterrows(), 1):
             unidade = row.get("UNIDADE", "N/A")
             tipologia = row.get("TIPOLOGIA", "")
-            r_m2 = row.get("R$/m²", 0)
-            valor_base = row.get("valor_base", preco)
-
+            construtora = row.get("_construtora", "")
+            produto = row.get("_produto", "")
             bloco = row.get("BLOCO", "")
             pavto = row.get("PAVTO", row.get("ANDAR", ""))
-            local = ""
-            if bloco or pavto:
-                partes = []
-                if bloco:
-                    partes.append(f"Bloco {bloco}")
-                if pavto:
-                    partes.append(f"Andar {pavto}")
-                local = " (" + " - ".join(partes) + ")"
+            avaliacao = row.get("AVALIAÇÃO", 0)
+            preco = row.get("PREÇO", 0)
+            valor_base = row.get("valor_base", 0)
 
-            linhas.append(f"{i+1}. {unidade}{local} - {formatar_valor_br(preco)}")
+            local_partes = []
+            if bloco and str(bloco).lower() != "nan":
+                local_partes.append(f"Bloco {bloco}")
+            if pavto and str(pavto).lower() != "nan":
+                local_partes.append(f"Andar {pavto}")
+            local = f" ({' - '.join(local_partes)})" if local_partes else ""
 
-            if desconto > 0:
-                linhas.append(f"   Valor base: {formatar_valor_br(valor_base)}")
-
-            linhas.append(f"   Parcela estimada: {formatar_valor_br(parcela)}")
-            linhas.append(f"   R$/m2: {formatar_valor_br(r_m2)}")
-
+            if construtora:
+                linhas.append(f"Construtora: {construtora}")
+            if produto:
+                linhas.append(f"Produto: {produto}")
+            linhas.append(f"Unidade: {unidade}{local}")
             if tipologia:
-                linhas.append(f"   Tipo: {tipologia}")
+                linhas.append(f"Tipologia: {tipologia}")
+            if avaliacao:
+                linhas.append(f"Valor de Avaliacao: {formatar_valor_br(avaliacao)}")
+            if preco:
+                linhas.append(f"Valor de Preco (tabela): {formatar_valor_br(preco)}")
+            if desconto > 0:
+                linhas.append(f"Desconto: {formatar_valor_br(desconto)}")
+            linhas.append(f"Valor Final: {formatar_valor_br(valor_base)}")
             linhas.append("")
     else:
         linhas.append("Nenhuma oportunidade encontrada.")
+
+    # === PLANO DE ENTRADA ===
+    if plano_entrada:
+        linhas.append("=" * 40)
+        linhas.append("")
+        linhas.append("PLANO DE ENTRADA")
+        linhas.append("")
+        linhas.append(f"Ato minimo: {formatar_valor_br(plano_entrada.get('ato', 0))}")
+        linhas.append(f"Comissao: {formatar_valor_br(plano_entrada.get('comissao_total', 0))}")
+        if plano_entrada.get("teto_parcelamento"):
+            linhas.append(
+                f"Teto de parcelamento ({plano_entrada.get('teto_pct', 15)}%): "
+                f"{formatar_valor_br(plano_entrada['teto_parcelamento'])}"
+            )
+        linhas.append(f"A parcelar: {formatar_valor_br(plano_entrada.get('a_parcelar', 0))}")
+        linhas.append("")
+
+        if plano_entrada.get("num_pre", 0) > 0:
+            linhas.append(
+                f"Pre-chaves: {plano_entrada['num_pre']}x de "
+                f"{formatar_valor_br(plano_entrada.get('valor_pre', 0))}"
+            )
+        if plano_entrada.get("num_pos", 0) > 0:
+            linhas.append(
+                f"Pos-chaves: {plano_entrada['num_pos']}x de "
+                f"{formatar_valor_br(plano_entrada.get('valor_pos', 0))}"
+            )
+
+        alertas = plano_entrada.get("alertas", [])
+        if alertas:
+            linhas.append("")
+            linhas.append("ALERTAS:")
+            for a in alertas:
+                linhas.append(f"  {a}")
+
+        linhas.append("")
 
     linhas.append("=" * 40)
     linhas.append("")
     linhas.append(f"Gerado em: {pd.Timestamp.now().strftime('%d/%m/%Y %H:%M')}")
 
     if nome_gerente:
-        linhas.append(f"Gerente responsavel: {nome_gerente}")
+        linhas.append(f"Responsavel: {nome_gerente}")
     else:
         linhas.append("App: simulador-credito.streamlit.app")
 
@@ -78,11 +134,7 @@ def gerar_resumo(nome_cliente, renda, entrada, bairro, top_imoveis,
 
 
 def botoes_compartilhar(resumo, nome_cliente, dados_pdf=None):
-    """
-    Botões de compartilhamento (TXT, WhatsApp, PDF).
-
-    dados_pdf: dict com dados completos para o PDF. Se None, não renderiza PDF.
-    """
+    """Botões de compartilhamento (TXT, WhatsApp, PDF)."""
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -98,7 +150,9 @@ def botoes_compartilhar(resumo, nome_cliente, dados_pdf=None):
         mensagem = resumo.replace("\n", "%0A")
         link = f"https://wa.me/?text={mensagem}"
         st.markdown(
-            f'<a href="{link}" target="_blank" style="display:block; background-color:#25D366; color:white; text-align:center; padding:8px; border-radius:8px; text-decoration:none; font-weight:600;">📱 Enviar WhatsApp</a>',
+            f'<a href="{link}" target="_blank" style="display:block; background-color:#25D366; '
+            f'color:white; text-align:center; padding:8px; border-radius:8px; '
+            f'text-decoration:none; font-weight:600;">📱 Enviar WhatsApp</a>',
             unsafe_allow_html=True,
         )
 

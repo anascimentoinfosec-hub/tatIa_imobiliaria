@@ -6,25 +6,55 @@ from src.utils import converter_para_float
 
 
 def _tratar_colunas_monetarias(df, config):
-    """Converte colunas monetárias do formato BR para float."""
+    """Converte colunas monetárias do formato BR para float (corrigido)."""
+    import re as _re
+
+    def _br_to_float(valor):
+        if pd.isna(valor):
+            return 0.0
+        s = str(valor).strip()
+        # Remove símbolos
+        s = _re.sub(r"R\$?\s*", "", s, flags=_re.IGNORECASE)
+        s = s.replace(" ", "").strip()
+        if not s:
+            return 0.0
+
+        tem_virgula = "," in s
+        tem_ponto = "." in s
+
+        if tem_virgula and tem_ponto:
+            # Formato BR: 1.234.567,89 → remove TODOS os pontos, troca vírgula por ponto
+            s = s.replace(".", "").replace(",", ".")
+        elif tem_virgula:
+            # Só vírgula: 1234,89 → troca por ponto
+            s = s.replace(",", ".")
+        elif tem_ponto:
+            # Só ponto: pode ser "1.234" (milhar BR) ou "1234.89" (decimal US)
+            partes = s.split(".")
+            if len(partes) > 1 and all(len(p) == 3 for p in partes[1:]):
+                # É formato de milhar: 1.234.567 → remove pontos
+                s = s.replace(".", "")
+            # senão, mantém como está (decimal US)
+
+        # Extrai apenas números e ponto
+        match = _re.search(r"\d+(\.\d+)?", s)
+        if not match:
+            return 0.0
+        try:
+            return float(match.group())
+        except (ValueError, TypeError):
+            return 0.0
+
     for col in df.columns:
         col_up = str(col).upper()
         if any(m in col_up for m in ["VALOR", "PREÇO", "PRECO", "AVALIA", "DESCONTO"]):
-            try:
-                df[col] = df[col].astype(str).str.replace("RS", "", regex=False)
-                df[col] = df[col].str.replace("R$", "", regex=False)
-                df[col] = df[col].str.replace("R", "", regex=False)
-                df[col] = df[col].str.strip()
-                df[col] = df[col].str.replace(".", "", regex=False)
-                df[col] = df[col].str.replace(",", ".", regex=False)
-                df[col] = df[col].str.extract(r"(\d+\.?\d*)")
-                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
-            except Exception:
-                pass
+            df[col] = df[col].apply(_br_to_float)
 
     for col in config.get("colunas_para_converter", []):
         if col in df.columns:
-            df[col] = df[col].apply(converter_para_float)
+            # Guarda valor original como string para debug
+            df[f"_{col}_original"] = df[col].astype(str)
+            df[col] = df[col].apply(_br_to_float)
 
 
 class _FakeUpload(io.BytesIO):

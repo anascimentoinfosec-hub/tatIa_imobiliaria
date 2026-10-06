@@ -14,5 +14,53 @@
       "intermediaria_max_pct_renda": 30.0
     },
     "soma_max_parcelas": 60
+  },
+  "Jerônimo da Veiga": {
+    "nome": "Jerônimo da Veiga",
+    "ativo": true,
+    "comissao_pct": 4.2,
+    "comissao_fixa": 1000.0,
+    "ato_minimo": 1000.0,
+    "pre_chaves": {
+      "parcela_max_pct_renda": 30.0,
+      "intermediaria_max_pct_renda": 80.0
+    },
+    "pos_chaves": {
+      "parcela_max_pct_renda": 5.0,
+      "intermediaria_max_pct_renda": 30.0
+    },
+    "soma_max_parcelas": 60
+  },
+  "Kadma": {
+    "nome": "Kadma",
+    "ativo": true,
+    "comissao_pct": 4.2,
+    "comissao_fixa": 1000.0,
+    "ato_minimo": 1000.0,
+    "pre_chaves": {
+      "parcela_max_pct_renda": 30.0,
+      "intermediaria_max_pct_renda": 80.0
+    },
+    "pos_chaves": {
+      "parcela_max_pct_renda": 5.0,
+      "intermediaria_max_pct_renda": 30.0
+    },
+    "soma_max_parcelas": 84
+  },
+  "KADMA-2026": {
+    "nome": "KADMA-2026",
+    "ativo": true,
+    "comissao_pct": 4.2,
+    "comissao_fixa": 1000.0,
+    "ato_minimo": 1000.0,
+    "pre_chaves": {
+      "parcela_max_pct_renda": 30.0,
+      "intermediaria_max_pct_renda": 80.0
+    },
+    "pos_chaves": {
+      "parcela_max_pct_renda": 5.0,
+      "intermediaria_max_pct_renda": 30.0
+    },
+    "soma_max_parcelas": 84
   }
 }
