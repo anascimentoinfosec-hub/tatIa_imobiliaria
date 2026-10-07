@@ -61,10 +61,12 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
             entrada = float(sim.get("entrada", 0) or 0)
 
             regra = obter_regra_construtora(construtora)
+            inter_list = st.session_state.get(f"inter_list_{idx_escolhido}", [])
             plano = calcular_plano_entrada(
                 entrada, renda, regra,
                 valor_final_imovel=valor_base,
                 num_pre=int(num_pre), num_pos=int(num_pos),
+                intermediarias=inter_list,
             )
         else:
             top_para_pdf = top_refinado
@@ -209,10 +211,12 @@ def _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS,
     entrada = float(sim.get("entrada", 0) or 0)
 
     regra = obter_regra_construtora(construtora)
+    inter_list = st.session_state.get(f"inter_list_{idx_escolhido}", [])
     plano = calcular_plano_entrada(
         entrada, renda, regra,
         valor_final_imovel=valor_base,
         num_pre=int(num_pre), num_pos=int(num_pos),
+        intermediarias=inter_list,
     )
 
     top_unit = top_unit.copy()

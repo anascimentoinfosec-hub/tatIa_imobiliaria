@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import re
-from src.utils import formatar_valor_br
+from src.utils import campo_moeda, formatar_valor_br
 from src.regras_entrada_storage import obter_regra_construtora
 from src.regras_entrada_calculo import calcular_plano_entrada, sugerir_parcelas
 
@@ -286,13 +286,13 @@ def _renderizar_info_imovel(row, desconto_acordado, tipo_desconto, coluna_base,
 
 
 def _renderizar_plano_entrada(idx, row, renda, entrada):
-    """Coluna direita: plano de entrada (parcela a ENTRADA, não o imóvel)."""
+    """Coluna direita: plano de entrada com intermediárias agendadas."""
     valor_base = float(row.get("valor_base", 0))
     construtora = row.get("_construtora", "")
 
     if renda <= 0 or entrada <= 0:
         st.markdown("##### 💰 Plano de Entrada")
-        st.caption("💡 Informe a **entrada** (do simulador da Caixa) e a renda do cliente.")
+        st.caption("💡 Informe a **entrada** e a renda do cliente.")
         return
 
     regra = obter_regra_construtora(construtora)
@@ -312,9 +312,15 @@ def _renderizar_plano_entrada(idx, row, renda, entrada):
             step=1, key=f"plano_pos_{idx}",
         )
 
-    plano = calcular_plano_entrada(entrada, renda, regra,
-                                    valor_final_imovel=valor_base,
-                                    num_pre=num_pre, num_pos=num_pos)
+    # === INTERMEDIÁRIAS AGENDADAS ===
+    intermediarias = _renderizar_intermediarias(idx, num_pre, num_pos)
+
+    plano = calcular_plano_entrada(
+        entrada, renda, regra,
+        valor_final_imovel=valor_base,
+        num_pre=int(num_pre), num_pos=int(num_pos),
+        intermediarias=intermediarias,
+    )
 
     # === RESUMO ===
     st.markdown("---")
@@ -326,6 +332,14 @@ def _renderizar_plano_entrada(idx, row, renda, entrada):
         f"= **{formatar_valor_br(plano['comissao_total'])}**"
     )
     st.write(f"📦 **A parcelar:** {formatar_valor_br(plano['a_parcelar'])}")
+
+    if plano["soma_inter_total"] > 0:
+        st.caption(
+            f"➕ Intermediárias: **{formatar_valor_br(plano['soma_inter_total'])}** "
+            f"(pré: {formatar_valor_br(plano['soma_inter_pre'])} | "
+            f"pós: {formatar_valor_br(plano['soma_inter_pos'])})"
+        )
+        st.caption(f"➖ Restante nas parcelas normais: {formatar_valor_br(plano['restante_parcelas'])}")
 
     st.markdown("**⏳ Pré-chaves**")
     if plano["num_pre"] > 0:
@@ -345,6 +359,11 @@ def _renderizar_plano_entrada(idx, row, renda, entrada):
     else:
         st.caption("Sem parcelas pós-chaves")
 
+    # === CRONOGRAMA (expandable) ===
+    if intermediarias:
+        with st.expander("📅 Ver cronograma de pagamento"):
+            _renderizar_cronograma(plano, intermediarias)
+
     # === ALERTAS ===
     if plano["alertas"]:
         for a in plano["alertas"]:
@@ -354,15 +373,112 @@ def _renderizar_plano_entrada(idx, row, renda, entrada):
                 st.error(a)
             else:
                 st.warning(a)
-
-        if plano.get("sugestao_entrada"):
-            st.info(
-                f"💡 **Sugestão:** com esse plano, a entrada máxima seria "
-                f"**{formatar_valor_br(plano['sugestao_entrada'])}**. "
-                f"Acima disso, as parcelas estouram o limite da renda."
-            )
     else:
         st.success("✅ Plano viável dentro das regras da construtora.")
+
+
+def _renderizar_intermediarias(idx, num_pre, num_pos):
+    """Lista editável de intermediárias agendadas."""
+    key_list = f"inter_list_{idx}"
+    if key_list not in st.session_state:
+        st.session_state[key_list] = []
+
+    lista = st.session_state[key_list]
+
+    with st.expander(f"➕ Intermediárias agendadas ({len(lista)})", expanded=(len(lista) > 0)):
+        st.caption(
+            "Intermediárias são pagamentos **extras** em parcelas específicas "
+            "(ex: 13º salário, férias). Reduzem o valor das demais parcelas."
+        )
+
+        # Renderiza cada intermediária
+        for i, inter in enumerate(lista):
+            col1, col2, col3, col4 = st.columns([2, 2, 3, 0.7])
+
+            with col1:
+                opcoes = ["Pré-chaves", "Pós-chaves"]
+                idx_fase = 0 if inter.get("fase") == "pre" else 1
+                fase_label = st.selectbox(
+                    "Fase", opcoes, index=idx_fase,
+                    key=f"inter_fase_{idx}_{i}", label_visibility="collapsed",
+                )
+                lista[i]["fase"] = "pre" if fase_label == "Pré-chaves" else "pos"
+
+            with col2:
+                max_parc = num_pre if lista[i]["fase"] == "pre" else num_pos
+                parcela = st.number_input(
+                    "Parcela", min_value=1, max_value=max(1, int(max_parc)),
+                    value=min(int(inter.get("parcela", 1)), max(1, int(max_parc))),
+                    step=1, key=f"inter_parc_{idx}_{i}", label_visibility="collapsed",
+                )
+                lista[i]["parcela"] = int(parcela)
+
+            with col3:
+                valor = st.number_input(
+                    "Valor (R$)", min_value=0.0,
+                    value=float(inter.get("valor", 0)),
+                    step=500.0, format="%.2f",
+                    key=f"inter_valor_{idx}_{i}", label_visibility="collapsed",
+                )
+                lista[i]["valor"] = float(valor)
+
+            with col4:
+                if st.button("🗑️", key=f"inter_del_{idx}_{i}"):
+                    st.session_state[key_list].pop(i)
+                    st.rerun()
+
+        if st.button("➕ Adicionar intermediária", key=f"inter_add_{idx}"):
+            st.session_state[key_list].append({
+                "fase": "pre",
+                "parcela": 1,
+                "valor": 0.0,
+            })
+            st.rerun()
+
+    return st.session_state[key_list]
+
+
+def _renderizar_cronograma(plano, intermediarias):
+    """Mostra o cronograma completo de parcelas."""
+    st.caption(
+        "💡 Veja como fica cada parcela, considerando as intermediárias agendadas."
+    )
+
+    # Mapa de intermediárias por fase+parcela
+    mapa_inter = {}
+    for i in intermediarias:
+        chave = (i.get("fase", "pre"), int(i.get("parcela", 0)))
+        mapa_inter[chave] = mapa_inter.get(chave, 0) + i.get("valor", 0)
+
+    # === PRÉ-CHAVES ===
+    if plano["num_pre"] > 0:
+        st.markdown(f"**⏳ Pré-chaves ({plano['num_pre']} parcelas)**")
+        for p in range(1, plano["num_pre"] + 1):
+            valor_normal = plano["valor_pre"]
+            extra = mapa_inter.get(("pre", p), 0)
+            if extra > 0:
+                st.caption(
+                    f"Parcela {p}: {formatar_valor_br(valor_normal)} + "
+                    f"**{formatar_valor_br(extra)}** (intermediária) = "
+                    f"**{formatar_valor_br(valor_normal + extra)}**"
+                )
+            else:
+                st.caption(f"Parcela {p}: {formatar_valor_br(valor_normal)}")
+
+    # === PÓS-CHAVES ===
+    if plano["num_pos"] > 0:
+        st.markdown(f"**🔑 Pós-chaves ({plano['num_pos']} parcelas)**")
+        for p in range(1, plano["num_pos"] + 1):
+            valor_normal = plano["valor_pos"]
+            extra = mapa_inter.get(("pos", p), 0)
+            if extra > 0:
+                st.caption(
+                    f"Parcela {p}: {formatar_valor_br(valor_normal)} + "
+                    f"**{formatar_valor_br(extra)}** (intermediária) = "
+                    f"**{formatar_valor_br(valor_normal + extra)}**"
+                )
+            else:
+                st.caption(f"Parcela {p}: {formatar_valor_br(valor_normal)}")
 
 
 # =========================================================

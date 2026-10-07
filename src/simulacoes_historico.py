@@ -297,11 +297,49 @@ def _renderizar_acoes_status(sim, status, responsavel):
         with col1:
             if st.button("🎉 Confirmar Venda", key=f"acao_venda_{sim_id}",
                          use_container_width=True, type="primary"):
-                atualizar_status_proposta(sim_id, "venda_confirmada", responsavel)
+                _confirmar_venda_real(sim, responsavel)
                 st.rerun()
 
     else:
         st.caption(f"Status final: **{STATUS_PROPOSTA.get(status, {}).get('nome', status)}**")
+
+
+def _confirmar_venda_real(sim, responsavel):
+    """Confirma a venda: atualiza status + cria Venda no pipeline."""
+    from src.vendas_storage import salvar_venda
+    from datetime import date
+
+    # 1. Atualiza status
+    atualizar_status_proposta(sim["id"], "venda_confirmada", responsavel)
+
+    # 2. Cria venda real no pipeline
+    try:
+        oportunidades = sim.get("oportunidades", [])
+        op = oportunidades[0] if oportunidades else {}
+
+        valor_base = float(op.get("valor_base", 0) or 0)
+
+        salvar_venda({
+            "fonte": sim.get("origem", ""),
+            "cliente": sim.get("cliente", ""),
+            "produto": op.get("_produto", ""),
+            "bloco": op.get("BLOCO", ""),
+            "apt": op.get("UNIDADE", ""),
+            "construtora": op.get("_construtora", ""),
+            "vgv": valor_base,
+            "responsavel": sim.get("gerente", ""),
+            "data_venda": date.today().strftime("%d/%m/%Y"),
+            "ato_pago": "Sim",
+            "status": "concluido",
+            "observacoes": (
+                f"Venda confirmada a partir da simulação #{sim['id'][-6:]}. "
+                f"Plano: {op.get('num_pre', 0)}x pré + {op.get('num_pos', 0)}x pós."
+            ),
+            "campos_extras": {},
+        })
+        st.toast("🎉 Venda criada no pipeline! Confira em 💼 Vendas.")
+    except Exception as e:
+        st.error(f"Status atualizado, mas erro ao criar venda: {str(e)}")
 
 
 def _renderizar_oportunidade(idx, op):
