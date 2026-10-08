@@ -101,16 +101,21 @@ def gerar_resumo(nome_cliente, renda, entrada, bairro, top_imoveis,
         linhas.append(f"A parcelar: {formatar_valor_br(plano_entrada.get('a_parcelar', 0))}")
         linhas.append("")
 
+        if plano_entrada.get("soma_inter_total", 0) > 0:
+            linhas.append(f"Intermediarias: {formatar_valor_br(plano_entrada['soma_inter_total'])}")
+            linhas.append(f"Restante nas parcelas: {formatar_valor_br(plano_entrada.get('restante_parcelas', 0))}")
+            linhas.append("")
+
         if plano_entrada.get("num_pre", 0) > 0:
-            linhas.append(
-                f"Pre-chaves: {plano_entrada['num_pre']}x de "
-                f"{formatar_valor_br(plano_entrada.get('valor_pre', 0))}"
-            )
+            linhas.append(f"Pre-chaves ({plano_entrada['num_pre']} parcelas):")
+            for linha in _agrupar_parcelas_txt(plano_entrada, "pre"):
+                linhas.append(f"  {linha}")
+
         if plano_entrada.get("num_pos", 0) > 0:
-            linhas.append(
-                f"Pos-chaves: {plano_entrada['num_pos']}x de "
-                f"{formatar_valor_br(plano_entrada.get('valor_pos', 0))}"
-            )
+            linhas.append("")
+            linhas.append(f"Pos-chaves ({plano_entrada['num_pos']} parcelas):")
+            for linha in _agrupar_parcelas_txt(plano_entrada, "pos"):
+                linhas.append(f"  {linha}")
 
         alertas = plano_entrada.get("alertas", [])
         if alertas:
@@ -182,3 +187,54 @@ def _renderizar_botao_pdf(nome_cliente, dados_pdf):
         )
     except Exception as e:
         st.caption(f"📄 Erro ao gerar PDF: {str(e)[:40]}")
+
+def _agrupar_parcelas_txt(plano, fase):
+    """Agrupa parcelas para o texto."""
+    if fase == "pre":
+        num = int(plano.get("num_pre", 0))
+        valor_normal = float(plano.get("valor_pre", 0))
+    else:
+        num = int(plano.get("num_pos", 0))
+        valor_normal = float(plano.get("valor_pos", 0))
+
+    if num <= 0:
+        return []
+
+    mapa = {}
+    for i in plano.get("intermediarias", []):
+        if isinstance(i, dict) and i.get("fase") == fase:
+            p = int(i.get("parcela", 0))
+            if 1 <= p <= num:
+                mapa[p] = mapa.get(p, 0) + float(i.get("valor", 0))
+
+    resultado = []
+    buffer_inicio = None
+    buffer_fim = None
+
+    for p in range(1, num + 1):
+        if p in mapa:
+            if buffer_inicio is not None:
+                if buffer_inicio == buffer_fim:
+                    resultado.append(f"Parcela {buffer_inicio}: {formatar_valor_br(valor_normal)}")
+                else:
+                    resultado.append(f"Parcelas {buffer_inicio}-{buffer_fim}: {formatar_valor_br(valor_normal)}")
+                buffer_inicio = None
+                buffer_fim = None
+
+            total = valor_normal + mapa[p]
+            resultado.append(
+                f"Parcela {p}: {formatar_valor_br(valor_normal)} + "
+                f"{formatar_valor_br(mapa[p])} = {formatar_valor_br(total)}"
+            )
+        else:
+            if buffer_inicio is None:
+                buffer_inicio = p
+            buffer_fim = p
+
+    if buffer_inicio is not None:
+        if buffer_inicio == buffer_fim:
+            resultado.append(f"Parcela {buffer_inicio}: {formatar_valor_br(valor_normal)}")
+        else:
+            resultado.append(f"Parcelas {buffer_inicio}-{buffer_fim}: {formatar_valor_br(valor_normal)}")
+
+    return resultado
