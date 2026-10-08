@@ -47,12 +47,13 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         idx_escolhido = renderizar_seletor_proposta(top_refinado)
         st.session_state.unidade_escolhida_idx = idx_escolhido
 
-        # === PLANO DE ENTRADA (calculado UMA vez para PDF e Proposta) ===
+        # === PLANO DE ENTRADA ===
         plano = None
         if idx_escolhido is not None and top_refinado is not None and not top_refinado.empty:
             top_para_pdf = top_refinado.loc[[idx_escolhido]]
             num_pre = st.session_state.get(f"plano_pre_{idx_escolhido}", 0)
             num_pos = st.session_state.get(f"plano_pos_{idx_escolhido}", 0)
+            inter_list = st.session_state.get(f"inter_list_{idx_escolhido}", [])
 
             row = top_para_pdf.iloc[0]
             valor_base = float(row.get("valor_base", 0) or 0)
@@ -61,7 +62,6 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
             entrada = float(sim.get("entrada", 0) or 0)
 
             regra = obter_regra_construtora(construtora)
-            inter_list = st.session_state.get(f"inter_list_{idx_escolhido}", [])
             plano = calcular_plano_entrada(
                 entrada, renda, regra,
                 valor_final_imovel=valor_base,
@@ -71,14 +71,7 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         else:
             top_para_pdf = top_refinado
 
-        # === COMPARTILHAR (agora com plano) ===
-        st.markdown("---")
-        st.markdown("### 📤 Compartilhar Simulação")
-        dados_pdf = _montar_dados_pdf(sim, usuario_logado, USUARIOS, top_para_pdf, plano)
-        resumo_texto = _montar_resumo_texto(sim, usuario_logado, USUARIOS, top_para_pdf, plano)
-        botoes_compartilhar(resumo_texto, sim["nome_cliente"], dados_pdf)
-
-        # === CARDS ===
+        # === CARDS (com plano e intermediárias) ===
         st.markdown("---")
         renderizar_cards(
             top_refinado,
@@ -89,11 +82,22 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
             sim["nome_cliente"],
         )
 
-        # === ENVIAR PROPOSTA ===
+        # === COMPARTILHAR + ENVIAR PROPOSTA ===
         if idx_escolhido is not None:
             st.markdown("---")
+            st.markdown("### 📤 Compartilhar Simulação")
+            st.caption(
+                "Envie a simulação para o cliente (TXT, WhatsApp ou PDF). "
+                "Depois de alinhar com o cliente, clique em **Enviar Proposta ao Gerente**."
+            )
+
+            dados_pdf = _montar_dados_pdf(sim, usuario_logado, USUARIOS, top_para_pdf, plano)
+            resumo_texto = _montar_resumo_texto(sim, usuario_logado, USUARIOS, top_para_pdf, plano)
+            botoes_compartilhar(resumo_texto, sim["nome_cliente"], dados_pdf)
+
+            st.markdown("---")
             st.info(
-                "💡 **Revise o plano de entrada** no card acima (pré/pós-chaves e ato) "
+                "💡 **Revise o plano de entrada** no card acima (pré/pós-chaves e intermediárias) "
                 "antes de enviar. A proposta só é registrada agora."
             )
 
@@ -121,8 +125,6 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
 
 
 # =========================================================
-# MONTAR DADOS PARA PDF
-# =========================================================
 def _montar_dados_pdf(sim, usuario_logado, USUARIOS, top_filtrado, plano=None):
     """Monta o dicionário de dados para o PDF."""
     oportunidades = []
@@ -135,7 +137,7 @@ def _montar_dados_pdf(sim, usuario_logado, USUARIOS, top_filtrado, plano=None):
                 val = row[col]
                 if hasattr(val, "item"):
                     val = val.item()
-                if isinstance(val, float) and (val != val):  # NaN check
+                if isinstance(val, float) and (val != val):
                     val = ""
                 item[col_str] = val
             oportunidades.append(item)
@@ -165,8 +167,6 @@ def _montar_dados_pdf(sim, usuario_logado, USUARIOS, top_filtrado, plano=None):
 
 
 # =========================================================
-# MONTAR RESUMO TEXTO (WhatsApp/TXT)
-# =========================================================
 def _montar_resumo_texto(sim, usuario_logado, USUARIOS, top_filtrado, plano=None):
     from src.compartilhar import gerar_resumo
 
@@ -194,8 +194,6 @@ def _montar_resumo_texto(sim, usuario_logado, USUARIOS, top_filtrado, plano=None
     )
 
 
-# =========================================================
-# SALVAR PROPOSTA
 # =========================================================
 def _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS,
                      num_pre=0, num_pos=0):
