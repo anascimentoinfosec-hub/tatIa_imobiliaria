@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import re
-from src.utils import campo_moeda, formatar_valor_br
+from src.utils import formatar_valor_br, campo_moeda
 from src.regras_entrada_storage import obter_regra_construtora
 from src.regras_entrada_calculo import calcular_plano_entrada, sugerir_parcelas
 
@@ -18,8 +18,7 @@ def renderizar_refinamento():
 
     with st.expander("🔧 Refinar oportunidades (ajuste rápido)", expanded=False):
         st.caption(
-            f"📊 **{len(df_completo)} unidades** disponíveis após os filtros iniciais. "
-            "Ajuste abaixo — os cards atualizam automaticamente."
+            f"📊 **{len(df_completo)} unidades** disponíveis após os filtros iniciais."
         )
 
         col1, col2, col3 = st.columns(3)
@@ -56,7 +55,6 @@ def renderizar_refinamento():
                 filtro_cidade = "Todas"
 
         col4, col5, col6 = st.columns(3)
-
         with col4:
             if "TIPOLOGIA" in df_completo.columns:
                 tipos = ["Todas"] + sorted(df_completo["TIPOLOGIA"].dropna().unique().tolist())
@@ -192,11 +190,10 @@ def renderizar_seletor_proposta(top_recomendacoes):
 # =========================================================
 def renderizar_cards(top_recomendacoes, desconto_acordado, tipo_desconto,
                      coluna_base, preco_col, nome_cliente):
+    """Renderiza cards. Se uma unidade foi escolhida, mostra SÓ ela."""
     if top_recomendacoes is None or top_recomendacoes.empty:
         st.warning(f"⚠️ Nenhuma oportunidade encontrada para {nome_cliente}.")
         return
-
-    st.success(f"✅ {len(top_recomendacoes)} oportunidades encontradas para {nome_cliente}!")
 
     sim = st.session_state.get("simulacao_ativa", {})
     renda = sim.get("renda", 0)
@@ -204,11 +201,31 @@ def renderizar_cards(top_recomendacoes, desconto_acordado, tipo_desconto,
 
     escolhida_idx = st.session_state.get("unidade_escolhida_idx")
 
+    # === SE ESCOLHEU UMA, MOSTRA SÓ ELA ===
+    if escolhida_idx is not None and escolhida_idx in top_recomendacoes.index:
+        st.success("⭐ Unidade escolhida para proposta")
+        row = top_recomendacoes.loc[escolhida_idx]
+        _renderizar_card_imovel(
+            idx=escolhida_idx, row=row, desconto_acordado=desconto_acordado,
+            tipo_desconto=tipo_desconto, coluna_base=coluna_base,
+            preco_col=preco_col, destacado=True,
+            renda=renda, entrada=entrada,
+        )
+        st.caption(
+            "💡 Para trocar de unidade, selecione outra no **🎯 Escolha a unidade para a proposta** "
+            "acima ou aumente os **Cards a exibir** no refinamento."
+        )
+        return
+
+    # === SE NÃO ESCOLHEU, MOSTRA TODOS ===
+    st.success(f"✅ {len(top_recomendacoes)} oportunidades encontradas para {nome_cliente}!")
+    st.caption("💡 Selecione uma unidade acima para ver o card completo com plano de entrada.")
+
     for idx, row in top_recomendacoes.iterrows():
         _renderizar_card_imovel(
             idx=idx, row=row, desconto_acordado=desconto_acordado,
             tipo_desconto=tipo_desconto, coluna_base=coluna_base,
-            preco_col=preco_col, destacado=(idx == escolhida_idx),
+            preco_col=preco_col, destacado=False,
             renda=renda, entrada=entrada,
         )
 
@@ -254,11 +271,12 @@ def _renderizar_info_imovel(row, desconto_acordado, tipo_desconto, coluna_base,
     pavto = row.get("PAVTO", row.get("ANDAR", ""))
     if bloco or pavto:
         partes = []
-        if bloco:
+        if bloco and str(bloco).lower() != "nan":
             partes.append(f"Bloco: {bloco}")
-        if pavto:
+        if pavto and str(pavto).lower() != "nan":
             partes.append(f"Andar: {pavto}")
-        st.write(f"📍 **{' | '.join(partes)}**")
+        if partes:
+            st.write(f"📍 **{' | '.join(partes)}**")
 
     for col in ["AVALIAÇÃO", "AVALIACAO", "VALOR_DA_AVALIACAO", "VALOR_DE_AVALIACAO"]:
         if col in row.index and pd.notna(row[col]):
@@ -285,6 +303,9 @@ def _renderizar_info_imovel(row, desconto_acordado, tipo_desconto, coluna_base,
         st.write(f"🚗 **Vagas:** {row['VAGA']}")
 
 
+# =========================================================
+# PLANO DE ENTRADA
+# =========================================================
 def _renderizar_plano_entrada(idx, row, renda, entrada):
     """Coluna direita: plano de entrada com intermediárias agendadas."""
     valor_base = float(row.get("valor_base", 0))
@@ -312,7 +333,6 @@ def _renderizar_plano_entrada(idx, row, renda, entrada):
             step=1, key=f"plano_pos_{idx}",
         )
 
-    # === INTERMEDIÁRIAS AGENDADAS ===
     intermediarias = _renderizar_intermediarias(idx, num_pre, num_pos)
 
     plano = calcular_plano_entrada(
@@ -322,7 +342,6 @@ def _renderizar_plano_entrada(idx, row, renda, entrada):
         intermediarias=intermediarias,
     )
 
-    # === RESUMO ===
     st.markdown("---")
     st.caption(f"🏢 Valor do imóvel: **{formatar_valor_br(valor_base)}** _(informativo)_")
     st.write(f"💵 **Entrada:** {formatar_valor_br(plano['valor_entrada'])}")
@@ -333,13 +352,13 @@ def _renderizar_plano_entrada(idx, row, renda, entrada):
     )
     st.write(f"📦 **A parcelar:** {formatar_valor_br(plano['a_parcelar'])}")
 
-    if plano["soma_inter_total"] > 0:
+    if plano.get("soma_inter_total", 0) > 0:
         st.caption(
             f"➕ Intermediárias: **{formatar_valor_br(plano['soma_inter_total'])}** "
             f"(pré: {formatar_valor_br(plano['soma_inter_pre'])} | "
             f"pós: {formatar_valor_br(plano['soma_inter_pos'])})"
         )
-        st.caption(f"➖ Restante nas parcelas normais: {formatar_valor_br(plano['restante_parcelas'])}")
+        st.caption(f"➖ Restante nas parcelas normais: {formatar_valor_br(plano.get('restante_parcelas', 0))}")
 
     st.markdown("**⏳ Pré-chaves**")
     if plano["num_pre"] > 0:
@@ -359,12 +378,10 @@ def _renderizar_plano_entrada(idx, row, renda, entrada):
     else:
         st.caption("Sem parcelas pós-chaves")
 
-    # === CRONOGRAMA (expandable) ===
     if intermediarias:
         with st.expander("📅 Ver cronograma de pagamento"):
             _renderizar_cronograma(plano, intermediarias)
 
-    # === ALERTAS ===
     if plano["alertas"]:
         for a in plano["alertas"]:
             if "🟢" in a:
@@ -391,7 +408,6 @@ def _renderizar_intermediarias(idx, num_pre, num_pos):
             "(ex: 13º salário, férias). Reduzem o valor das demais parcelas."
         )
 
-        # Renderiza cada intermediária
         for i, inter in enumerate(lista):
             col1, col2, col3, col4 = st.columns([2, 2, 3, 0.7])
 
@@ -440,17 +456,13 @@ def _renderizar_intermediarias(idx, num_pre, num_pos):
 
 def _renderizar_cronograma(plano, intermediarias):
     """Mostra o cronograma completo de parcelas."""
-    st.caption(
-        "💡 Veja como fica cada parcela, considerando as intermediárias agendadas."
-    )
+    st.caption("💡 Veja como fica cada parcela, considerando as intermediárias agendadas.")
 
-    # Mapa de intermediárias por fase+parcela
     mapa_inter = {}
     for i in intermediarias:
         chave = (i.get("fase", "pre"), int(i.get("parcela", 0)))
         mapa_inter[chave] = mapa_inter.get(chave, 0) + i.get("valor", 0)
 
-    # === PRÉ-CHAVES ===
     if plano["num_pre"] > 0:
         st.markdown(f"**⏳ Pré-chaves ({plano['num_pre']} parcelas)**")
         for p in range(1, plano["num_pre"] + 1):
@@ -465,7 +477,6 @@ def _renderizar_cronograma(plano, intermediarias):
             else:
                 st.caption(f"Parcela {p}: {formatar_valor_br(valor_normal)}")
 
-    # === PÓS-CHAVES ===
     if plano["num_pos"] > 0:
         st.markdown(f"**🔑 Pós-chaves ({plano['num_pos']} parcelas)**")
         for p in range(1, plano["num_pos"] + 1):
