@@ -1,58 +1,24 @@
 import json
 import os
 from datetime import datetime
+from src.db import supabase_disponivel
 
 ARQUIVO_SIMULACOES = "dados/simulacoes.json"
 
-# =========================================================
-# STATUS DO FUNIL DE VENDA
-# =========================================================
 STATUS_PROPOSTA = {
-    "pendente": {
-        "nome": "🔔 Pendente (cliente aceitou)",
-        "cor": "#f59e0b",
-        "ordem": 1,
-        "acao": "Enviar para análise",
-    },
-    "em_analise": {
-        "nome": "📤 Em análise (acessoria)",
-        "cor": "#3b82f6",
-        "ordem": 2,
-        "acao": "Aprovar / Rejeitar",
-    },
-    "aprovada": {
-        "nome": "✅ Aprovada (crédito)",
-        "cor": "#22c55e",
-        "ordem": 3,
-        "acao": "Cadastrar na construtora",
-    },
-    "aguardando_construtora": {
-        "nome": "🏢 Aguardando validação construtora",
-        "cor": "#8b5cf6",
-        "ordem": 4,
-        "acao": "Contrato foi enviado?",
-    },
-    "contrato_enviado": {
-        "nome": "📄 Contrato enviado (aguardando assinatura)",
-        "cor": "#06b6d4",
-        "ordem": 5,
-        "acao": "Confirmar venda",
-    },
-    "venda_confirmada": {
-        "nome": "🎉 Venda confirmada",
-        "cor": "#10b981",
-        "ordem": 6,
-        "acao": None,
-    },
-    "rejeitada": {
-        "nome": "❌ Rejeitada",
-        "cor": "#ef4444",
-        "ordem": 99,
-        "acao": None,
-    },
+    "pendente": {"nome": "🔔 Pendente (cliente aceitou)", "cor": "#f59e0b", "ordem": 1, "acao": "Enviar para análise"},
+    "em_analise": {"nome": "📤 Em análise (acessoria)", "cor": "#3b82f6", "ordem": 2, "acao": "Aprovar / Rejeitar"},
+    "aprovada": {"nome": "✅ Aprovada (crédito)", "cor": "#22c55e", "ordem": 3, "acao": "Cadastrar na construtora"},
+    "aguardando_construtora": {"nome": "🏢 Aguardando validação construtora", "cor": "#8b5cf6", "ordem": 4, "acao": "Contrato foi enviado?"},
+    "contrato_enviado": {"nome": "📄 Contrato enviado (aguardando assinatura)", "cor": "#06b6d4", "ordem": 5, "acao": "Confirmar venda"},
+    "venda_confirmada": {"nome": "🎉 Venda confirmada", "cor": "#10b981", "ordem": 6, "acao": None},
+    "rejeitada": {"nome": "❌ Rejeitada", "cor": "#ef4444", "ordem": 99, "acao": None},
 }
 
 
+# =========================================================
+# FALLBACK JSON
+# =========================================================
 def _carregar_raw():
     try:
         if os.path.exists(ARQUIVO_SIMULACOES):
@@ -73,12 +39,15 @@ def _gerar_id():
     return datetime.now().strftime("%Y%m%d%H%M%S%f")
 
 
+# =========================================================
+# SALVAR
+# =========================================================
 def salvar_simulacao(nome_cliente, renda, entrada, bairro, origem,
                      desconto, tipo_desconto, gerente, top_recomendacoes,
                      status_proposta="pendente", dados_extra=None):
-    """Salva uma nova simulação no histórico. Retorna o ID gerado."""
-    simulacoes = _carregar_raw()
-
+    # Limpa NaN do top_recomendacoes antes de iterar
+    if top_recomendacoes is not None and not top_recomendacoes.empty:
+        top_recomendacoes = top_recomendacoes.fillna("")
     oportunidades = []
     if top_recomendacoes is not None and not top_recomendacoes.empty:
         for _, row in top_recomendacoes.iterrows():
@@ -105,25 +74,81 @@ def salvar_simulacao(nome_cliente, renda, entrada, bairro, origem,
         "total_oportunidades": len(oportunidades),
         "oportunidades": oportunidades,
         "status_proposta": status_proposta,
-        "historico_status": [
-            {"status": status_proposta, "data": datetime.now().isoformat(),
-             "por": gerente or "", "motivo": ""}
-        ],
+        "historico_status": [{
+            "status": status_proposta,
+            "data": datetime.now().isoformat(),
+            "por": gerente or "",
+            "motivo": "",
+        }],
     }
 
-    # Dados extras (data_nascimento, fgts, subsidio, parcela_morando, etc.)
     if dados_extra:
         for k, v in dados_extra.items():
             registro[k] = v
 
-    simulacoes.append(registro)
-    _salvar_raw(simulacoes)
+    if supabase_disponivel():
+        from src.simulacoes_storage_supabase import salvar_simulacao_sb
+        salvar_simulacao_sb(registro)
+    else:
+        simulacoes = _carregar_raw()
+        simulacoes.append(registro)
+        _salvar_raw(simulacoes)
+
     return registro["id"]
 
 
+# =========================================================
+# CARREGAR
+# =========================================================
+def carregar_simulacoes():
+    if supabase_disponivel():
+        from src.simulacoes_storage_supabase import carregar_simulacoes as _sb, migrar_do_json
+        dados = _sb()
+        if not dados:
+            count, _ = migrar_do_json()
+            if count > 0:
+                dados = _sb()
+        return dados
+
+    simulacoes = _carregar_raw()
+    return list(reversed(simulacoes))
+
+
+def carregar_simulacao_por_id(sim_id):
+    if supabase_disponivel():
+        for sim in carregar_simulacoes():
+            if sim.get("id") == sim_id:
+                return sim
+        return None
+
+    for sim in _carregar_raw():
+        if sim["id"] == sim_id:
+            return sim
+    return None
+
+
+# =========================================================
+# ATUALIZAR STATUS
+# =========================================================
 def atualizar_status_proposta(sim_id, novo_status, por_usuario="", motivo=""):
-    """Atualiza o status de uma proposta."""
     if novo_status not in STATUS_PROPOSTA:
+        return False
+
+    if supabase_disponivel():
+        from src.simulacoes_storage_supabase import carregar_simulacoes as _sb, salvar_simulacao_sb
+        for sim in _sb():
+            if sim.get("id") == sim_id:
+                sim["status_proposta"] = novo_status
+                hist = sim.get("historico_status", [])
+                hist.append({
+                    "status": novo_status,
+                    "data": datetime.now().isoformat(),
+                    "por": por_usuario,
+                    "motivo": motivo,
+                })
+                sim["historico_status"] = hist
+                salvar_simulacao_sb(sim)
+                return True
         return False
 
     simulacoes = _carregar_raw()
@@ -143,19 +168,14 @@ def atualizar_status_proposta(sim_id, novo_status, por_usuario="", motivo=""):
     return False
 
 
-def carregar_simulacoes():
-    simulacoes = _carregar_raw()
-    return list(reversed(simulacoes))
-
-
-def carregar_simulacao_por_id(sim_id):
-    for sim in _carregar_raw():
-        if sim["id"] == sim_id:
-            return sim
-    return None
-
-
+# =========================================================
+# EXCLUIR
+# =========================================================
 def excluir_simulacao(sim_id):
+    if supabase_disponivel():
+        from src.simulacoes_storage_supabase import excluir_simulacao_sb
+        return excluir_simulacao_sb(sim_id)
+
     simulacoes = _carregar_raw()
     novas = [s for s in simulacoes if s["id"] != sim_id]
     if len(novas) < len(simulacoes):
@@ -164,20 +184,20 @@ def excluir_simulacao(sim_id):
     return False
 
 
+# =========================================================
+# HELPERS
+# =========================================================
 def contar_propostas_pendentes():
-    """Conta quantas propostas estão com status 'pendente'."""
-    simulacoes = _carregar_raw()
+    simulacoes = carregar_simulacoes()
     return sum(1 for s in simulacoes if s.get("status_proposta") == "pendente")
 
 
 def listar_propostas_por_status(status):
-    simulacoes = _carregar_raw()
-    return [s for s in reversed(simulacoes) if s.get("status_proposta") == status]
+    simulacoes = carregar_simulacoes()
+    return [s for s in simulacoes if s.get("status_proposta") == status]
 
 
 def listar_propostas_ativas():
-    """Retorna propostas que ainda estão no fluxo (não confirmadas nem rejeitadas)."""
-    simulacoes = _carregar_raw()
-    ativos = {"pendente", "em_analise", "aprovada",
-              "aguardando_construtora", "contrato_enviado"}
-    return [s for s in reversed(simulacoes) if s.get("status_proposta") in ativos]
+    ativos = {"pendente", "em_analise", "aprovada", "aguardando_construtora", "contrato_enviado"}
+    simulacoes = carregar_simulacoes()
+    return [s for s in simulacoes if s.get("status_proposta") in ativos]

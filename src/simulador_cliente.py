@@ -1,8 +1,7 @@
-import streamlit as st
+﻿import streamlit as st
 from datetime import date
 from src.construtoras_storage import carregar_cidades
-from src.origens_storage import carregar_origens
-from src.lazer_storage import carregar_lazer
+from src.construtoras_storage import carregar_origens, carregar_lazer
 from src.utils import campo_moeda
 
 

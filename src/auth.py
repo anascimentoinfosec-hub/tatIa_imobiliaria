@@ -7,6 +7,11 @@ from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from src.utils import hash_senha
+from src.usuarios_storage import (
+    carregar_usuarios as _carregar_usuarios_supabase,
+    salvar_usuarios as _salvar_usuarios_supabase,
+    criar_usuario as _criar_usuario_supabase,
+)
 
 ARQUIVO_USUARIOS = "dados/usuarios.json"
 ARQUIVO_RECUPERACAO = "dados/recuperacao.json"
@@ -15,43 +20,44 @@ ARQUIVO_RECUPERACAO = "dados/recuperacao.json"
 # FUNÇÃO CORRIGIDA: NUNCA SOBRESCREVE O ARQUIVO EXISTENTE
 # =========================================================
 def carregar_usuarios():
-    """Carrega usuários do arquivo JSON. Se não existir, cria com padrão."""
-    try:
-        if os.path.exists(ARQUIVO_USUARIOS):
-            with open(ARQUIVO_USUARIOS, 'r', encoding='utf-8') as f:
-                return json.load(f)
-    except:
-        pass
-    
-    # Se o arquivo não existe, cria com usuários padrão
-    usuarios = {
-        "superadmin": {
-            "nome": "Administrador do Sistema",
-            "hash": hash_senha("admin2026"),
-            "perfil": "superadmin",
-            "ativo": True,
-            "email": "admin@email.com",
-            "criado_em": datetime.now().isoformat()
-        },
-        "gerente": {
-            "nome": "Gerente Geral",
-            "hash": hash_senha("gerente2026"),
-            "perfil": "gerente",
-            "ativo": True,
-            "email": "gerente@email.com",
-            "criado_em": datetime.now().isoformat()
-        }
-    }
-    
-    # Salva o arquivo
-    with open(ARQUIVO_USUARIOS, 'w', encoding='utf-8') as f:
-        json.dump(usuarios, f, indent=2, ensure_ascii=False)
-    
+    """Carrega usuários do Supabase. Se vazio, tenta migrar do JSON antigo."""
+    usuarios = _carregar_usuarios_supabase()
+
+    # Se o Supabase está vazio, tenta migrar do JSON antigo
+    if not usuarios:
+        try:
+            from src.usuarios_storage import migrar_do_json
+            count, _ = migrar_do_json()
+            if count > 0:
+                import streamlit as st
+                st.toast(f"✅ {count} usuário(s) migrado(s) do JSON para o Supabase!")
+                usuarios = _carregar_usuarios_supabase()
+        except Exception:
+            pass
+
+    # Se ainda vazio (primeira execução sem JSON), cria padrões
+    if not usuarios:
+        from datetime import datetime
+        _criar_usuario_supabase(
+            login="superadmin",
+            nome="Administrador do Sistema",
+            senha="admin2026",
+            perfil="superadmin",
+            email="admin@email.com",
+        )
+        _criar_usuario_supabase(
+            login="gerente",
+            nome="Gerente Geral",
+            senha="gerente2026",
+            perfil="gerente",
+            email="gerente@email.com",
+        )
+        usuarios = _carregar_usuarios_supabase()
+
     return usuarios
 
 def salvar_usuarios(usuarios):
-    with open(ARQUIVO_USUARIOS, 'w', encoding='utf-8') as f:
-        json.dump(usuarios, f, indent=2, ensure_ascii=False)
+    _salvar_usuarios_supabase(usuarios)
 
 def verificar_login(usuario: str, senha: str, usuarios: dict) -> bool:
     if usuario not in usuarios:

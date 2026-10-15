@@ -1,11 +1,11 @@
-import streamlit as st
+﻿import streamlit as st
 from datetime import datetime, date
 from src.vendas_storage import (
     carregar_vendas, salvar_venda, atualizar_venda, excluir_venda,
     obter_venda, carregar_status, salvar_status, obter_status_por_id,
     carregar_campos_extras, adicionar_campo_extra, remover_campo_extra,
 )
-from src.origens_storage import carregar_origens
+from src.construtoras_storage import carregar_origens
 from src.construtoras_storage import carregar_construtoras
 
 

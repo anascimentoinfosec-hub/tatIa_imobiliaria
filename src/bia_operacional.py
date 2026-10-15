@@ -1,4 +1,4 @@
-import streamlit as st
+﻿import streamlit as st
 import json
 import os
 from datetime import datetime
@@ -8,7 +8,7 @@ from src.vendas_storage import carregar_vendas, carregar_status, calcular_metric
 from src.simulacoes_storage import carregar_simulacoes
 from src.construtoras_storage import carregar_construtoras
 from src.regras_storage import carregar_regras
-from src.origens_storage import carregar_origens
+from src.construtoras_storage import carregar_origens
 
 MAX_HISTORICO = 10
 

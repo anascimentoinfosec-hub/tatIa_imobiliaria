@@ -2,6 +2,7 @@
 dados/usuarios.json
 dados/recuperacao.json
 dados/planilhas/
+dados/*_backup.json
 *.log
 *.pyc
 _pycache_/
