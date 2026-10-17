@@ -17,27 +17,23 @@ ARQUIVO_USUARIOS = "dados/usuarios.json"
 ARQUIVO_RECUPERACAO = "dados/recuperacao.json"
 
 # =========================================================
-# FUNÇÃO CORRIGIDA: NUNCA SOBRESCREVE O ARQUIVO EXISTENTE
+# CARREGAR / SALVAR USUÁRIOS (SUPABASE)
 # =========================================================
 def carregar_usuarios():
     """Carrega usuários do Supabase. Se vazio, tenta migrar do JSON antigo."""
     usuarios = _carregar_usuarios_supabase()
 
-    # Se o Supabase está vazio, tenta migrar do JSON antigo
     if not usuarios:
         try:
             from src.usuarios_storage import migrar_do_json
             count, _ = migrar_do_json()
             if count > 0:
-                import streamlit as st
                 st.toast(f"✅ {count} usuário(s) migrado(s) do JSON para o Supabase!")
                 usuarios = _carregar_usuarios_supabase()
         except Exception:
             pass
 
-    # Se ainda vazio (primeira execução sem JSON), cria padrões
     if not usuarios:
-        from datetime import datetime
         _criar_usuario_supabase(
             login="superadmin",
             nome="Administrador do Sistema",
@@ -64,6 +60,9 @@ def verificar_login(usuario: str, senha: str, usuarios: dict) -> bool:
         return False
     return usuarios[usuario]["hash"] == hash_senha(senha) and usuarios[usuario]["ativo"]
 
+# =========================================================
+# RECUPERAÇÃO DE SENHA
+# =========================================================
 def gerar_token_recuperacao():
     return ''.join(secrets.choice('0123456789') for _ in range(6))
 
@@ -166,18 +165,37 @@ def enviar_email_recuperacao(email, token):
         st.error(f"❌ Erro ao enviar e-mail: {str(e)}")
         return False
 
+# =========================================================
+# LOGIN (COM MFA)
+# =========================================================
 def exibir_login_sidebar(USUARIOS):
     st.markdown("### Login")
-    usuario = st.text_input("Usuário")
-    senha = st.text_input("Senha", type="password")
+    
+    # Se o usuário já passou pela senha e está pendente de MFA, mostra apenas a tela do código
+    if "mfa_pendente" in st.session_state:
+        _renderizar_tela_mfa(USUARIOS)
+        return
+
+    usuario = st.text_input("Usuário", key="login_usuario")
+    senha = st.text_input("Senha", type="password", key="login_senha")
     
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("Entrar", use_container_width=True):
             if verificar_login(usuario, senha, USUARIOS):
-                st.session_state.usuario_logado = usuario
-                st.success(f"✅ Bem-vindo, {USUARIOS[usuario]['nome']}!")
-                st.rerun()
+                from src.mfa import obter_status_mfa
+                mfa_ativo, mfa_secret = obter_status_mfa(usuario, USUARIOS)
+                
+                if mfa_ativo:
+                    # Guarda na sessão e recarrega para mostrar a tela de código
+                    st.session_state["mfa_pendente"] = usuario
+                    st.session_state["mfa_secret_pendente"] = mfa_secret
+                    st.rerun()
+                else:
+                    # Login normal
+                    st.session_state.usuario_logado = usuario
+                    st.success(f"✅ Bem-vindo, {USUARIOS[usuario]['nome']}!")
+                    st.rerun()
             else:
                 st.error("❌ Usuário ou senha inválidos!")
     
@@ -186,67 +204,107 @@ def exibir_login_sidebar(USUARIOS):
             st.session_state['recuperando_senha'] = True
             st.rerun()
     
+    # Fluxo de recuperação de senha
     if st.session_state.get('recuperando_senha', False):
-        st.markdown("---")
-        st.markdown("### 🔐 Recuperar senha")
-        
-        email = st.text_input("E-mail cadastrado")
-        
-        if st.button("📧 Enviar código", use_container_width=True):
-            if email:
-                email_existe = False
-                for user, dados in USUARIOS.items():
-                    if dados.get("email") == email:
-                        email_existe = True
-                        break
-                
-                if not email_existe:
-                    st.warning("⚠️ E-mail não encontrado. Verifique ou contate o administrador.")
-                else:
-                    token = gerar_token_recuperacao()
-                    salvar_token_recuperacao(email, token)
-                    
-                    if enviar_email_recuperacao(email, token):
-                        st.success("✅ Código enviado para seu e-mail!")
-                        st.session_state['token_enviado'] = True
-                    else:
-                        st.error("❌ Erro ao enviar e-mail")
-            else:
-                st.warning("⚠️ Digite seu e-mail cadastrado.")
-        
-        if st.session_state.get('token_enviado', False):
-            codigo = st.text_input("Código de verificação")
-            nova_senha = st.text_input("Nova senha", type="password")
-            confirmar_senha = st.text_input("Confirmar nova senha", type="password")
+        _renderizar_recuperacao_senha(USUARIOS)
+
+
+def _renderizar_tela_mfa(USUARIOS):
+    """Tela exibida após a senha correta, para verificar o código de 6 dígitos."""
+    st.markdown("---")
+    st.markdown("### 🔐 Verificação em Duas Etapas")
+    st.caption("Abra seu aplicativo autenticador (Google Authenticator, Authy, etc.) e digite o código de 6 dígitos.")
+    
+    codigo = st.text_input("Código", max_chars=6, type="password", key="input_mfa_codigo")
+    
+    col_a, col_b = st.columns(2)
+    with col_a:
+        if st.button("Verificar", use_container_width=True, type="primary"):
+            usuario_pendente = st.session_state.get("mfa_pendente")
+            segredo = st.session_state.get("mfa_secret_pendente")
             
-            if st.button("✅ Alterar senha", use_container_width=True):
-                if codigo and nova_senha and confirmar_senha:
-                    if nova_senha != confirmar_senha:
-                        st.error("❌ As senhas não coincidem!")
-                    elif len(nova_senha) < 6:
-                        st.error("❌ A senha deve ter pelo menos 6 caracteres!")
-                    else:
-                        if validar_token_recuperacao(email, codigo):
-                            for user, dados in USUARIOS.items():
-                                if dados.get("email") == email:
-                                    dados["hash"] = hash_senha(nova_senha)
-                                    salvar_usuarios(USUARIOS)
-                                    remover_token_recuperacao(email)
-                                    st.success("✅ Senha alterada com sucesso!")
-                                    st.session_state['recuperando_senha'] = False
-                                    st.session_state['token_enviado'] = False
-                                    st.rerun()
-                                    break
-                        else:
-                            st.error("❌ Código inválido ou expirado!")
-                else:
-                    st.error("❌ Preencha todos os campos!")
-        
-        if st.button("🔙 Voltar ao login"):
-            st.session_state['recuperando_senha'] = False
-            st.session_state['token_enviado'] = False
+            from src.mfa import verificar_codigo
+            if verificar_codigo(segredo, codigo):
+                st.session_state.usuario_logado = usuario_pendente
+                del st.session_state["mfa_pendente"]
+                del st.session_state["mfa_secret_pendente"]
+                st.success(f"✅ Bem-vindo, {USUARIOS[usuario_pendente]['nome']}!")
+                st.rerun()
+            else:
+                st.error("❌ Código inválido ou expirado. Tente novamente.")
+    
+    with col_b:
+        if st.button("Cancelar", use_container_width=True):
+            del st.session_state["mfa_pendente"]
+            del st.session_state["mfa_secret_pendente"]
             st.rerun()
 
+
+def _renderizar_recuperacao_senha(USUARIOS):
+    """Fluxo de esqueci a senha."""
+    st.markdown("---")
+    st.markdown("### 🔐 Recuperar senha")
+    
+    email = st.text_input("E-mail cadastrado")
+    
+    if st.button("📧 Enviar código", use_container_width=True):
+        if email:
+            email_existe = False
+            for user, dados in USUARIOS.items():
+                if dados.get("email") == email:
+                    email_existe = True
+                    break
+            
+            if not email_existe:
+                st.warning("⚠️ E-mail não encontrado. Verifique ou contate o administrador.")
+            else:
+                token = gerar_token_recuperacao()
+                salvar_token_recuperacao(email, token)
+                
+                if enviar_email_recuperacao(email, token):
+                    st.success("✅ Código enviado para seu e-mail!")
+                    st.session_state['token_enviado'] = True
+                else:
+                    st.error("❌ Erro ao enviar e-mail")
+        else:
+            st.warning("⚠️ Digite seu e-mail cadastrado.")
+    
+    if st.session_state.get('token_enviado', False):
+        codigo = st.text_input("Código de verificação")
+        nova_senha = st.text_input("Nova senha", type="password")
+        confirmar_senha = st.text_input("Confirmar nova senha", type="password")
+        
+        if st.button("✅ Alterar senha", use_container_width=True):
+            if codigo and nova_senha and confirmar_senha:
+                if nova_senha != confirmar_senha:
+                    st.error("❌ As senhas não coincidem!")
+                elif len(nova_senha) < 6:
+                    st.error("❌ A senha deve ter pelo menos 6 caracteres!")
+                else:
+                    if validar_token_recuperacao(email, codigo):
+                        for user, dados in USUARIOS.items():
+                            if dados.get("email") == email:
+                                dados["hash"] = hash_senha(nova_senha)
+                                salvar_usuarios(USUARIOS)
+                                remover_token_recuperacao(email)
+                                st.success("✅ Senha alterada com sucesso!")
+                                st.session_state['recuperando_senha'] = False
+                                st.session_state['token_enviado'] = False
+                                st.rerun()
+                                break
+                    else:
+                        st.error("❌ Código inválido ou expirado!")
+            else:
+                st.error("❌ Preencha todos os campos!")
+    
+    if st.button("🔙 Voltar ao login"):
+        st.session_state['recuperando_senha'] = False
+        st.session_state['token_enviado'] = False
+        st.rerun()
+
+# =========================================================
+# PÁGINA DE LOGIN PRINCIPAL
+# =========================================================
 def pagina_login():
     st.markdown("""
     <style>

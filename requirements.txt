@@ -8,3 +8,5 @@ supabase
 fpdf2
 plotly
 tavily-python
+pyotp
+qrcode[pil]
