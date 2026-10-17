@@ -248,14 +248,27 @@ def _renderizar_card_imovel(idx, row, desconto_acordado, tipo_desconto,
 def _renderizar_info_imovel(row, desconto_acordado, tipo_desconto, coluna_base,
                              preco_col, destacado=False):
     unidade = row.get("UNIDADE", "N/A")
+    construtora = row.get("_construtora", "")
+    produto = row.get("_produto", "")
+
+    # === SELO DE STATUS ===
+    from src.unidades_status_storage import carregar_status_unidade, STATUS_UNIDADE
+    info_status = carregar_status_unidade(construtora, produto, unidade)
+    if info_status:
+        st_info = STATUS_UNIDADE.get(info_status.get("status", "disponivel"),
+                                     {"nome": info_status.get("status"), "cor": "#94a3b8"})
+        st.markdown(
+            f"<span style='background-color:{st_info['cor']}; color:white; "
+            f"padding:3px 12px; border-radius:12px; font-size:12px; font-weight:600;'>"
+            f"{st_info['nome']}</span>",
+            unsafe_allow_html=True,
+        )
 
     if destacado:
         st.markdown(f"**🏢 Unidade {unidade}** ⭐ **_(proposta escolhida)_**")
     else:
         st.markdown(f"**🏢 Unidade {unidade}**")
 
-    construtora = row.get("_construtora", "")
-    produto = row.get("_produto", "")
     if construtora or produto:
         linha = []
         if construtora:
@@ -295,11 +308,11 @@ def _renderizar_info_imovel(row, desconto_acordado, tipo_desconto, coluna_base,
                 pass
 
     st.write(f"💸 **Desconto:** {formatar_valor_br(desconto_acordado)}")
-    st.write(f"💰 **Valor base:** {formatar_valor_br(row['valor_base'])}")
+    st.write(f"💰 **Valorim base:** {formatar_valor_br(row['valor_base'])}")
 
-    if "TIPOLOGIA" in row:
+    if "TIPOLOGIA" in row.index and pd.notna(row["TIPOLOGIA"]):
         st.write(f"🏠 **Tipo:** {row['TIPOLOGIA']}")
-    if "VAGA" in row:
+    if "VAGA" in row.index and pd.notna(row["VAGA"]):
         st.write(f"🚗 **Vagas:** {row['VAGA']}")
 
 

@@ -3,6 +3,8 @@ dados/usuarios.json
 dados/recuperacao.json
 dados/planilhas/
 dados/*_backup.json
+dados/
+*.backup_*
 *.log
 *.pyc
 _pycache_/

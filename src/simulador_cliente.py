@@ -281,6 +281,27 @@ def _analisar(df_total, nome_cliente, data_nascimento, renda_cliente,
             df = df[df.apply(atende_lazer, axis=1)]
             etapas.append((f"Lazer ({len(lazer_preferencias)})", len(df)))
 
+    # === FILTRA UNIDADES JÁ EM PROCESSO OU VENDIDAS ===
+    from src.unidades_status_storage import carregar_todas_marcadas
+    marcadas = carregar_todas_marcadas()
+
+    if marcadas and "_construtora" in df.columns and "_produto" in df.columns:
+        def _esta_bloqueada(row):
+            chave = (str(row.get("_construtora", "")),
+                     str(row.get("_produto", "")),
+                     str(row.get("UNIDADE", "")))
+            info = marcadas.get(chave)
+            if not info:
+                return False
+            # Se está disponível, não bloqueia
+            return info.get("status") in ("em_processo", "vendida")
+
+        antes = len(df)
+        df = df[~df.apply(_esta_bloqueada, axis=1)]
+        bloqueadas = antes - len(df)
+        if bloqueadas > 0:
+            etapas.append((f"Unidades já ofertadas/vendidas ({bloqueadas} removidas)", len(df)))
+
     df = _aplicar_desconto_por_linha(df, desconto_acordado)
 
     if df.empty:

@@ -1,4 +1,5 @@
 import streamlit as st
+from src.unidades_status_storage import marcar_unidade, desmarcar_unidade
 from datetime import datetime
 from src.simulacoes_storage import (
     carregar_simulacoes, excluir_simulacao, STATUS_PROPOSTA,
@@ -277,6 +278,15 @@ def _renderizar_acoes_status(sim, status, responsavel):
             if st.button("❌ Rejeitar", key=f"acao_rej_{sim_id}", use_container_width=True):
                 motivo = st.session_state.get(f"motivo_{sim_id}", "")
                 atualizar_status_proposta(sim_id, "rejeitada", responsavel, motivo=motivo)
+                # Libera a unidade
+                oportunidades = sim.get("oportunidades", [])
+                if oportunidades:
+                    op = oportunidades[0]
+                    desmarcar_unidade(
+                        construtora=str(op.get("_construtora", "")),
+                        produto=str(op.get("_produto", "")),
+                        unidade=str(op.get("UNIDADE", "")),
+                    )
                 st.rerun()
         with col3:
             st.text_input("Motivo (se rejeitar)", key=f"motivo_{sim_id}", placeholder="Ex: renda insuficiente")
@@ -309,6 +319,20 @@ def _confirmar_venda_real(sim, responsavel):
     from src.vendas_storage import salvar_venda
     from datetime import date
 
+    # 0. Marca unidade como VENDIDA
+    oportunidades = sim.get("oportunidades", [])
+    if oportunidades:
+        op = oportunidades[0]
+        marcar_unidade(
+            construtora=str(op.get("_construtora", "")),
+            produto=str(op.get("_produto", "")),
+            unidade=str(op.get("UNIDADE", "")),
+            status="vendida",
+            proposta_id=sim["id"],
+            cliente=sim.get("cliente", ""),
+            corretor=sim.get("gerente", ""),
+        )
+    
     # 1. Atualiza status
     atualizar_status_proposta(sim["id"], "venda_confirmada", responsavel)
 

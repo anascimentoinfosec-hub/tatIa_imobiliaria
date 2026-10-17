@@ -21,6 +21,11 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
     st.title("🏢 Simulador de Entrada de Construtora")
     st.caption("Analise o potencial do cliente em **todas as construtoras** disponíveis.")
 
+    # Mostra mensagem de sucesso da última ação (se houver)
+    if st.session_state.get("_msg_sucesso_simulador"):
+        msg = st.session_state.pop("_msg_sucesso_simulador")
+        st.success(msg)
+
     usuario_logado = st.session_state.get("usuario_logado")
 
     # ---------- 1. Carrega TODAS as planilhas ----------
@@ -198,6 +203,7 @@ def _montar_resumo_texto(sim, usuario_logado, USUARIOS, top_filtrado, plano=None
 def _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS,
                      num_pre=0, num_pos=0):
     from src.simulacoes_storage import salvar_simulacao
+    from src.unidades_status_storage import marcar_unidade
 
     top_unit = top.loc[[idx_escolhido]]
     nome_gerente = USUARIOS[usuario_logado]["nome"] if usuario_logado in USUARIOS else ""
@@ -205,6 +211,8 @@ def _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS,
     row = top_unit.iloc[0]
     valor_base = float(row.get("valor_base", 0) or 0)
     construtora = str(row.get("_construtora", ""))
+    produto = str(row.get("_produto", ""))
+    unidade = str(row.get("UNIDADE", ""))
     renda = float(sim.get("renda", 0) or 0)
     entrada = float(sim.get("entrada", 0) or 0)
 
@@ -244,7 +252,81 @@ def _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS,
         status_proposta="pendente",
         dados_extra=dados_extra,
     )
-    st.toast(f"📤 Proposta enviada (ID: {sim_id[-6:]})")
+
+    # === MARCA A UNIDADE COMO EM PROCESSO ===
+    marcar_unidade(
+        construtora=construtora,
+        produto=produto,
+        unidade=unidade,
+        status="em_processo",
+        proposta_id=sim_id,
+        cliente=sim.get("nome_cliente", ""),
+        corretor=nome_gerente,
+    )
+
+    # === LIMPA O ESTADO DO SIMULADOR ===
+    _limpar_estado_simulador()
+
+    # === MENSAGEM DE SUCESSO (persiste após o rerun) ===
+    st.session_state["_msg_sucesso_simulador"] = (
+        f"✅ Proposta enviada com sucesso! (ID: {sim_id[-6:]})"
+    )
+
+    # === SCROLL PARA O TOPO ===
+    _scroll_para_topo()
+
+
+def _limpar_estado_simulador():
+    """Remove todas as chaves do session_state do simulador."""
+    # Chaves fixas
+    chaves_fixas = [
+        "simulacao_ativa",
+        "unidade_escolhida_idx",
+        "diagnostico_simulacao",
+        "ultima_simulacao_id",
+        # Formulário do cliente
+        "cliente_nome", "cliente_data_nascimento", "cliente_origem",
+        "cliente_renda", "cliente_renda_texto",
+        "cliente_entrada", "cliente_entrada_texto",
+        "cliente_fgts", "cliente_fgts_texto",
+        "cliente_subsidio", "cliente_subsidio_texto",
+        "cliente_parcela_morando", "cliente_parcela_morando_texto",
+        "cliente_financiamento_caixa", "cliente_financiamento_caixa_texto",
+        "cliente_quartos", "cliente_tipo", "cliente_vagas",
+        "cliente_desconto", "cliente_desconto_texto",
+        "cliente_doc_paga", "cliente_lazer",
+        "cliente_filtro_construtora", "cliente_filtro_produto",
+    ]
+
+    for k in chaves_fixas:
+        if k in st.session_state:
+            del st.session_state[k]
+
+    # Chaves dinâmicas (por índice de card ou por unidade)
+    chaves_dinamicas_prefixos = [
+        "plano_pre_", "plano_pos_", "inter_list_",
+        "inter_fase_", "inter_parc_", "inter_valor_", "inter_del_", "inter_add_",
+        "select_sim_", "confirmar_exclusao",
+    ]
+
+    for chave in list(st.session_state.keys()):
+        for prefixo in chaves_dinamicas_prefixos:
+            if chave.startswith(prefixo):
+                del st.session_state[chave]
+                break
+
+
+def _scroll_para_topo():
+    """Injeta JavaScript para rolar a página ao topo."""
+    import streamlit.components.v1 as components
+    components.html(
+        """
+        <script>
+            window.parent.scrollTo({ top: 0, behavior: 'smooth' });
+        </script>
+        """,
+        height=0,
+    )
 
 
 def _serializar_plano(plano):
