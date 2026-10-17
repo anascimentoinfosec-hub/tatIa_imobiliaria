@@ -4,3 +4,7 @@ openpyxl
 pdfplumber
 requests
 openai
+supabase
+fpdf2
+plotly
+tavily-python
