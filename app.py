@@ -15,6 +15,8 @@ from src.vendas_gerenciar import renderizar_gestao_vendas
 from src.vendas_dashboard import renderizar_dashboard_vendas
 from src.bia_operacional import pagina_bia_operacional
 from src.regras_entrada_gerenciar import renderizar_gestao_regras_entrada
+from src.conta_seguranca import renderizar_conta_seguranca
+from src.conta_seguranca import renderizar_conta_seguranca, renderizar_mfa_obrigatorio
 
 st.set_page_config(
     page_title="Simulador de Crédito",
@@ -157,6 +159,11 @@ with st.sidebar:
         # ---- Operacional ----
         st.markdown("### 📈 Operacional")
 
+        if st.button("🔐 Minha Segurança", use_container_width=True):
+            st.session_state.pagina = "Seguranca"
+            st.rerun()
+
+
         if st.button("🏢 Simulador de Entrada", use_container_width=True):
             st.session_state.pagina = "Simulador"
             st.rerun()
@@ -230,8 +237,19 @@ with st.sidebar:
 if st.session_state.usuario_logado is None:
     pagina_login()
 else:
-    perfil = USUARIOS[st.session_state.usuario_logado]["perfil"]
+    # === BLOQUEIO DE SEGURANÇA (MFA OBRIGATÓRIO) ===
+    # Pega os dados do usuário logado
+    dados_usuario_logado = USUARIOS.get(st.session_state.usuario_logado, {})
+    mfa_ativo = dados_usuario_logado.get("mfa_ativo", False)
 
+    if not mfa_ativo:
+        # Mostra APENAS a tela de configurar MFA e para a execução aqui
+        renderizar_mfa_obrigatorio(st.session_state.usuario_logado, USUARIOS)
+        st.stop()  # O st.stop() impede que o resto do app carregue!
+        
+    # Se tem MFA, segue o fluxo normal abaixo:
+    perfil = USUARIOS[st.session_state.usuario_logado]["perfil"]
+    
     if "pagina" not in st.session_state:
         st.session_state.pagina = "Simulador"
 
@@ -258,6 +276,8 @@ else:
             pagina_simulador(CONSTRUTORAS, USUARIOS)
         elif pagina == "Vendas":
             renderizar_gestao_vendas(usuario_logado=st.session_state.usuario_logado, USUARIOS=USUARIOS)
+        elif pagina == "Seguranca":
+            renderizar_conta_seguranca(st.session_state.usuario_logado, USUARIOS)
         elif pagina == "Histórico":
             renderizar_historico(usuario_logado=st.session_state.usuario_logado, USUARIOS=USUARIOS)
         elif pagina == "ChatIA":

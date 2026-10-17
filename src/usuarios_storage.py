@@ -4,14 +4,10 @@ Substitui o antigo usuarios.json.
 """
 from src.db import listar, buscar_por, inserir, atualizar, deletar
 from src.utils import hash_senha
-from datetime import datetime
 
 
 def carregar_usuarios():
-    """
-    Retorna dict {login: {nome, email, hash, perfil, ativo, telefone, criado_em}}
-    igual ao formato antigo do JSON, para não quebrar o app.
-    """
+    """Retorna dict {login: {nome, email, hash, perfil, ativo, telefone, mfa_ativo, mfa_secret}}"""
     registros = listar("usuarios")
     usuarios = {}
     for r in registros:
@@ -26,17 +22,14 @@ def carregar_usuarios():
             "ativo": r.get("ativo", True),
             "telefone": r.get("telefone", ""),
             "criado_em": r.get("criado_em", ""),
+            "mfa_ativo": r.get("mfa_ativo", False),
+            "mfa_secret": r.get("mfa_secret"),
         }
     return usuarios
 
 
 def salvar_usuarios(usuarios_dict):
-    """
-    Sincroniza o dict inteiro com o Supabase:
-    - Atualiza quem já existe
-    - Insere quem é novo
-    - Remove quem sumiu (opcional)
-    """
+    """Sincroniza o dict inteiro com o Supabase."""
     atuais = carregar_usuarios()
 
     for login, dados in usuarios_dict.items():
@@ -48,6 +41,8 @@ def salvar_usuarios(usuarios_dict):
             "perfil": dados.get("perfil", "corretor"),
             "ativo": bool(dados.get("ativo", True)),
             "telefone": dados.get("telefone", ""),
+            "mfa_ativo": bool(dados.get("mfa_ativo", False)),
+            "mfa_secret": dados.get("mfa_secret"),
         }
 
         if login in atuais:
@@ -57,7 +52,6 @@ def salvar_usuarios(usuarios_dict):
 
 
 def criar_usuario(login, nome, senha, perfil="corretor", email="", ativo=True, telefone=""):
-    """Cria um usuário com senha já hasheada."""
     existente = buscar_por("usuarios", "login", login)
     if existente:
         return False, f"Usuário '{login}' já existe."
@@ -70,16 +64,17 @@ def criar_usuario(login, nome, senha, perfil="corretor", email="", ativo=True, t
         "perfil": perfil,
         "ativo": bool(ativo),
         "telefone": telefone,
+        "mfa_ativo": False,
+        "mfa_secret": None,
     })
     return True, "OK"
 
 
 def atualizar_usuario(login, dados):
-    """Atualiza um usuário. Se a senha vier em dados['senha'], hasheia."""
     payload = {}
-    for campo in ["nome", "email", "perfil", "ativo", "telefone"]:
+    for campo in ["nome", "email", "perfil", "ativo", "telefone", "mfa_ativo", "mfa_secret"]:
         if campo in dados:
-            if campo == "ativo":
+            if campo in ["ativo", "mfa_ativo"]:
                 payload[campo] = bool(dados[campo])
             else:
                 payload[campo] = dados[campo]
@@ -92,15 +87,10 @@ def atualizar_usuario(login, dados):
 
 
 def excluir_usuario(login):
-    """Remove um usuário."""
     return deletar("usuarios", "login", login)
 
 
 def migrar_do_json(caminho_json="dados/usuarios.json"):
-    """
-    Migra usuários do JSON antigo para o Supabase.
-    Só faz sentido rodar 1x (durante a migração inicial).
-    """
     import json
     import os
 
