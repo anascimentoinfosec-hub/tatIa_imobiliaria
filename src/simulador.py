@@ -238,6 +238,12 @@ def _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS,
         "documentacao_paga": sim.get("documentacao_paga", False),
         "plano_entrada": _serializar_plano(plano),
     }
+    
+    # === NOVO: CARIMBA O LEAD_ID ===
+    if "lead_para_simular" in st.session_state:
+        dados_extra["lead_id"] = st.session_state["lead_para_simular"]["id"]
+
+    # ... e mantém o resto do código de salvar_simulacao e marcar_unidade ...
 
     sim_id = salvar_simulacao(
         nome_cliente=sim["nome_cliente"],
@@ -275,6 +281,15 @@ def _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS,
     # === SCROLL PARA O TOPO ===
     _scroll_para_topo()
 
+    # === A PONTE COM O CRM ===
+    if "lead_para_simular" in st.session_state:
+        from src.crm.leads_storage import atualizar_status_lead
+        lead_id = st.session_state["lead_para_simular"]["id"]
+        # Quando envia pro gerente, vai para "Em aprovação"
+        atualizar_status_lead(lead_id, "aprovacao") 
+        
+        del st.session_state["lead_para_simular"]
+        st.toast("🤝 Lead enviado para Aprovação da Acessória no CRM!")
 
 def _limpar_estado_simulador():
     """Remove todas as chaves do session_state do simulador."""

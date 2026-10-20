@@ -1,13 +1,42 @@
 import streamlit as st
-from src.unidades_status_storage import marcar_unidade, desmarcar_unidade
 from datetime import datetime
 from src.simulacoes_storage import (
     carregar_simulacoes, excluir_simulacao, STATUS_PROPOSTA,
     atualizar_status_proposta,
 )
 from src.utils import formatar_valor_br
+from src.unidades_status_storage import marcar_unidade, desmarcar_unidade
 
 
+# =========================================================
+# SINCRONIZAÇÃO COM O CRM
+# =========================================================
+def _sincronizar_crm(sim, novo_status_erp):
+    """Avisa o CRM se o status da simulação mudar e houver um lead_id."""
+    lead_id = sim.get("lead_id")
+    if not lead_id:
+        return
+        
+    from src.crm.leads_storage import atualizar_status_lead
+    
+    # Mapeia o status do ERP para a coluna correta do Kanban
+    mapa_status = {
+        "em_analise": "aprovacao",
+        "aprovada": "aprovacao",
+        "aguardando_construtora": "aprovacao",
+        "contrato_enviado": "proposta",
+        "venda_confirmada": "venda",
+        "rejeitada": "perdido"
+    }
+    
+    status_crm = mapa_status.get(novo_status_erp)
+    if status_crm:
+        atualizar_status_lead(lead_id, status_crm)
+
+
+# =========================================================
+# RENDERIZAÇÃO PRINCIPAL
+# =========================================================
 def renderizar_historico(usuario_logado=None, USUARIOS=None):
     st.title("📚 Simulações")
     st.markdown("---")
@@ -59,6 +88,7 @@ def renderizar_historico(usuario_logado=None, USUARIOS=None):
             format_func=lambda s: "Todos" if s == "Todos" else STATUS_PROPOSTA[s]["nome"],
         )
 
+   # === APLICA FILTROS ===
     filtradas = simulacoes
     if cliente_filtro != "Todos":
         filtradas = [s for s in filtradas if s.get("cliente") == cliente_filtro]
@@ -141,6 +171,9 @@ def _renderizar_metricas(simulacoes):
                 )
 
 
+# =========================================================
+# CARD DA SIMULAÇÃO
+# =========================================================
 def _renderizar_card_simulacao(sim, is_gerente):
     data = _formatar_data(sim.get("data_hora", ""))
     cliente = sim.get("cliente", "N/A")
@@ -155,7 +188,6 @@ def _renderizar_card_simulacao(sim, is_gerente):
         st.markdown(f"**👤 {cliente} — {data}**")
 
     with st.expander("Ver detalhes", expanded=False):
-        # Badge de status
         st.markdown(
             f"<div style='background-color:{info_status['cor']}; color:white; "
             f"padding:6px 14px; border-radius:20px; display:inline-block; "
@@ -163,7 +195,6 @@ def _renderizar_card_simulacao(sim, is_gerente):
             unsafe_allow_html=True,
         )
 
-        # === DADOS DO CLIENTE ===
         st.markdown("##### 🧑 Dados do Cliente")
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -190,7 +221,6 @@ def _renderizar_card_simulacao(sim, is_gerente):
         if sim.get("documentacao_paga"):
             st.success("📄 Documentação já paga pelo cliente")
 
-        # === PLANO DE ENTRADA ===
         plano = sim.get("plano_entrada")
         if plano:
             st.markdown("---")
@@ -222,7 +252,6 @@ def _renderizar_card_simulacao(sim, is_gerente):
                 else:
                     st.caption("Sem parcelas pós-chaves")
 
-            # Alertas
             alertas = plano.get("alertas", [])
             if alertas:
                 for a in alertas:
@@ -235,13 +264,12 @@ def _renderizar_card_simulacao(sim, is_gerente):
             elif plano.get("viavel"):
                 st.success("✅ Plano viável dentro das regras da construtora.")
 
-        # === AÇÕES DE STATUS ===
+        # === AÇÕES DO GERENTE ===
         if is_gerente:
             st.markdown("---")
             st.markdown("**🎯 Ações do Gerente:**")
             _renderizar_acoes_status(sim, status, responsavel)
 
-        # === OPORTUNIDADES ===
         st.markdown("---")
         oportunidades = sim.get("oportunidades", [])
         if oportunidades:
@@ -257,28 +285,33 @@ def _renderizar_card_simulacao(sim, is_gerente):
                 st.rerun()
 
 
+# =========================================================
+# AÇÕES DE STATUS (AQUI ESTÁ A PONTE COM O CRM)
+# =========================================================
 def _renderizar_acoes_status(sim, status, responsavel):
-    """Botões de ação conforme o status atual."""
     sim_id = sim["id"]
-
     col1, col2, col3, col4 = st.columns(4)
 
     if status == "pendente":
         with col1:
             if st.button("📤 Enviar p/ análise", key=f"acao_pend_{sim_id}", use_container_width=True):
                 atualizar_status_proposta(sim_id, "em_analise", responsavel)
+                _sincronizar_crm(sim, "em_analise") # <--- Ponte
                 st.rerun()
 
     elif status == "em_analise":
         with col1:
             if st.button("✅ Aprovar", key=f"acao_apr_{sim_id}", use_container_width=True):
                 atualizar_status_proposta(sim_id, "aprovada", responsavel)
+                _sincronizar_crm(sim, "aprovada") # <--- Ponte
                 st.rerun()
         with col2:
             if st.button("❌ Rejeitar", key=f"acao_rej_{sim_id}", use_container_width=True):
                 motivo = st.session_state.get(f"motivo_{sim_id}", "")
                 atualizar_status_proposta(sim_id, "rejeitada", responsavel, motivo=motivo)
-                # Libera a unidade
+                _sincronizar_crm(sim, "rejeitada") # <--- Ponte
+                
+                # Libera a unidade de volta para o simulador
                 oportunidades = sim.get("oportunidades", [])
                 if oportunidades:
                     op = oportunidades[0]
@@ -295,12 +328,14 @@ def _renderizar_acoes_status(sim, status, responsavel):
         with col1:
             if st.button("🏢 Cadastrar na construtora", key=f"acao_cad_{sim_id}", use_container_width=True):
                 atualizar_status_proposta(sim_id, "aguardando_construtora", responsavel)
+                _sincronizar_crm(sim, "aguardando_construtora") # <--- Ponte
                 st.rerun()
 
     elif status == "aguardando_construtora":
         with col1:
             if st.button("📄 Contrato enviado", key=f"acao_ctr_{sim_id}", use_container_width=True):
                 atualizar_status_proposta(sim_id, "contrato_enviado", responsavel)
+                _sincronizar_crm(sim, "contrato_enviado") # <--- Ponte
                 st.rerun()
 
     elif status == "contrato_enviado":
@@ -314,29 +349,20 @@ def _renderizar_acoes_status(sim, status, responsavel):
         st.caption(f"Status final: **{STATUS_PROPOSTA.get(status, {}).get('nome', status)}**")
 
 
+# =========================================================
+# CONFIRMAR VENDA (CRIA VENDA NO ERP E AVISA O CRM)
+# =========================================================
 def _confirmar_venda_real(sim, responsavel):
-    """Confirma a venda: atualiza status + cria Venda no pipeline."""
     from src.vendas_storage import salvar_venda
     from datetime import date
 
-    # 0. Marca unidade como VENDIDA
-    oportunidades = sim.get("oportunidades", [])
-    if oportunidades:
-        op = oportunidades[0]
-        marcar_unidade(
-            construtora=str(op.get("_construtora", "")),
-            produto=str(op.get("_produto", "")),
-            unidade=str(op.get("UNIDADE", "")),
-            status="vendida",
-            proposta_id=sim["id"],
-            cliente=sim.get("cliente", ""),
-            corretor=sim.get("gerente", ""),
-        )
-    
-    # 1. Atualiza status
+    # 1. Atualiza status no ERP
     atualizar_status_proposta(sim["id"], "venda_confirmada", responsavel)
+    
+    # 2. Avisa o CRM
+    _sincronizar_crm(sim, "venda_confirmada")
 
-    # 2. Cria venda real no pipeline
+    # 3. Cria venda real no pipeline
     try:
         oportunidades = sim.get("oportunidades", [])
         op = oportunidades[0] if oportunidades else {}
@@ -366,6 +392,9 @@ def _confirmar_venda_real(sim, responsavel):
         st.error(f"Status atualizado, mas erro ao criar venda: {str(e)}")
 
 
+# =========================================================
+# HELPERS
+# =========================================================
 def _renderizar_oportunidade(idx, op):
     unidade = op.get("UNIDADE", "N/A")
     tipologia = op.get("TIPOLOGIA", "")

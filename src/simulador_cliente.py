@@ -6,6 +6,24 @@ from src.utils import campo_moeda
 
 
 def renderizar_area_cliente(df_total, usuario_logado, USUARIOS):
+    # === NOVO: PREENCHE COM DADOS DO CRM ===
+    if "lead_para_simular" in st.session_state:
+        lead = st.session_state["lead_para_simular"]
+        # Seta as chaves que o Streamlit usa para os inputs
+        if "cliente_nome" not in st.session_state or not st.session_state["cliente_nome"]:
+            st.session_state["cliente_nome"] = lead.get("nome", "")
+        if "cliente_renda_texto" not in st.session_state:
+            # O campo_moeda usa um campo _texto para formatar
+            from src.utils import _formatar_brl_input
+            st.session_state["cliente_renda_texto"] = _formatar_brl_input(lead.get("renda", 0))
+        
+        st.info(f"🤖 Dados preenchidos automaticamente do CRM: **{lead.get('nome')}**")
+        
+        # Limpa a flag para não ficar preenchendo sempre que ele voltar
+        del st.session_state["lead_para_simular"]
+        
+    # ... (resto do código que já existe)
+
     """Área do cliente com todos os campos do fluxo real."""
     if df_total is None or df_total.empty:
         st.warning("⚠️ Nenhuma planilha disponível. Peça ao gerente para subir planilhas.")

@@ -17,6 +17,7 @@ from src.bia_operacional import pagina_bia_operacional
 from src.regras_entrada_gerenciar import renderizar_gestao_regras_entrada
 from src.conta_seguranca import renderizar_conta_seguranca
 from src.conta_seguranca import renderizar_conta_seguranca, renderizar_mfa_obrigatorio
+from src.crm.kanban import renderizar_kanban
 
 st.set_page_config(
     page_title="Simulador de Crédito",
@@ -168,6 +169,11 @@ with st.sidebar:
             st.session_state.pagina = "Simulador"
             st.rerun()
 
+        if st.button("🤝 CRM de Leads", use_container_width=True):
+            st.session_state.pagina = "CRM"
+            st.rerun()
+
+
         if st.button("💼 Vendas", use_container_width=True):
             st.session_state.pagina = "Vendas"
             st.rerun()
@@ -280,6 +286,8 @@ else:
             renderizar_conta_seguranca(st.session_state.usuario_logado, USUARIOS)
         elif pagina == "Histórico":
             renderizar_historico(usuario_logado=st.session_state.usuario_logado, USUARIOS=USUARIOS)
+        elif pagina == "CRM":
+            renderizar_kanban(st.session_state.usuario_logado, USUARIOS)
         elif pagina == "ChatIA":
             pagina_bia_operacional(
             usuario_logado=st.session_state.usuario_logado,
