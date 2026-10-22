@@ -1,11 +1,11 @@
 import streamlit as st
 from src.crm.leads_storage import carregar_leads, criar_lead, atualizar_status_lead
+from src.crm.campanhas_storage import carregar_campanhas
 
-# Mapeamento atualizado conforme pedido da gerente
 STATUS_KANBAN = {
     "novo": {"nome": "🟢 Novo Lead", "cor": "#22c55e"},
-    "agendado": {"nome": "📅 Agendado", "cor": "#6366f1"}, # Novo status
-    "atendimento": {"nome": "💬 Em Atendimento", "cor": "#3b82f6"}, # Antigo Simulação
+    "agendado": {"nome": "📅 Agendado", "cor": "#6366f1"},
+    "atendimento": {"nome": "💬 Em Atendimento", "cor": "#3b82f6"},
     "aprovacao": {"nome": "⏳ Em Aprovação", "cor": "#f59e0b"},
     "proposta": {"nome": "📝 Proposta Enviada", "cor": "#0ea5e9"},
     "venda": {"nome": "🎉 Venda Ganha", "cor": "#10b981"},
@@ -63,10 +63,13 @@ def renderizar_kanban(usuario_logado, USUARIOS):
         st.info("📭 Nenhum lead no funil ainda.")
         return
 
+    # === AQUI ESTÁ A TRADUÇÃO DOS IDs ===
+    campanhas = carregar_campanhas()
+    mapa_campanhas = {c['id']: c['nome'] for c in campanhas}
+
     por_status = {k: [] for k in STATUS_KANBAN.keys()}
     for lead in leads:
         st_atual = lead.get("status", "novo")
-        # Fallback para status antigos que ainda estão no banco
         if st_atual == "simulacao": st_atual = "atendimento"
         
         if st_atual in por_status:
@@ -76,10 +79,10 @@ def renderizar_kanban(usuario_logado, USUARIOS):
     cols = st.columns(len(chaves))
     for j, status in enumerate(chaves):
         with cols[j]:
-            _renderizar_coluna(status, por_status[status])
+            _renderizar_coluna(status, por_status[status], mapa_campanhas)
 
 
-def _renderizar_coluna(status, leads):
+def _renderizar_coluna(status, leads, mapa_campanhas):
     info = STATUS_KANBAN[status]
     
     st.markdown(
@@ -94,6 +97,14 @@ def _renderizar_coluna(status, leads):
         return
 
     for lead in leads:
+        # Traduz a origem
+        origem_id = lead.get('origem', '-')
+        origem_exibicao = mapa_campanhas.get(origem_id, origem_id)
+        
+        # Cria o link do WhatsApp para o corretor
+        telefone_lead = lead.get('telefone', '')
+        link_corretor = f"https://wa.me/{telefone_lead}" if telefone_lead else "#"
+
         with st.container():
             st.markdown(
                 f"""
@@ -101,11 +112,16 @@ def _renderizar_coluna(status, leads):
                 padding:10px; border-radius:5px; margin-bottom:10px; 
                 box-shadow: 0 1px 3px rgba(0,0,0,0.1);'>
                     <h4 style='margin:0; font-size:16px;'>{lead['nome']}</h4>
-                    <p style='margin:2px 0; font-size:12px; color:#666;'>📱 {lead.get('telefone', 'Sem tel')}</p>
+                    <p style='margin:2px 0; font-size:12px;'>
+                        <a href="{link_corretor}" target="_blank" style="text-decoration:none; color:#25D366; font-weight:bold;">
+                            📱 {lead.get('telefone', 'Sem tel')}
+                        </a>
+                    </p>
                     <p style='margin:2px 0; font-size:12px; color:#666;'>💰 R$ {lead.get('renda', 0):,.2f}</p>
-                    <p style='margin:2px 0; font-size:11px; color:#999;'>Origem: {lead.get('origem', '-')}</p>
+                    <p style='margin:2px 0; font-size:11px; color:#999;'>Origem: {origem_exibicao}</p>
                 </div>
-                """, unsafe_allow_html=True
+                """, 
+                unsafe_allow_html=True
             )
             
             col_b1, col_b2 = st.columns(2)

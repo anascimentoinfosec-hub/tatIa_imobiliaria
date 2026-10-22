@@ -169,7 +169,16 @@ with st.sidebar:
         st.markdown("---")
 
         if st.button("🚪 Sair", use_container_width=True):
+            # 1. Apaga os cookies do navegador
+            from streamlit_cookies_controller import CookieController
+            controller = CookieController()
+            controller.remove("tatia_mfa_token")
+            controller.remove("tatia_mfa_user")
+            
+            # 2. Limpa a sessão atual
             st.session_state.usuario_logado = None
+            
+            # 3. Recarrega a página para voltar ao login
             st.rerun()
 
         st.markdown("---")

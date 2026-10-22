@@ -3,6 +3,8 @@ import json
 import os
 import secrets
 import smtplib
+from streamlit_cookies_controller import CookieController
+from src.mfa import validar_token_confianca, gerar_token_confianca
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -170,7 +172,18 @@ def enviar_email_recuperacao(email, token):
 # =========================================================
 def exibir_login_sidebar(USUARIOS):
     st.markdown("### Login")
+    controller = CookieController()
+
+    # === CHECAGEM DE SESSÃO DE CONFIANÇA (COOKIE) ===
+    token_salvo = controller.get("tatia_mfa_token")
+    usuario_salvo = controller.get("tatia_mfa_user")
     
+    if token_salvo and usuario_salvo:
+        if validar_token_confianca(token_salvo, usuario_salvo):
+            # Se o token for válido, loga direto e nem mostra a senha!
+            st.session_state.usuario_logado = usuario_salvo
+            st.rerun()
+
     # Se o usuário já passou pela senha e está pendente de MFA, mostra apenas a tela do código
     if "mfa_pendente" in st.session_state:
         _renderizar_tela_mfa(USUARIOS)
@@ -208,7 +221,6 @@ def exibir_login_sidebar(USUARIOS):
     if st.session_state.get('recuperando_senha', False):
         _renderizar_recuperacao_senha(USUARIOS)
 
-
 def _renderizar_tela_mfa(USUARIOS):
     """Tela exibida após a senha correta, para verificar o código de 6 dígitos."""
     st.markdown("---")
@@ -228,6 +240,14 @@ def _renderizar_tela_mfa(USUARIOS):
                 st.session_state.usuario_logado = usuario_pendente
                 del st.session_state["mfa_pendente"]
                 del st.session_state["mfa_secret_pendente"]
+            
+            # === CRIA O COOKIE DE 10 HORAS ===
+                controller = CookieController()
+                novo_token = gerar_token_confianca(usuario_pendente)
+            # O `max_age` é em segundos (10 horas = 36000)
+                controller.set("tatia_mfa_token", novo_token, max_age=36000)
+                controller.set("tatia_mfa_user", usuario_pendente, max_age=36000)
+            
                 st.success(f"✅ Bem-vindo, {USUARIOS[usuario_pendente]['nome']}!")
                 st.rerun()
             else:

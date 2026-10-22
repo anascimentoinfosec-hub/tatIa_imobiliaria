@@ -10,3 +10,4 @@ plotly
 tavily-python
 pyotp
 qrcode[pil]
+streamlit-cookies-controller
