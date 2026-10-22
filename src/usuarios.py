@@ -3,9 +3,46 @@ import pandas as pd
 from src.utils import hash_senha
 from src.auth import salvar_usuarios, carregar_usuarios
 
+PAGINAS_SISTEMA = {
+    "operacional": ["simulador", "crm", "vendas", "simulacoes", "chat_ia"],
+    "gestao": ["dashboard", "dashboard_vendas", "construtoras", "regras_fin", "regras_ent", "origens", "usuarios"]
+}
+
+def renderizar_tela_permissoes(permissoes_atuais, prefixo, sufixo=""):
+    """Renderiza os checkboxes agrupados. O 'sufixo' evita erro de cache entre usuários."""
+    novas_permissoes = {}
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**📈 Operacional**")
+        for pag in PAGINAS_SISTEMA["operacional"]:
+            valor_atual = permissoes_atuais.get(pag, True)
+            novas_permissoes[pag] = st.checkbox(
+                pag.capitalize().replace("_", " "), 
+                value=valor_atual, 
+                key=f"{prefixo}_perm_{pag}_{sufixo}" # <-- A MÁGICA ESTÁ AQUI
+            )
+            
+    with col2:
+        st.markdown("**⚙️ Gestão**")
+        for pag in PAGINAS_SISTEMA["gestao"]:
+            valor_atual = permissoes_atuais.get(pag, True)
+            novas_permissoes[pag] = st.checkbox(
+                pag.capitalize().replace("_", " "), 
+                value=valor_atual, 
+                key=f"{prefixo}_perm_{pag}_{sufixo}" # <-- A MÁGICA ESTÁ AQUI
+            )
+            
+    return novas_permissoes
+
 def pagina_gestao_usuarios(USUARIOS):
     st.title("👥 Gestão de Usuários")
     
+    # === TOAST DE SUCESSO ===
+    if "msg_sucesso_usuario" in st.session_state:
+        st.toast(st.session_state["msg_sucesso_usuario"], icon="✅")
+        del st.session_state["msg_sucesso_usuario"]
+
     usuario_logado = st.session_state.get("usuario_logado")
     perfil_logado = USUARIOS.get(usuario_logado, {}).get("perfil", "corretor")
     
@@ -13,15 +50,12 @@ def pagina_gestao_usuarios(USUARIOS):
     
     # --- LISTAR ---
     with tabs[0]:
-        st.markdown("### Usuários cadastrados:")
         if USUARIOS:
             dados = []
             for login, info in USUARIOS.items():
                 dados.append({
-                    "Login": login,
-                    "Nome": info["nome"],
-                    "E-mail": info.get("email", ""),
-                    "Perfil": "👑 Super Admin" if info["perfil"] == "superadmin" else "👑 Gerente" if info["perfil"] == "gerente" else "👤 Corretor",
+                    "Login": login, "Nome": info["nome"], "E-mail": info.get("email", ""),
+                    "Perfil": info["perfil"].capitalize(), "MFA": "✅" if info.get("mfa_ativo") else "❌",
                     "Status": "✅ Ativo" if info["ativo"] else "❌ Inativo"
                 })
             st.dataframe(pd.DataFrame(dados), use_container_width=True)
@@ -30,37 +64,43 @@ def pagina_gestao_usuarios(USUARIOS):
     
     # --- ADICIONAR ---
     with tabs[1]:
-        with st.form("form_novo_usuario"):
-            col1, col2 = st.columns(2)
-            with col1:
-                login = st.text_input("Login")
-                nome = st.text_input("Nome completo")
-                email = st.text_input("E-mail")
-            with col2:
-                senha = st.text_input("Senha", type="password")
-                if perfil_logado == "superadmin":
-                    perfil = st.selectbox("Perfil", ["corretor", "gerente", "superadmin"])
+        st.markdown("### Adicionar Novo Usuário")
+        col1, col2 = st.columns(2)
+        with col1:
+            login = st.text_input("Login", key="add_login")
+            nome = st.text_input("Nome completo", key="add_nome")
+            email = st.text_input("E-mail", key="add_email")
+        with col2:
+            senha = st.text_input("Senha", type="password", key="add_senha")
+            if perfil_logado == "superadmin":
+                perfil = st.selectbox("Perfil", ["corretor", "gerente", "superadmin"], key="add_perfil")
+            else:
+                perfil = st.selectbox("Perfil", ["corretor"], key="add_perfil_restrito")
+            ativo = st.checkbox("Ativo", value=True, key="add_ativo")
+        
+        st.markdown("---")
+        st.markdown("### 🔐 Permissões de Acesso")
+        st.caption("Desmarque as abas que este usuário NÃO deve acessar.")
+        permissoes_novas = renderizar_tela_permissoes({}, prefixo="add", sufixo="novo")
+        
+        if st.button("➕ Adicionar Usuário", use_container_width=True, type="primary"):
+            if login and nome and senha and email:
+                if login in USUARIOS:
+                    st.error("❌ Usuário já existe!")
                 else:
-                    perfil = st.selectbox("Perfil", ["corretor"])
-                ativo = st.checkbox("Ativo", value=True)
-            
-            if st.form_submit_button("➕ Adicionar", use_container_width=True):
-                if login and nome and senha and email:
-                    if login in USUARIOS:
-                        st.error("❌ Usuário já existe!")
-                    else:
-                        USUARIOS[login] = {
-                            "nome": nome,
-                            "hash": hash_senha(senha),
-                            "perfil": perfil,
-                            "ativo": ativo,
-                            "email": email
-                        }
-                        salvar_usuarios(USUARIOS)
-                        st.success(f"✅ Usuário '{login}' adicionado!")
-                        st.rerun()
-                else:
-                    st.error("❌ Preencha todos os campos!")
+                    USUARIOS[login] = {
+                        "nome": nome, "hash": hash_senha(senha), "perfil": perfil,
+                        "ativo": ativo, "email": email, "permissoes": permissoes_novas
+                    }
+                    salvar_usuarios(USUARIOS)
+                    
+                    # Guarda a mensagem e limpa os campos
+                    st.session_state["msg_sucesso_usuario"] = f"Usuário '{login}' adicionado com sucesso!"
+                    for key in ["add_login", "add_nome", "add_email", "add_senha"]:
+                        if key in st.session_state: del st.session_state[key]
+                    st.rerun()
+            else:
+                st.error("❌ Preencha todos os campos!")
     
     # --- EDITAR ---
     with tabs[2]:
@@ -71,7 +111,6 @@ def pagina_gestao_usuarios(USUARIOS):
             if usuario_editar:
                 dados = USUARIOS[usuario_editar]
                 
-                # --- BLOQUEIO: Gerente não edita Super Admin ---
                 if perfil_logado == "gerente" and dados["perfil"] == "superadmin":
                     st.error("❌ Você não tem permissão para editar o Super Admin!")
                     st.stop()
@@ -81,11 +120,10 @@ def pagina_gestao_usuarios(USUARIOS):
                     with col1:
                         nome = st.text_input("Nome", value=dados["nome"])
                         email = st.text_input("E-mail", value=dados.get("email", ""))
-                        
                         if perfil_logado == "superadmin":
-                            perfis_disponiveis = ["corretor", "gerente", "superadmin"]
-                            idx_atual = perfis_disponiveis.index(dados["perfil"]) if dados["perfil"] in perfis_disponiveis else 0
-                            perfil = st.selectbox("Perfil", perfis_disponiveis, index=idx_atual)
+                            perfis = ["corretor", "gerente", "superadmin"]
+                            idx = perfis.index(dados["perfil"]) if dados["perfil"] in perfis else 0
+                            perfil = st.selectbox("Perfil", perfis, index=idx)
                         else:
                             perfil = dados["perfil"]
                             st.info(f"Perfil atual: {perfil}")
@@ -93,43 +131,34 @@ def pagina_gestao_usuarios(USUARIOS):
                     with col2:
                         senha = st.text_input("Nova senha (opcional)", type="password")
                         ativo = st.checkbox("Ativo", value=dados["ativo"])
-                    
-                    st.caption("💡 Deixe a senha em branco para manter a atual.")
+                        
+                    st.markdown("---")
+                    st.markdown("### 🔐 Permissões de Acesso")
+                    permissoes_atuais = dados.get("permissoes", {})
+                    permissoes_editadas = renderizar_tela_permissoes(permissoes_atuais, prefixo="edit", sufixo="novo")
                     
                     col_btn1, col_btn2 = st.columns(2)
                     with col_btn1:
-                        if st.form_submit_button("💾 Salvar", use_container_width=True):
+                        if st.form_submit_button("💾 Salvar", use_container_width=True, type="primary"):
                             dados["nome"] = nome
                             dados["email"] = email
-                            if perfil_logado == "superadmin":
-                                dados["perfil"] = perfil
-                            if senha:
-                                dados["hash"] = hash_senha(senha)
+                            if perfil_logado == "superadmin": dados["perfil"] = perfil
+                            if senha: dados["hash"] = hash_senha(senha)
                             dados["ativo"] = ativo
+                            dados["permissoes"] = permissoes_editadas
+                            
                             salvar_usuarios(USUARIOS)
-                            st.success("✅ Usuário atualizado!")
+                            st.session_state["msg_sucesso_usuario"] = "Usuário atualizado com sucesso!"
                             st.rerun()
                     
-                    # --- BLOQUEIO: Gerente não exclui Super Admin ---
                     with col_btn2:
-                        pode_excluir = False
-                        if perfil_logado == "superadmin":
-                            pode_excluir = True
-                        elif perfil_logado == "gerente" and dados["perfil"] == "corretor":
-                            pode_excluir = True
-                        
+                        pode_excluir = (perfil_logado == "superadmin") or (perfil_logado == "gerente" and dados["perfil"] == "corretor")
                         if pode_excluir:
                             if st.form_submit_button("🗑️ Excluir", use_container_width=True):
                                 if usuario_editar == "superadmin":
-                                    st.error("❌ Não é possível excluir o Super Admin principal!")
-                                elif usuario_editar == "gerente" and perfil_logado == "gerente":
-                                    st.error("❌ Gerente não pode excluir outro gerente!")
+                                    st.error("❌ Não é possível excluir o Super Admin!")
                                 else:
                                     del USUARIOS[usuario_editar]
                                     salvar_usuarios(USUARIOS)
-                                    st.success(f"✅ Usuário '{usuario_editar}' excluído!")
+                                    st.session_state["msg_sucesso_usuario"] = "Usuário excluído com sucesso!"
                                     st.rerun()
-                        else:
-                            st.warning("⚠️ Você não tem permissão para excluir este usuário.")
-        else:
-            st.warning("Nenhum usuário cadastrado.")

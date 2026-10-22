@@ -18,6 +18,17 @@ from src.regras_entrada_gerenciar import renderizar_gestao_regras_entrada
 from src.conta_seguranca import renderizar_conta_seguranca
 from src.conta_seguranca import renderizar_conta_seguranca, renderizar_mfa_obrigatorio
 from src.crm.kanban import renderizar_kanban
+from src.crm.campanhas_ui import renderizar_campanhas
+
+# =========================================================
+# ROTA PÚBLICA: LANDING PAGE COM BIA
+# =========================================================
+# Verifica se o link tem a tag "?lead=true"
+if st.query_params.get("lead") == "true":
+    campanha_id = st.query_params.get("campanha", "Direto")
+    from src.crm.landing_page import renderizar_landing_page
+    renderizar_landing_page(campanha_id=campanha_id)
+    st.stop() # O st.stop() para o código aqui e não mostra o login!
 
 st.set_page_config(
     page_title="Simulador de Crédito",
@@ -144,6 +155,12 @@ with st.sidebar:
         usuario = st.session_state.usuario_logado
         perfil = USUARIOS[usuario]["perfil"]
 
+        # Pega as permissões do usuário (se não tiver nada, assume tudo liberado)
+        permissoes_usuario = USUARIOS[usuario].get("permissoes", {})
+        
+        def tem_perm(pagina):
+            return permissoes_usuario.get(pagina, True)
+
         nome = USUARIOS[usuario]["nome"]
         badge_class = "badge-superadmin" if perfil == "superadmin" else "badge-gerente" if perfil == "gerente" else "badge-corretor"
         st.markdown(f"👤 **{nome}**")
@@ -160,31 +177,75 @@ with st.sidebar:
         # ---- Operacional ----
         st.markdown("### 📈 Operacional")
 
-        if st.button("🔐 Minha Segurança", use_container_width=True):
-            st.session_state.pagina = "Seguranca"
-            st.rerun()
+        if tem_perm("simulador"):
+            if st.button("📊 Simulador", use_container_width=True):
+                st.session_state.pagina = "Simulador"
+                st.rerun()
 
+        if tem_perm("crm"):
+            if st.button("🤝 CRM de Leads", use_container_width=True):
+                st.session_state.pagina = "CRM"
+                st.rerun()
 
-        if st.button("🏢 Simulador de Entrada", use_container_width=True):
-            st.session_state.pagina = "Simulador"
-            st.rerun()
+        if tem_perm("vendas"):
+            if st.button("💼 Vendas", use_container_width=True):
+                st.session_state.pagina = "Vendas"
+                st.rerun()
 
-        if st.button("🤝 CRM de Leads", use_container_width=True):
-            st.session_state.pagina = "CRM"
-            st.rerun()
+        if tem_perm("simulacoes"):
+            if st.button("📚 Simulações", use_container_width=True):
+                st.session_state.pagina = "Histórico"
+                st.rerun()
 
+        if tem_perm("chat_ia"):
+            if st.button("💬 IA Imobiliária", use_container_width=True):
+                st.session_state.pagina = "ChatIA"
+                st.rerun()
 
-        if st.button("💼 Vendas", use_container_width=True):
-            st.session_state.pagina = "Vendas"
-            st.rerun()
+        # ---- Gestão ----
+        if perfil in ["gerente", "superadmin"]:
+            st.markdown("---")
+            st.markdown("### ⚙️ Gestão")
 
-        if st.button("📚 Simulações", use_container_width=True):
-            st.session_state.pagina = "Histórico"
-            st.rerun()
+            if tem_perm("dashboard"):
+                if st.button("📊 Dashboard", key="btn_menu_dash", use_container_width=True):
+                    st.session_state.pagina = "Dashboard"
+                    st.rerun()
 
-        if st.button("💬 IA Imobiliária", use_container_width=True):
-            st.session_state.pagina = "ChatIA"
-            st.rerun()
+            if tem_perm("dashboard_vendas"):
+                if st.button("📈 Dashboard Vendas", key="btn_menu_dash_vendas", use_container_width=True):
+                    st.session_state.pagina = "DashboardVendas"
+                    st.rerun()
+
+            if tem_perm("construtoras"):
+                if st.button("🏗️ Construtoras", key="btn_menu_construtoras", use_container_width=True):
+                    st.session_state.pagina = "Construtoras"
+                    st.rerun()
+
+            if tem_perm("regras_fin"):
+                if st.button("🏦 Regras Financiamento", key="btn_menu_regras_fin", use_container_width=True):
+                    st.session_state.pagina = "Regras"
+                    st.rerun()
+
+            if tem_perm("regras_ent"):
+                if st.button("📋 Regras de Entrada", key="btn_menu_regras_ent", use_container_width=True):
+                    st.session_state.pagina = "RegrasEntrada"
+                    st.rerun()
+
+            if tem_perm("origens"):
+                if st.button("🎯 Origens", key="btn_menu_origens", use_container_width=True):
+                    st.session_state.pagina = "Origens"
+                    st.rerun()
+
+            if tem_perm("usuarios"):
+                if st.button("👥 Usuários", key="btn_menu_usuarios", use_container_width=True):
+                    st.session_state.pagina = "Usuários"
+                    st.rerun()
+
+            if tem_perm("dashboard"): # Só pra ficar junto das outras permissões de gestão
+                if st.button("📣 Campanhas", key="btn_menu_campanhas", use_container_width=True):
+                    st.session_state.pagina = "Campanhas"
+                    st.rerun()
 
         # ---- Gestão ----
         if perfil in ["gerente", "superadmin"]:
@@ -194,7 +255,7 @@ with st.sidebar:
             from src.simulacoes_storage import contar_propostas_pendentes
             qtd_pendentes = contar_propostas_pendentes()
             if qtd_pendentes > 0:
-                st.warning(f"🔔 **{qtd_pendentes}** proposta(s) aguardando sua aprovação!")
+                st.warning("🔔 **{qtd_pendentes}** proposta(s) aguardando sua aprovação!")
 
             if st.button("📊 Dashboard", use_container_width=True):
                 st.session_state.pagina = "Dashboard"
@@ -278,6 +339,12 @@ else:
         st.session_state.pagina = "Simulador"
         st.rerun()
     else:
+        # (Logo no início do bloco 'else:' do roteamento, antes de 'if pagina == "Simulador"')
+        if pagina == "Simulador" and not tem_perm("simulador"): st.error("Sem permissão."); st.stop()
+        if pagina == "CRM" and not tem_perm("crm"): st.error("Sem permissão."); st.stop()
+        if pagina == "Vendas" and not tem_perm("vendas"): st.error("Sem permissão."); st.stop()
+        # (faça o mesmo para as outras páginas se quiser ser 100% rigoroso)
+
         if pagina == "Simulador":
             pagina_simulador(CONSTRUTORAS, USUARIOS)
         elif pagina == "Vendas":
@@ -309,6 +376,8 @@ else:
             renderizar_gestao_regras_entrada()
         elif pagina == "Origens":
             renderizar_gestao_origens()
+        elif pagina == "Campanhas":
+            renderizar_campanhas()
         elif pagina == "Creditos":
             pagina_creditos()
         else:
