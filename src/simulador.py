@@ -106,16 +106,22 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                 "antes de enviar. A proposta só é registrada agora."
             )
 
-            if st.button(
-                "📤 Enviar Proposta ao Gerente",
-                use_container_width=True,
-                type="primary",
-            ):
+
+            # ---------- 4. Enviar Proposta (só no final) ----------
+        if idx_escolhido is not None:
+            st.markdown("---")
+            st.info("💡 **Revise o plano de entrada** no card acima antes de enviar.")
+            
+            # NOVO: Campo de Feedback
+            feedback = st.text_area("📝 Feedback para o Gerente (Por que esse cliente tem potencial?)", 
+                                    placeholder="Ex: Cliente tem FGTS alto e urgência na mudança.", key="feedback_proposta")
+
+            if st.button("📤 Enviar Proposta ao Gerente", use_container_width=True, type="primary"):
                 num_pre = st.session_state.get(f"plano_pre_{idx_escolhido}", 0)
                 num_pos = st.session_state.get(f"plano_pos_{idx_escolhido}", 0)
                 _salvar_proposta(
                     sim, top_refinado, idx_escolhido, usuario_logado, USUARIOS,
-                    num_pre=num_pre, num_pos=num_pos,
+                    num_pre=num_pre, num_pos=num_pos, feedback_corretor=feedback # <--- Passa o feedback
                 )
                 st.success("✅ Proposta enviada! **O gerente foi notificado.**")
                 st.rerun()
@@ -201,7 +207,14 @@ def _montar_resumo_texto(sim, usuario_logado, USUARIOS, top_filtrado, plano=None
 
 # =========================================================
 def _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS,
-                     num_pre=0, num_pos=0):
+                     num_pre=0, num_pos=0, feedback_corretor=""):
+    # ... código anterior ...
+    dados_extra = {
+        # ... outros campos ...
+        "plano_entrada": _serializar_plano(plano),
+        "feedback_corretor": feedback_corretor, # <--- SALVA NO BANCO
+    }
+    # ... resto do código ...
     from src.simulacoes_storage import salvar_simulacao
     from src.unidades_status_storage import marcar_unidade
 

@@ -63,8 +63,13 @@ def renderizar_campanhas():
                     """, unsafe_allow_html=True
                 )
                 
-                # GERA O LINK (Prepara para a nuvem no futuro)
-                link_base = "http://localhost:8080" # Trocaremos para a URL do Cloud amanhã
+                # GERA O LINK DINÂMICO
+                # Tenta pegar a URL base dos secrets. Se não achar, usa localhost.
+                try:
+                    link_base = st.secrets.get("APP_BASE_URL", "http://localhost:8080")
+                except:
+                    link_base = "http://localhost:8080"
+                    
                 link_completo = f"{link_base}/?lead=true&campanha={camp['id']}"
                 
                 st.caption("Copie o link abaixo e cole no seu anúncio (Meta Ads, Google, etc):")

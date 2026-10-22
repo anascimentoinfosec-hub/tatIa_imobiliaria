@@ -220,6 +220,10 @@ def _renderizar_card_simulacao(sim, is_gerente):
 
         if sim.get("documentacao_paga"):
             st.success("📄 Documentação já paga pelo cliente")
+            
+        # NOVO: Mostra o Feedback do corretor
+        if sim.get("feedback_corretor"):
+            st.info(f"📝 **Feedback do Corretor:** {sim['feedback_corretor']}")
 
         plano = sim.get("plano_entrada")
         if plano:

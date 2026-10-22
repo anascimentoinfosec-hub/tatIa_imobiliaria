@@ -1,11 +1,11 @@
 import streamlit as st
 from src.crm.leads_storage import carregar_leads, criar_lead, atualizar_status_lead
 
-# Mapeamento de status para exibição
+# Mapeamento atualizado conforme pedido da gerente
 STATUS_KANBAN = {
     "novo": {"nome": "🟢 Novo Lead", "cor": "#22c55e"},
-    "atendimento": {"nome": "💬 Em Atendimento", "cor": "#3b82f6"},
-    "simulacao": {"nome": "📊 Em Simulação", "cor": "#8b5cf6"},
+    "agendado": {"nome": "📅 Agendado", "cor": "#6366f1"}, # Novo status
+    "atendimento": {"nome": "💬 Em Atendimento", "cor": "#3b82f6"}, # Antigo Simulação
     "aprovacao": {"nome": "⏳ Em Aprovação", "cor": "#f59e0b"},
     "proposta": {"nome": "📝 Proposta Enviada", "cor": "#0ea5e9"},
     "venda": {"nome": "🎉 Venda Ganha", "cor": "#10b981"},
@@ -13,26 +13,12 @@ STATUS_KANBAN = {
 }
 
 def renderizar_kanban(usuario_logado, USUARIOS):
-    # === CSS MÁGICO PARA O KANBAN HORIZONTAL ===
     st.markdown("""
         <style>
-        /* Força a área principal a permitir rolagem horizontal */
-        .main .block-container {
-            max-width: 100% !important;
-            padding-right: 2rem !important;
-        }
-        /* Transforma a linha de colunas em um flex container que não quebra */
-        div[data-testid="stHorizontalBlock"] {
-            flex-wrap: nowrap !important; 
-            overflow-x: auto !important; 
-            gap: 1rem;
-            padding-bottom: 20px;
-        }
-        /* Define uma largura mínima para cada coluna (estilo Trello) */
-        div[data-testid="column"] {
-            min-width: 340px !important; 
-            width: 340px !important;
-        }
+        .main .block-container { max-width: 100% !important; padding-right: 2rem !important; }
+        div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; overflow-x: auto !important; gap: 1rem; padding-bottom: 20px; }
+        div[data-testid="column"] { min-width: 340px !important; width: 340px !important; }
+        div[data-testid="stButton"] > button { white-space: nowrap !important; padding: 4px 8px !important; font-size: 13px !important; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -46,9 +32,6 @@ def renderizar_kanban(usuario_logado, USUARIOS):
     perfil = USUARIOS.get(usuario_logado, {}).get("perfil", "corretor")
     corretor_filtro = nome_usuario if perfil == "corretor" else None
 
-    # =========================================================
-    # NOVO LEAD
-    # =========================================================
     with st.expander("➕ Cadastrar Novo Lead", expanded=False):
         with st.form("form_novo_lead", clear_on_submit=True):
             col1, col2, col3 = st.columns(3)
@@ -74,24 +57,22 @@ def renderizar_kanban(usuario_logado, USUARIOS):
                             st.success("Lead adicionado ao funil!")
                             st.rerun()
 
-    # =========================================================
-    # KANBAN HORIZONTAL
-    # =========================================================
     leads = carregar_leads(corretor=corretor_filtro)
 
     if not leads:
-        st.info("📭 Nenhum lead no funil ainda. Cadastre um novo acima.")
+        st.info("📭 Nenhum lead no funil ainda.")
         return
 
     por_status = {k: [] for k in STATUS_KANBAN.keys()}
     for lead in leads:
         st_atual = lead.get("status", "novo")
+        # Fallback para status antigos que ainda estão no banco
+        if st_atual == "simulacao": st_atual = "atendimento"
+        
         if st_atual in por_status:
             por_status[st_atual].append(lead)
 
     chaves = list(STATUS_KANBAN.keys())
-    
-    # Renderiza todas as colunas numa única linha (o CSS vai cuidar da rolagem)
     cols = st.columns(len(chaves))
     for j, status in enumerate(chaves):
         with cols[j]:
@@ -124,26 +105,23 @@ def _renderizar_coluna(status, leads):
                     <p style='margin:2px 0; font-size:12px; color:#666;'>💰 R$ {lead.get('renda', 0):,.2f}</p>
                     <p style='margin:2px 0; font-size:11px; color:#999;'>Origem: {lead.get('origem', '-')}</p>
                 </div>
-                """, 
-                unsafe_allow_html=True
+                """, unsafe_allow_html=True
             )
             
             col_b1, col_b2 = st.columns(2)
             with col_b1:
                 if status == "novo":
-                    if st.button("💬 Atender", key=f"avancar_{lead['id']}", use_container_width=True):
+                    if st.button("📅 Agendar", key=f"avancar_{lead['id']}", use_container_width=True):
+                        atualizar_status_lead(lead['id'], "agendado")
+                        st.rerun()
+                
+                elif status == "agendado":
+                    if st.button("💬 Atender", key=f"atender_{lead['id']}", use_container_width=True):
                         atualizar_status_lead(lead['id'], "atendimento")
                         st.rerun()
-                
+
                 elif status == "atendimento":
                     if st.button("📊 Simular", key=f"simular_{lead['id']}", use_container_width=True):
-                        atualizar_status_lead(lead['id'], "simulacao")
-                        st.session_state["lead_para_simular"] = lead 
-                        st.session_state.pagina = "Simulador" 
-                        st.rerun()
-                
-                elif status == "simulacao":
-                    if st.button("📤 Enviar", key=f"voltar_erp_{lead['id']}", use_container_width=True):
                         st.session_state["lead_para_simular"] = lead 
                         st.session_state.pagina = "Simulador" 
                         st.rerun()
