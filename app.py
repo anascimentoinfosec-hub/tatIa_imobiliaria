@@ -217,6 +217,12 @@ with st.sidebar:
         if perfil in ["gerente", "superadmin"]:
             st.markdown("---")
             st.markdown("### ⚙️ Gestão")
+            
+            # Alerta de propostas pendentes
+            from src.simulacoes_storage import contar_propostas_pendentes
+            qtd_pendentes = contar_propostas_pendentes()
+            if qtd_pendentes > 0:
+                st.warning(f"🔔 **{qtd_pendentes}** proposta(s) aguardando sua aprovação!")
 
             if tem_perm("dashboard"):
                 if st.button("📊 Dashboard", key="btn_menu_dash", use_container_width=True):
@@ -253,49 +259,10 @@ with st.sidebar:
                     st.session_state.pagina = "Usuários"
                     st.rerun()
 
-            if tem_perm("dashboard"): # Só pra ficar junto das outras permissões de gestão
+            if tem_perm("dashboard"):
                 if st.button("📣 Campanhas", key="btn_menu_campanhas", use_container_width=True):
                     st.session_state.pagina = "Campanhas"
                     st.rerun()
-
-            
-        # ---- Gestão ----
-        if perfil in ["gerente", "superadmin"]:
-            st.markdown("---")
-            st.markdown("### ⚙️ Gestão")
-            # Alerta de propostas pendentes
-            from src.simulacoes_storage import contar_propostas_pendentes
-            qtd_pendentes = contar_propostas_pendentes()
-            if qtd_pendentes > 0:
-                st.warning("🔔 **{qtd_pendentes}** proposta(s) aguardando sua aprovação!")
-
-            if st.button("📊 Dashboard", use_container_width=True):
-                st.session_state.pagina = "Dashboard"
-                st.rerun()
-
-            if st.button("📈 Dashboard Vendas", use_container_width=True):
-                st.session_state.pagina = "DashboardVendas"
-                st.rerun()
-
-            if st.button("🏗️ Construtoras", use_container_width=True):
-                st.session_state.pagina = "Construtoras"
-                st.rerun()
-
-            if st.button("🏦 Regras Financiamento", use_container_width=True):
-                st.session_state.pagina = "Regras"
-                st.rerun()
-
-            if st.button("📋 Regras de Entrada", use_container_width=True):
-                st.session_state.pagina = "RegrasEntrada"
-                st.rerun()
-
-            if st.button("🎯 Origens", use_container_width=True):
-                st.session_state.pagina = "Origens"
-                st.rerun()
-
-            if st.button("👥 Usuários", use_container_width=True):
-                st.session_state.pagina = "Usuários"
-                st.rerun()
 
             if st.button("⚙️ Configurações", key="btn_menu_config", use_container_width=True):
                 st.session_state.pagina = "Configuracoes"
@@ -304,7 +271,6 @@ with st.sidebar:
             if st.button("📺 War Room (TV)", key="btn_war_room", use_container_width=True):
                 st.session_state.pagina = "WarRoom"
                 st.rerun()
-
             
         # ---- Admin ----
         if perfil == "superadmin":
