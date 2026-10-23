@@ -1,8 +1,9 @@
 import streamlit as st
 from openai import OpenAI
 from src.crm.leads_storage import criar_lead
+from src.configuracoes_storage import obter_configuracao
 import urllib.parse
-import re # <--- A MÁGICA ESTÁ AQUI
+import re
 import json
 
 def renderizar_landing_page(campanha_id=None):
@@ -49,9 +50,7 @@ def renderizar_landing_page(campanha_id=None):
         st.success("✅ Sua solicitação foi registrada! Em breve um corretor falará com você.")
         st.balloons()
         
-        # === BOTÃO DE WHATSAPP ===
-        from src.configuracoes_storage 
-        import obter_configuracao
+        # === BOTÃO DE WHATSAPP (Puxa do Banco de Dados) ===
         tel_imobiliaria = obter_configuracao("whatsapp_imobiliaria", "5521999999999")
             
         mensagem_wa = f"Olá! Sou o {st.session_state.dados_lead['nome']}. Acabei de falar com a Bia no site e gostaria de ver as oportunidades de imóveis!"
@@ -96,7 +95,6 @@ def renderizar_landing_page(campanha_id=None):
             if not st.session_state.get("lead_salvo", False):
                 # Limpa o telefone (só números)
                 tel_limpo = re.sub(r'\D', '', str(st.session_state.dados_lead["telefone"]))
-                # Se for 10 ou 11 dígitos (DDD + número), adiciona o 55
                 if len(tel_limpo) in (10, 11):
                     tel_limpo = "55" + tel_limpo
                 
