@@ -50,10 +50,9 @@ def renderizar_landing_page(campanha_id=None):
         st.balloons()
         
         # === BOTÃO DE WHATSAPP ===
-        try:
-            tel_imobiliaria = st.secrets.get("WHATSAPP_CORRETOR", "5521999999999")
-        except:
-            tel_imobiliaria = "5521999999999"
+        from src.configuracoes_storage 
+        import obter_configuracao
+        tel_imobiliaria = obter_configuracao("whatsapp_imobiliaria", "5521999999999")
             
         mensagem_wa = f"Olá! Sou o {st.session_state.dados_lead['nome']}. Acabei de falar com a Bia no site e gostaria de ver as oportunidades de imóveis!"
         mensagem_encoded = urllib.parse.quote(mensagem_wa)

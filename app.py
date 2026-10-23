@@ -19,6 +19,7 @@ from src.conta_seguranca import renderizar_conta_seguranca
 from src.conta_seguranca import renderizar_conta_seguranca, renderizar_mfa_obrigatorio
 from src.crm.kanban import renderizar_kanban
 from src.crm.campanhas_ui import renderizar_campanhas
+from src.configuracoes_gerenciar import renderizar_configuracoes
 
 # =========================================================
 # ROTA PÚBLICA: LANDING PAGE COM BIA
@@ -294,6 +295,10 @@ with st.sidebar:
                 st.session_state.pagina = "Usuários"
                 st.rerun()
 
+            if st.button("⚙️ Configurações", key="btn_menu_config", use_container_width=True):
+                st.session_state.pagina = "Configuracoes"
+                st.rerun()
+
         # ---- Admin ----
         if perfil == "superadmin":
             st.markdown("---")
@@ -364,6 +369,8 @@ else:
             renderizar_historico(usuario_logado=st.session_state.usuario_logado, USUARIOS=USUARIOS)
         elif pagina == "CRM":
             renderizar_kanban(st.session_state.usuario_logado, USUARIOS)
+        elif pagina == "Configuracoes":
+            renderizar_configuracoes()
         elif pagina == "ChatIA":
             pagina_bia_operacional(
             usuario_logado=st.session_state.usuario_logado,
