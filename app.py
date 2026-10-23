@@ -5,7 +5,7 @@ from src.construtoras_storage import carregar_construtoras
 from src.construtoras import pagina_gestao_construtoras
 from src.simulador import pagina_simulador
 from src.bia import pagina_bia
-from src.superadmin import pagina_superadmin
+from src.superadmin import pagina_superadmin, renderizar_limpeza_teste
 from src.creditos import pagina_creditos
 from src.dashboard import pagina_dashboard
 from src.origens_gerenciar import renderizar_gestao_origens
@@ -20,6 +20,7 @@ from src.conta_seguranca import renderizar_conta_seguranca, renderizar_mfa_obrig
 from src.crm.kanban import renderizar_kanban
 from src.crm.campanhas_ui import renderizar_campanhas
 from src.configuracoes_gerenciar import renderizar_configuracoes
+from src.war_room import renderizar_war_room
 
 # =========================================================
 # ROTA PÚBLICA: LANDING PAGE COM BIA
@@ -257,6 +258,7 @@ with st.sidebar:
                     st.session_state.pagina = "Campanhas"
                     st.rerun()
 
+            
         # ---- Gestão ----
         if perfil in ["gerente", "superadmin"]:
             st.markdown("---")
@@ -299,6 +301,11 @@ with st.sidebar:
                 st.session_state.pagina = "Configuracoes"
                 st.rerun()
 
+            if st.button("📺 War Room (TV)", key="btn_war_room", use_container_width=True):
+                st.session_state.pagina = "WarRoom"
+                st.rerun()
+
+            
         # ---- Admin ----
         if perfil == "superadmin":
             st.markdown("---")
@@ -311,6 +318,10 @@ with st.sidebar:
             if st.button("💰 Créditos OpenAI", use_container_width=True):
                 st.session_state.pagina = "Creditos"
                 st.rerun()
+
+            if st.button("🧹 Zerar Testes", key="btn_zerar_testes", use_container_width=True):
+                                        st.session_state.pagina = "LimpezaTeste"
+                                        st.rerun()
 
 # =========================================================
 # ROTEAMENTO
@@ -396,5 +407,9 @@ else:
             renderizar_campanhas()
         elif pagina == "Creditos":
             pagina_creditos()
+        elif pagina == "LimpezaTeste":
+            renderizar_limpeza_teste(USUARIOS)
+        elif pagina == "WarRoom":
+            renderizar_war_room()
         else:
             pagina_simulador(CONSTRUTORAS, USUARIOS)

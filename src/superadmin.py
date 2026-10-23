@@ -83,3 +83,30 @@ def pagina_superadmin(USUARIOS):
         st.info("💡 Em breve: histórico de acessos e ações dos usuários.")
     
     st.caption("👑 Área exclusiva para Super Admin")
+
+def renderizar_limpeza_teste(USUARIOS):
+    st.markdown("### 🧹 Resetar Base de Dados")
+    st.warning("⚠️ **CUIDADO:** Esta ação apagará TODOS os leads do CRM, simulações, vendas e campanhas. O histórico será perdido permanentemente. Construtoras, Regras e Usuários serão mantidos.")
+    
+    # Campo de confirmação de segurança
+    confirmacao = st.text_input("Digite **RESETAR** para liberar o botão:", key="confirmar_limpeza")
+    
+    if confirmacao == "RESETAR":
+        if st.button("🚨 RESETAR BASE AGORA", type="primary", use_container_width=True):
+            try:
+                from src.db import get_client
+                client = get_client()
+                
+                # Lista de tabelas para limpar
+                tabelas = ["crm_leads", "crm_campanhas", "simulacoes", "vendas", "unidades_status"]
+                
+                for tabela in tabelas:
+                    # O Supabase permite deletar todos os registros se passarmos um filtro verdadeiro
+                    # No SDK do Python, usamos um valor que sempre existe (ou usamos uma função RPC)
+                    # A forma mais segura via SDK é deletar onde o ID não é nulo:
+                    client.table(tabela).delete().neq("id", "0").execute()
+                    
+                st.success("✅ Base de testes limpa com sucesso! O sistema está zerado.")
+                st.balloons()
+            except Exception as e:
+                st.error(f"❌ Erro ao limpar base: {str(e)}")
