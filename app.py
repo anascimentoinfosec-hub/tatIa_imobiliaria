@@ -23,6 +23,7 @@ from src.configuracoes_gerenciar import renderizar_configuracoes
 from src.war_room import renderizar_war_room
 from src.diretor_comercial import renderizar_diretor_comercial
 from src.diretor_vendas import renderizar_diretor_vendas
+from src.diretor_financeiro import renderizar_diretor_financeiro
 
 
 # =========================================================
@@ -333,6 +334,11 @@ with st.sidebar:
                     st.session_state.pagina = "DiretorVendas"
                     st.rerun()
 
+            if tem_perm("diretor_financeiro"):
+                if st.button("💰 Diretor Financeiro", key="btn_dir_financeiro", use_container_width=True):
+                    st.session_state.pagina = "DiretorFinanceiro"
+                    st.rerun()
+
         # ---- Admin ----
         if perfil == "superadmin":
             st.markdown("---")
@@ -448,5 +454,7 @@ else:
             renderizar_diretor_comercial()
         elif pagina == "DiretorVendas":
                     renderizar_diretor_vendas()
+        elif pagina == "DiretorFinanceiro":
+            renderizar_diretor_financeiro()
         else:
             pagina_simulador(CONSTRUTORAS, USUARIOS)
