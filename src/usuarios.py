@@ -8,6 +8,32 @@ PAGINAS_SISTEMA = {
     "gestao": ["dashboard", "dashboard_vendas", "construtoras", "regras_fin", "regras_ent", "origens", "usuarios"]
 }
 
+# Template de permissões padrão por perfil
+PERMISSOES_PADRAO = {
+    "corretor": {
+        "simulador": True, "crm": True, "vendas": True, "simulacoes": True, "chat_ia": True,
+        "dashboard": False, "dashboard_vendas": False, "construtoras": False, "regras_fin": False, 
+        "regras_ent": False, "origens": False, "usuarios": False, "campanhas": False, 
+        "configuracoes": False, "war_room": False, "diretor_comercial": False
+    },
+    "gerente": {
+        "simulador": True, "crm": True, "vendas": True, "simulacoes": True, "chat_ia": True,
+        "dashboard": True, "dashboard_vendas": True, "construtoras": True, "regras_fin": True, 
+        "regras_ent": True, "origens": True, "usuarios": True, "campanhas": True, 
+        "configuracoes": True, "war_room": True, "diretor_comercial": False
+    },
+    "diretor_comercial": {
+        "simulador": False, "crm": True, "vendas": False, "simulacoes": False, "chat_ia": False,
+        "dashboard": False, "dashboard_vendas": True, "construtoras": False, "regras_fin": False, 
+        "regras_ent": False, "origens": False, "usuarios": False, "campanhas": True, 
+        "configuracoes": False, "war_room": True, "diretor_comercial": True
+    },
+    "superadmin": {
+        # Superadmin tem tudo True
+        pag: True for pag in sum(PAGINAS_SISTEMA.values(), [])
+    }
+}
+
 def renderizar_tela_permissoes(permissoes_atuais, prefixo, sufixo=""):
     """Renderiza os checkboxes agrupados. O 'sufixo' evita erro de cache entre usuários."""
     novas_permissoes = {}
@@ -73,15 +99,22 @@ def pagina_gestao_usuarios(USUARIOS):
         with col2:
             senha = st.text_input("Senha", type="password", key="add_senha")
             if perfil_logado == "superadmin":
-                perfil = st.selectbox("Perfil", ["corretor", "gerente", "superadmin"], key="add_perfil")
+                perfis = ["corretor", "gerente", "diretor_comercial", "superadmin"]
+                perfil = st.selectbox("Perfil", perfis, key="add_perfil")
             else:
-                perfil = st.selectbox("Perfil", ["corretor"], key="add_perfil_restrito")
+                perfil = "corretor"
+                st.info("Perfil: corretor")
             ativo = st.checkbox("Ativo", value=True, key="add_ativo")
         
         st.markdown("---")
         st.markdown("### 🔐 Permissões de Acesso")
-        st.caption("Desmarque as abas que este usuário NÃO deve acessar.")
-        permissoes_novas = renderizar_tela_permissoes({}, prefixo="add", sufixo="novo")
+        st.caption("As caixinhas abaixo já vêm pré-selecionadas conforme o perfil escolhido, mas você pode ajustar manualmente.")
+        
+        # Pega o template baseado no perfil selecionado
+        template_atual = PERMISSOES_PADRAO.get(perfil, {})
+        
+        # Renderiza os checkboxes já com os valores do template
+        permissoes_novas = renderizar_tela_permissoes(template_atual, prefixo="add")
         
         if st.button("➕ Adicionar Usuário", use_container_width=True, type="primary"):
             if login and nome and senha and email:
@@ -93,11 +126,7 @@ def pagina_gestao_usuarios(USUARIOS):
                         "ativo": ativo, "email": email, "permissoes": permissoes_novas
                     }
                     salvar_usuarios(USUARIOS)
-                    
-                    # Guarda a mensagem e limpa os campos
-                    st.session_state["msg_sucesso_usuario"] = f"Usuário '{login}' adicionado com sucesso!"
-                    for key in ["add_login", "add_nome", "add_email", "add_senha"]:
-                        if key in st.session_state: del st.session_state[key]
+                    st.session_state["msg_sucesso_usuario"] = f"Usuário '{login}' criado como {perfil}!"
                     st.rerun()
             else:
                 st.error("❌ Preencha todos os campos!")
