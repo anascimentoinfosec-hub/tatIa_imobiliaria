@@ -351,11 +351,6 @@ with st.sidebar:
             st.markdown("### 👑 Admin")
             # ... (mantenha os botões de Admin que já existem)
             
-        # ---- Admin ----
-        if perfil == "superadmin":
-            st.markdown("---")
-            st.markdown("### 👑 Admin")
-
             if st.button("👥 Gerenciar Gerentes", use_container_width=True):
                 st.session_state.pagina = "SuperAdmin"
                 st.rerun()
