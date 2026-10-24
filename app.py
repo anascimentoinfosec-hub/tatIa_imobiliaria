@@ -203,19 +203,27 @@ with st.sidebar:
         st.markdown("---")
 
         if st.button("🚪 Sair", use_container_width=True):
-            # 1. Apaga os cookies do navegador
+            import time
             from streamlit_cookies_controller import CookieController
+            
+            # 1. Instancia o controlador de cookies
             controller = CookieController()
-            controller.remove("tatia_mfa_token")
-            controller.remove("tatia_mfa_user")
             
-            # 2. Limpa a sessão atual
-            st.session_state.usuario_logado = None
+            # 2. Remove os cookies com segurança (evita o KeyError)
+            try:
+                controller.remove("tatia_mfa_token")
+                controller.remove("tatia_mfa_user")
+            except KeyError:
+                pass # Se o cookie já não existir, apenas ignora e segue o fluxo
             
-            # 3. Recarrega a página para voltar ao login
+            # 3. Limpa o estado da sessão do Streamlit
+            st.session_state.clear()
+            
+            # 4. Dá 1 segundo para o navegador processar a remoção do cookie
+            time.sleep(1)
+            
+            # 5. Recarrega a página para forçar o logout
             st.rerun()
-
-        st.markdown("---")
 
         # ---- Operacional ----
         st.markdown("### 📈 Operacional")
