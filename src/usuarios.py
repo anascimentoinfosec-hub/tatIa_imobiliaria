@@ -160,57 +160,63 @@ def pagina_gestao_usuarios(USUARIOS):
             if usuario_editar:
                 dados = USUARIOS[usuario_editar]
                 
-                if perfil_logado == "gerente" and dados["perfil"] == "superadmin":
-                    st.error("❌ Você não tem permissão para editar o Super Admin!")
-                    st.stop()
+                # Inputs básicos
+                nome = st.text_input("Nome", value=dados["nome"])
+                email = st.text_input("E-mail", value=dados.get("email", ""))
                 
-                with st.form("form_editar_usuario"):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        nome = st.text_input("Nome", value=dados["nome"])
-                        email = st.text_input("E-mail", value=dados.get("email", ""))
-                        if perfil_logado == "superadmin":
-                            perfis = ["corretor", "gerente", "diretor_comercial", "superadmin","diretor_vendas"]
-                            idx = perfis.index(dados["perfil"]) if dados["perfil"] in perfis else 0
-                            perfil = st.selectbox("Perfil", perfis, index=idx)
-                        else:
-                            perfil = dados["perfil"]
-                            st.info(f"Perfil atual: {perfil}")
-                    
-                    with col2:
-                        senha = st.text_input("Nova senha (opcional)", type="password")
-                        ativo = st.checkbox("Ativo", value=dados["ativo"])
+                # O pulo do gato: Usar um key dinâmico para o selectbox do perfil
+                if perfil_logado == "superadmin":
+                    perfis = ["corretor", "gerente", "diretor_comercial", "diretor_vendas", "superadmin"]
+                    idx = perfis.index(dados["perfil"]) if dados["perfil"] in perfis else 0
+                    perfil = st.selectbox("Perfil", perfis, index=idx, key=f"edit_perfil_{usuario_editar}")
+                else:
+                    perfil = dados["perfil"]
+                    st.info(f"Perfil atual: {perfil}")
+                
+                senha = st.text_input("Nova senha (opcional)", type="password")
+                ativo = st.checkbox("Ativo", value=dados["ativo"])
+                
+                st.markdown("---")
+                st.markdown("### 🔐 Permissões de Acesso")
+                
+                # Se o perfil na tela for diferente do perfil salvo no banco, usamos o template novo
+                if perfil != dados["perfil"]:
+                    permissoes_base = PERMISSOES_PADRAO.get(perfil, {})
+                    st.warning(f"⚠️ O perfil foi alterado para '{perfil}'. As permissões abaixo refletem o padrão deste perfil. Salve para aplicar.")
+                else:
+                    permissoes_base = dados.get("permissoes", {})
+                
+                # O sufixo agora inclui o perfil selecionado, forçando o Streamlit a recriar as caixinhas
+                permissoes_editadas = renderizar_tela_permissoes(permissoes_base, prefixo="edit", sufixo=f"{usuario_editar}_{perfil}")
+                
+                # Botões de Salvar e Excluir (fora do form para podermos usar o st.rerun)
+                col_btn1, col_btn2 = st.columns(2)
+                with col_btn1:
+                    if st.button("💾 Salvar Alterações", use_container_width=True, type="primary"):
+                        dados["nome"] = nome
+                        dados["email"] = email
+                        if perfil_logado == "superadmin": 
+                            dados["perfil"] = perfil
+                        if senha: 
+                            dados["hash"] = hash_senha(senha)
+                        dados["ativo"] = ativo
+                        dados["permissoes"] = permissoes_editadas
                         
-                    st.markdown("---")
-                    st.markdown("### 🔐 Permissões de Acesso")
-                    permissoes_atuais = dados.get("permissoes", {})
-                    permissoes_editadas = renderizar_tela_permissoes(permissoes_atuais, prefixo="edit", sufixo=usuario_editar)
-                    
-                    col_btn1, col_btn2 = st.columns(2)
-                    with col_btn1:
-                        if st.form_submit_button("💾 Salvar", use_container_width=True, type="primary"):
-                            dados["nome"] = nome
-                            dados["email"] = email
-                            if perfil_logado == "superadmin": dados["perfil"] = perfil
-                            if senha: dados["hash"] = hash_senha(senha)
-                            dados["ativo"] = ativo
-                            dados["permissoes"] = permissoes_editadas
-                            
-                            salvar_usuarios(USUARIOS)
-                            st.session_state["msg_sucesso_usuario"] = "Usuário atualizado!"
-                            st.rerun()
-                    
-                    with col_btn2:
-                        pode_excluir = (perfil_logado == "superadmin") or (perfil_logado == "gerente" and dados["perfil"] == "corretor")
-                        if pode_excluir:
-                            if st.form_submit_button("🗑️ Excluir", use_container_width=True):
-                                if usuario_editar == "superadmin":
-                                    st.error("❌ Não é possível excluir o Super Admin!")
-                                else:
-                                    del USUARIOS[usuario_editar]
-                                    salvar_usuarios(USUARIOS)
-                                    st.session_state["msg_sucesso_usuario"] = "Usuário excluído!"
-                                    st.rerun()
+                        salvar_usuarios(USUARIOS)
+                        st.session_state["msg_sucesso_usuario"] = "Usuário atualizado!"
+                        st.rerun()
+                
+                with col_btn2:
+                    pode_excluir = (perfil_logado == "superadmin") or (perfil_logado == "gerente" and dados["perfil"] == "corretor")
+                    if pode_excluir:
+                        if st.button("🗑️ Excluir", use_container_width=True):
+                            if usuario_editar == "superadmin":
+                                st.error("❌ Não é possível excluir o Super Admin!")
+                            else:
+                                del USUARIOS[usuario_editar]
+                                salvar_usuarios(USUARIOS)
+                                st.session_state["msg_sucesso_usuario"] = "Usuário excluído!"
+                                st.rerun()
                         else:
                             st.warning("⚠️ Você não tem permissão para excluir este usuário.")
         else:

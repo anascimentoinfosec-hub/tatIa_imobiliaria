@@ -221,40 +221,42 @@ with st.sidebar:
         st.markdown("### 📈 Operacional")
 
         if tem_perm("simulador"):
-            if st.button("📊 Simulador", use_container_width=True):
+            if st.button("📊 Simulador", key="btn_menu_sim", use_container_width=True):
                 st.session_state.pagina = "Simulador"
                 st.rerun()
 
         if tem_perm("crm"):
-            if st.button("🤝 CRM de Leads", use_container_width=True):
+            if st.button("🤝 CRM de Leads", key="btn_menu_crm", use_container_width=True):
                 st.session_state.pagina = "CRM"
                 st.rerun()
 
         if tem_perm("vendas"):
-            if st.button("💼 Vendas", use_container_width=True):
+            if st.button("💼 Vendas", key="btn_menu_vendas", use_container_width=True):
                 st.session_state.pagina = "Vendas"
                 st.rerun()
 
         if tem_perm("simulacoes"):
-            if st.button("📚 Simulações", use_container_width=True):
+            if st.button("📚 Simulações", key="btn_menu_hist", use_container_width=True):
                 st.session_state.pagina = "Histórico"
                 st.rerun()
 
         if tem_perm("chat_ia"):
-            if st.button("💬 IA Imobiliária", use_container_width=True):
+            if st.button("💬 IA Imobiliária", key="btn_menu_ia", use_container_width=True):
                 st.session_state.pagina = "ChatIA"
                 st.rerun()
 
         # ---- Gestão ----
-        if perfil in ["gerente", "superadmin"]:
+        # Removemos o if perfil daqui. Se o cara tiver permissão, o botão aparece.
+        tem_alguma_gestao = any(tem_perm(p) for p in ["dashboard", "dashboard_vendas", "construtoras", "regras_fin", "regras_ent", "origens", "usuarios", "campanhas", "configuracoes", "war_room"])
+        
+        if tem_alguma_gestao:
             st.markdown("---")
             st.markdown("### ⚙️ Gestão")
             
-            # Alerta de propostas pendentes
             from src.simulacoes_storage import contar_propostas_pendentes
             qtd_pendentes = contar_propostas_pendentes()
             if qtd_pendentes > 0:
-                st.warning(f"🔔 **{qtd_pendentes}** proposta(s) aguardando sua aprovação!")
+                st.warning(f"🔔 **{qtd_pendentes}** proposta(s) aguardando aprovação!")
 
             if tem_perm("dashboard"):
                 if st.button("📊 Dashboard", key="btn_menu_dash", use_container_width=True):
@@ -291,33 +293,43 @@ with st.sidebar:
                     st.session_state.pagina = "Usuários"
                     st.rerun()
 
-            if tem_perm("dashboard"):
+            if tem_perm("campanhas"):
                 if st.button("📣 Campanhas", key="btn_menu_campanhas", use_container_width=True):
                     st.session_state.pagina = "Campanhas"
                     st.rerun()
 
-            if st.button("⚙️ Configurações", key="btn_menu_config", use_container_width=True):
-                st.session_state.pagina = "Configuracoes"
-                st.rerun()
+            if tem_perm("configuracoes"):
+                if st.button("⚙️ Configurações", key="btn_menu_config", use_container_width=True):
+                    st.session_state.pagina = "Configuracoes"
+                    st.rerun()
 
-            if st.button("📺 War Room (TV)", key="btn_war_room", use_container_width=True):
-                st.session_state.pagina = "WarRoom"
-                st.rerun()
+            if tem_perm("war_room"):
+                if st.button("📺 War Room (TV)", key="btn_war_room", use_container_width=True):
+                    st.session_state.pagina = "WarRoom"
+                    st.rerun()
 
         # ---- Diretoria ----
-        if perfil in ["gerente", "superadmin", "diretor_comercial"]: # O gerente tb pode ver por enquanto
+        tem_alguma_diretoria = any(tem_perm(p) for p in ["diretor_comercial", "diretor_vendas"])
+        
+        if tem_alguma_diretoria:
             st.markdown("---")
             st.markdown("### 👔 Diretoria")
             
-            if st.button("💼 Diretor Comercial", key="btn_dir_comercial", use_container_width=True):
-                st.session_state.pagina = "DiretorComercial"
-                st.rerun()
-
+            if tem_perm("diretor_comercial"):
+                if st.button("💼 Diretor Comercial", key="btn_dir_comercial", use_container_width=True):
+                    st.session_state.pagina = "DiretorComercial"
+                    st.rerun()
+                    
             if tem_perm("diretor_vendas"):
                 if st.button("📈 Diretor de Vendas", key="btn_dir_vendas", use_container_width=True):
                     st.session_state.pagina = "DiretorVendas"
                     st.rerun()
-            
+
+        # ---- Admin ----
+        if perfil == "superadmin":
+            st.markdown("---")
+            st.markdown("### 👑 Admin")
+            # ... (mantenha os botões de Admin que já existem)
             
         # ---- Admin ----
         if perfil == "superadmin":
