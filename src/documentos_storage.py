@@ -15,7 +15,6 @@ def upload_documento(arquivo, cliente_nome, tipo_doc="doc"):
         path = nome_unico
 
         bytes_data = arquivo.getvalue()
-        # Tenta fazer o upload
         client.storage.from_(BUCKET).upload(
             path=path,
             file=bytes_data,
@@ -23,9 +22,8 @@ def upload_documento(arquivo, cliente_nome, tipo_doc="doc"):
         )
         return path
     except Exception as e:
-        # AQUI ESTÁ O SEGREDO: Mostra o erro na tela!
-        st.error(f"❌ Erro ao enviar arquivo para o Supabase Storage: {str(e)}")
-        return None
+        # Agora ele lança o erro para o Simulador capturar
+        raise Exception(str(e))
 
 def gerar_link_temporario(path, expira_em_segundos=3600):
     client = get_client()

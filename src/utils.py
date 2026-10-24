@@ -110,3 +110,25 @@ def campo_moeda(label, valor_inicial=0.0, key=None, help=None, placeholder="Ex: 
     )
 
     return _parse_brl(texto)
+
+def mostrar_erro_persistente(mensagem, chave="geral"):
+    """
+    Exibe um erro que só desaparece quando o usuário clica em OK.
+    Útil para debug em produção.
+    """
+    import streamlit as st
+    
+    if f"mostrar_erro_{chave}" not in st.session_state:
+        st.session_state[f"mostrar_erro_{chave}"] = True
+        st.session_state[f"msg_erro_{chave}"] = mensagem
+
+    if st.session_state[f"mostrar_erro_{chave}"]:
+        with st.container():
+            col1, col2 = st.columns([0.9, 0.1])
+            with col1:
+                st.error(f"❌ **Erro no sistema:**\n\n{st.session_state[f'msg_erro_{chave}']}")
+            with col2:
+                st.write("") # Alinhamento
+                if st.button("OK", key=f"btn_ok_erro_{chave}", use_container_width=True):
+                    st.session_state[f"mostrar_erro_{chave}"] = False
+                    st.rerun()

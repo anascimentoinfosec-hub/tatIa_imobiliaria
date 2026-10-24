@@ -17,6 +17,10 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
         return
 
     st.title("🏢 Simulador de Entrada de Construtora")
+    # Mostra mensagem de sucesso que sobrevive ao F5/Rerun
+    if "msg_sucesso_proposta" in st.session_state:
+        st.success(st.session_state["msg_sucesso_proposta"])
+        del st.session_state["msg_sucesso_proposta"]
     st.caption("Analise o potencial do cliente em **todas as construtoras** disponíveis.")
 
     usuario_logado = st.session_state.get("usuario_logado")
@@ -134,30 +138,39 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
             
             if st.button("📤 Enviar Proposta ao Gerente", use_container_width=True, type="primary"):
                 if status_lgpd != "autorizado":
-                    st.error("⚠️ O cliente precisa autorizar o uso dos documentos (LGPD) antes de enviar a proposta.")
+                    st.error("⚠️ O cliente precisa autorizar o uso dos documentos (LGPD).")
                 else:
                     with st.spinner("Enviando proposta..."):
-                        caminhos_docs = []
-                        if arquivos:
-                            for arq in arquivos:
-                                path = upload_documento(arq, sim["nome_cliente"], tipo_doc=arq.name)
-                                if path:
-                                    caminhos_docs.append(path)
-                                    
-                        num_pre = st.session_state.get(f"plano_pre_{idx_escolhido}", 0)
-                        num_pos = st.session_state.get(f"plano_pos_{idx_escolhido}", 0)
-                        
-                        _salvar_proposta(
-                            sim, top_refinado, idx_escolhido, usuario_logado, USUARIOS,
-                            num_pre=num_pre, num_pos=num_pos, 
-                            feedback_corretor=feedback,
-                            documentos_paths=caminhos_docs,
-                            lgpd_token=token_atual
-                        )
-                        st.success("✅ Proposta enviada ao Gerente!")
-                        if token_key in st.session_state:
-                            del st.session_state[token_key]
-                        st.rerun()
+                        try:
+                            caminhos_docs = []
+                            if arquivos:
+                                for arq in arquivos:
+                                    # Tenta fazer o upload
+                                    path = upload_documento(arq, sim["nome_cliente"], tipo_doc=arq.name)
+                                    if path:
+                                        caminhos_docs.append(path)
+                                        
+                            num_pre = st.session_state.get(f"plano_pre_{idx_escolhido}", 0)
+                            num_pos = st.session_state.get(f"plano_pos_{idx_escolhido}", 0)
+                            
+                            _salvar_proposta(
+                                sim, top_refinado, idx_escolhido, usuario_logado, USUARIOS,
+                                num_pre=num_pre, num_pos=num_pos, 
+                                feedback_corretor=feedback,
+                                documentos_paths=caminhos_docs,
+                                lgpd_token=token_atual
+                            )
+                            
+                            # Se deu tudo certo, salva a mensagem e limpa o token
+                            st.session_state["msg_sucesso_proposta"] = "✅ Proposta enviada ao Gerente com sucesso!"
+                            if token_key in st.session_state:
+                                del st.session_state[token_key]
+                            st.rerun()
+                            
+                        except Exception as e:
+                            # Se o upload falhar, chama a tela de erro persistente
+                            from src.utils import mostrar_erro_persistente
+                            mostrar_erro_persistente(f"Erro ao enviar documentos ou salvar proposta: {str(e)}", chave="upload_proposta")
 
         st.markdown("---")
         renderizar_ajuste_global(df_total, "PREÇO")
