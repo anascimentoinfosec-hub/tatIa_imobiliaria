@@ -108,21 +108,21 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
             )
 
 
-            # ---------- 4. Enviar Proposta (só no final) ----------
+        # ---------- 4. Enviar Proposta (só no final) ----------
         if idx_escolhido is not None:
             st.markdown("---")
-            st.info("💡 **Revise o plano de entrada** antes de enviar.")
+            st.info("💡 **Revise o plano de entrada** no card acima antes de enviar.")
             
-            feedback = st.text_area("📝 Feedback para o Gerente", key="feedback_proposta")
+            feedback = st.text_area("📝 Feedback para o Gerente", placeholder="Ex: Cliente tem FGTS alto e urgência na mudança.", key="feedback_proposta")
             
             # === LGPD E DOCUMENTOS ===
             st.markdown("### 📎 Documentos do Cliente (LGPD)")
             
             from src.documentos_storage import criar_token_consentimento, verificar_consentimento
             
-            # Verifica se já gerou um link nessa sessão
-            token_key = "lgpd_token_{sim['nome_cliente']}"
+            token_key = f"lgpd_token_{sim['nome_cliente']}"
             token_atual = st.session_state.get(token_key)
+            status_lgpd = "pendente"
             
             if not token_atual:
                 if st.button("🔗 Gerar Link de Consentimento LGPD"):
@@ -131,9 +131,9 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                         st.session_state[token_key] = token_atual
                         st.rerun()
             else:
-                status = verificar_consentimento(token_atual)
+                status_lgpd = verificar_consentimento(token_atual)
                 
-                if status == "pendente":
+                if status_lgpd == "pendente":
                     st.warning("⏳ Aguardando o cliente clicar no link de autorização.")
                     
                     try:
@@ -153,37 +153,44 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
                     if st.button("🔄 Verificar se o cliente autorizou"):
                         st.rerun()
                         
-                elif status == "autorizado":
+                elif status_lgpd == "autorizado":
                     st.success("✅ Cliente autorizou o uso dos documentos!")
-                    
-                    arquivos = st.file_uploader("Anexe RG, CPF e Comprovante de Renda", 
-                                                accept_multiple_files=True, 
-                                                type=["pdf", "png", "jpg", "jpeg"])
-                    
-                    if st.button("📤 Enviar Proposta ao Gerente", use_container_width=True, type="primary"):
-                        with st.spinner("Enviando proposta..."):
-                            caminhos_docs = []
-                            if arquivos:
-                                from src.documentos_storage import upload_documento
-                                for arq in arquivos:
-                                    path = upload_documento(arq, sim["nome_cliente"], tipo_doc=arq.name)
-                                    if path:
-                                        caminhos_docs.append(path)
-                                        
-                            num_pre = st.session_state.get(f"plano_pre_{idx_escolhido}", 0)
-                            num_pos = st.session_state.get(f"plano_pos_{idx_escolhido}", 0)
-                            
-                            _salvar_proposta(
-                                sim, top_refinado, idx_escolhido, usuario_logado, USUARIOS,
-                                num_pre=num_pre, num_pos=num_pos, 
-                                feedback_corretor=feedback,
-                                documentos_paths=caminhos_docs,
-                                lgpd_token=token_atual
-                            )
-                            st.success("✅ Proposta enviada ao Gerente!")
-                            # Limpa o token da sessão após envio
+            
+            # O botão de enviar fica sempre visível, mas bloqueia se não tiver LGPD
+            arquivos = None
+            if status_lgpd == "autorizado":
+                arquivos = st.file_uploader("Anexe RG, CPF e Comprovante de Renda", 
+                                            accept_multiple_files=True, 
+                                            type=["pdf", "png", "jpg", "jpeg"])
+            
+            if st.button("📤 Enviar Proposta ao Gerente", use_container_width=True, type="primary"):
+                if status_lgpd != "autorizado":
+                    st.error("⚠️ O cliente precisa autorizar o uso dos documentos (LGPD) antes de enviar a proposta.")
+                else:
+                    with st.spinner("Enviando proposta..."):
+                        caminhos_docs = []
+                        if arquivos:
+                            from src.documentos_storage import upload_documento
+                            for arq in arquivos:
+                                path = upload_documento(arq, sim["nome_cliente"], tipo_doc=arq.name)
+                                if path:
+                                    caminhos_docs.append(path)
+                                    
+                        num_pre = st.session_state.get(f"plano_pre_{idx_escolhido}", 0)
+                        num_pos = st.session_state.get(f"plano_pos_{idx_escolhido}", 0)
+                        
+                        _salvar_proposta(
+                            sim, top_refinado, idx_escolhido, usuario_logado, USUARIOS,
+                            num_pre=num_pre, num_pos=num_pos, 
+                            feedback_corretor=feedback,
+                            documentos_paths=caminhos_docs,
+                            lgpd_token=token_atual
+                        )
+                        st.success("✅ Proposta enviada ao Gerente!")
+                        # Limpa o token após envio para o próximo cliente
+                        if token_key in st.session_state:
                             del st.session_state[token_key]
-                            st.rerun()
+                        st.rerun()
         st.markdown("---")
         renderizar_ajuste_global(df_total, "PREÇO")
 
