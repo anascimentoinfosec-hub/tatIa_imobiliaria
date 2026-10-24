@@ -13,6 +13,16 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
 
     st.title("🏗️ Gestão de Construtoras e Produtos")
 
+     # === FILTRO DE HANDOFF ===
+         #Mostra apenas as construtoras que o comercial já ativou 
+    
+    construtoras_ativas = {k: v for k, v in CONSTRUTORAS.items() if v.get("status_parceria", "ativa") == "ativa"}
+    
+    cidades = carregar_cidades()
+    tabs = st.tabs(["📋 Listar", "➕ Adicionar Construtora", "📦 Gerenciar Produtos", "📍 Gerenciar Cidades"])
+    
+    # ... (nas chamadas das abas, troque o CONSTRUTORAS por construtoras_ativas, se necessário)
+
     cidades = carregar_cidades()
     tabs = st.tabs([
         "📋 Listar",
@@ -22,10 +32,10 @@ def pagina_gestao_construtoras(CONSTRUTORAS):
     ])
 
     with tabs[0]:
-        renderizar_aba_listar(CONSTRUTORAS)
+        renderizar_aba_listar(construtoras_ativas)
 
     with tabs[1]:
-        renderizar_aba_adicionar(CONSTRUTORAS, cidades)
+        renderizar_aba_adicionar(construtoras_ativas, cidades)
 
     with tabs[2]:
         renderizar_aba_produtos(cidades)

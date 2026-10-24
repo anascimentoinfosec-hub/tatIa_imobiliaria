@@ -21,6 +21,7 @@ from src.crm.kanban import renderizar_kanban
 from src.crm.campanhas_ui import renderizar_campanhas
 from src.configuracoes_gerenciar import renderizar_configuracoes
 from src.war_room import renderizar_war_room
+from src.diretor_comercial import renderizar_diretor_comercial
 
 # =========================================================
 # ROTA PÚBLICA: LANDING PAGE COM BIA
@@ -300,6 +301,16 @@ with st.sidebar:
             if st.button("📺 War Room (TV)", key="btn_war_room", use_container_width=True):
                 st.session_state.pagina = "WarRoom"
                 st.rerun()
+
+        # ---- Diretoria ----
+        if perfil in ["gerente", "superadmin", "diretor_comercial"]: # O gerente tb pode ver por enquanto
+            st.markdown("---")
+            st.markdown("### 👔 Diretoria")
+            
+            if st.button("💼 Diretor Comercial", key="btn_dir_comercial", use_container_width=True):
+                st.session_state.pagina = "DiretorComercial"
+                st.rerun()
+            
             
         # ---- Admin ----
         if perfil == "superadmin":
@@ -406,5 +417,7 @@ else:
             renderizar_limpeza_teste(USUARIOS)
         elif pagina == "WarRoom":
             renderizar_war_room()
+        elif pagina == "DiretorComercial":
+            renderizar_diretor_comercial()
         else:
             pagina_simulador(CONSTRUTORAS, USUARIOS)
