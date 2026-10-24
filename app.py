@@ -22,6 +22,8 @@ from src.crm.campanhas_ui import renderizar_campanhas
 from src.configuracoes_gerenciar import renderizar_configuracoes
 from src.war_room import renderizar_war_room
 from src.diretor_comercial import renderizar_diretor_comercial
+from src.diretor_vendas import renderizar_diretor_vendas
+
 
 # =========================================================
 # ROTA PÚBLICA: LANDING PAGE COM BIA
@@ -310,6 +312,11 @@ with st.sidebar:
             if st.button("💼 Diretor Comercial", key="btn_dir_comercial", use_container_width=True):
                 st.session_state.pagina = "DiretorComercial"
                 st.rerun()
+
+            if tem_perm("diretor_vendas"):
+                if st.button("📈 Diretor de Vendas", key="btn_dir_vendas", use_container_width=True):
+                    st.session_state.pagina = "DiretorVendas"
+                    st.rerun()
             
             
         # ---- Admin ----
@@ -419,5 +426,7 @@ else:
             renderizar_war_room()
         elif pagina == "DiretorComercial":
             renderizar_diretor_comercial()
+        elif pagina == "DiretorVendas":
+                    renderizar_diretor_vendas()
         else:
             pagina_simulador(CONSTRUTORAS, USUARIOS)

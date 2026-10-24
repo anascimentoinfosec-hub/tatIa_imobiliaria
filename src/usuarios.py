@@ -7,7 +7,7 @@ from src.auth import salvar_usuarios, carregar_usuarios
 PAGINAS_SISTEMA = {
     "operacional": ["simulador", "crm", "vendas", "simulacoes", "chat_ia"],
     "gestao": ["dashboard", "dashboard_vendas", "construtoras", "regras_fin", "regras_ent", "origens", "usuarios", "campanhas", "configuracoes", "war_room"],
-    "diretoria": ["diretor_comercial"]
+    "diretoria": ["diretor_comercial", "diretor_vendas"]
 }
 
 # Template de permissões padrão por perfil
@@ -29,6 +29,12 @@ PERMISSOES_PADRAO = {
         "dashboard": False, "dashboard_vendas": True, "construtoras": False, "regras_fin": False, 
         "regras_ent": False, "origens": False, "usuarios": False, "campanhas": True, 
         "configuracoes": False, "war_room": True, "diretor_comercial": True
+    },
+    "diretor_vendas": {
+        "simulador": False, "crm": True, "vendas": True, "simulacoes": False, "chat_ia": False,
+        "dashboard": False, "dashboard_vendas": True, "construtoras": False, "regras_fin": False, 
+        "regras_ent": False, "origens": False, "usuarios": False, "campanhas": False, 
+        "configuracoes": False, "war_room": True, "diretor_comercial": False, "diretor_vendas": True
     },
     "superadmin": {
         pag: True for pag in sum(PAGINAS_SISTEMA.values(), [])
@@ -112,7 +118,7 @@ def pagina_gestao_usuarios(USUARIOS):
             
             # Se o cara for superadmin, ele pode escolher qualquer perfil
             if perfil_logado == "superadmin":
-                perfis = ["corretor", "gerente", "diretor_comercial", "superadmin"]
+                perfis = ["corretor", "gerente", "diretor_comercial", "superadmin", "diretor_vendas"]
                 perfil = st.selectbox("Perfil", perfis, key="add_perfil")
             else:
                 perfil = "corretor"
@@ -164,7 +170,7 @@ def pagina_gestao_usuarios(USUARIOS):
                         nome = st.text_input("Nome", value=dados["nome"])
                         email = st.text_input("E-mail", value=dados.get("email", ""))
                         if perfil_logado == "superadmin":
-                            perfis = ["corretor", "gerente", "diretor_comercial", "superadmin"]
+                            perfis = ["corretor", "gerente", "diretor_comercial", "superadmin","diretor_vendas"]
                             idx = perfis.index(dados["perfil"]) if dados["perfil"] in perfis else 0
                             perfil = st.selectbox("Perfil", perfis, index=idx)
                         else:
