@@ -7,7 +7,7 @@ from src.auth import salvar_usuarios, carregar_usuarios
 PAGINAS_SISTEMA = {
     "operacional": ["simulador", "crm", "vendas", "simulacoes", "chat_ia"],
     "gestao": ["dashboard", "dashboard_vendas", "construtoras", "regras_fin", "regras_ent", "origens", "usuarios", "campanhas", "configuracoes", "war_room"],
-    "diretoria": ["diretor_comercial", "diretor_vendas", "diretor_financeiro"]
+    "diretoria": ["diretor_comercial", "diretor_vendas", "diretor_financeiro", "diretor_rh"]
 }
 
 # Template de permissões padrão por perfil
@@ -41,6 +41,12 @@ PERMISSOES_PADRAO = {
         "dashboard": False, "dashboard_vendas": True, "construtoras": False, "regras_fin": False, 
         "regras_ent": False, "origens": False, "usuarios": False, "campanhas": False, 
         "configuracoes": False, "war_room": True, "diretor_comercial": False, "diretor_vendas": False, "diretor_financeiro": True
+    },
+    "diretor_rh": {
+        "simulador": False, "crm": False, "vendas": False, "simulacoes": False, "chat_ia": False,
+        "dashboard": False, "dashboard_vendas": False, "construtoras": False, "regras_fin": False, 
+        "regras_ent": False, "origens": False, "usuarios": True, "campanhas": False, 
+        "configuracoes": False, "war_room": False, "diretor_comercial": False, "diretor_vendas": False, "diretor_financeiro": False, "diretor_rh": True
     },
     "superadmin": {
         pag: True for pag in sum(PAGINAS_SISTEMA.values(), [])
@@ -124,7 +130,7 @@ def pagina_gestao_usuarios(USUARIOS):
             
             # Se o cara for superadmin, ele pode escolher qualquer perfil
             if perfil_logado == "superadmin":
-                perfis = ["corretor", "gerente", "diretor_comercial", "superadmin", "diretor_vendas", "diretor_financeiro"]
+                perfis = ["corretor", "gerente", "diretor_comercial", "superadmin", "diretor_vendas", "diretor_financeiro", "diretor_rh"]
                 perfil = st.selectbox("Perfil", perfis, key="add_perfil")
             else:
                 perfil = "corretor"
@@ -172,7 +178,7 @@ def pagina_gestao_usuarios(USUARIOS):
                 
                 # O pulo do gato: Usar um key dinâmico para o selectbox do perfil
                 if perfil_logado == "superadmin":
-                    perfis = ["corretor", "gerente", "diretor_comercial", "diretor_vendas", "superadmin", "diretor_financeiro"]
+                    perfis = ["corretor", "gerente", "diretor_comercial", "diretor_vendas", "superadmin", "diretor_financeiro", "diretor_rh"]
                     idx = perfis.index(dados["perfil"]) if dados["perfil"] in perfis else 0
                     perfil = st.selectbox("Perfil", perfis, index=idx, key=f"edit_perfil_{usuario_editar}")
                 else:

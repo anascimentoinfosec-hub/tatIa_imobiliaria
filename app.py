@@ -24,6 +24,7 @@ from src.war_room import renderizar_war_room
 from src.diretor_comercial import renderizar_diretor_comercial
 from src.diretor_vendas import renderizar_diretor_vendas
 from src.diretor_financeiro import renderizar_diretor_financeiro
+from src.diretor_rh import renderizar_diretor_rh
 
 
 # =========================================================
@@ -318,7 +319,7 @@ with st.sidebar:
                     st.rerun()
 
         # ---- Diretoria ----
-        tem_alguma_diretoria = any(tem_perm(p) for p in ["diretor_comercial", "diretor_vendas"])
+        tem_alguma_diretoria = any(tem_perm(p) for p in ["diretor_comercial", "diretor_vendas", "diretor_rh"])
         
         if tem_alguma_diretoria:
             st.markdown("---")
@@ -337,6 +338,11 @@ with st.sidebar:
             if tem_perm("diretor_financeiro"):
                 if st.button("💰 Diretor Financeiro", key="btn_dir_financeiro", use_container_width=True):
                     st.session_state.pagina = "DiretorFinanceiro"
+                    st.rerun()
+
+            if tem_perm("diretor_rh"):
+                if st.button("👥 Diretor de RH", key="btn_dir_rh", use_container_width=True):
+                    st.session_state.pagina = "DiretorRH"
                     st.rerun()
 
         # ---- Admin ----
@@ -456,5 +462,7 @@ else:
                     renderizar_diretor_vendas()
         elif pagina == "DiretorFinanceiro":
             renderizar_diretor_financeiro()
+        elif pagina == "DiretorRH":
+            renderizar_diretor_rh()
         else:
             pagina_simulador(CONSTRUTORAS, USUARIOS)
