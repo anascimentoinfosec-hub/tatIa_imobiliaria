@@ -136,6 +136,35 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =========================================================
+# ROTA PÚBLICA: CONSENTIMENTO LGPD
+# =========================================================
+if st.query_params.get("consentimento"):
+    token = st.query_params.get("consentimento")
+    from src.documentos_storage import verificar_consentimento, autorizar_consentimento
+    
+    st.markdown("<h1 style='text-align: center;'>🔒 Termo de Consentimento (LGPD)</h1>", unsafe_allow_html=True)
+    st.markdown("---")
+    
+    status_atual = verificar_consentimento(token)
+    
+    if status_atual == "autorizado":
+        st.success("✅ Você já autorizou o uso dos seus documentos. Obrigado!")
+    elif status_atual == "pendente":
+        st.info("Para que a imobiliária possa analisar sua proposta de crédito, precisamos da sua autorização para armazenar documentos como RG, CPF e comprovantes de renda.")
+        st.markdown("Seus dados serão armazenados em ambiente seguro e utilizados **exclusivamente** para a análise de crédito junto à construtora/banco, conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018).")
+        
+        if st.button("✅ Eu autorizo o uso dos meus documentos", type="primary", use_container_width=True):
+            if autorizar_consentimento(token):
+                st.success("🎉 Autorização registrada com sucesso! Você já pode fechar esta página.")
+                st.balloons()
+            else:
+                st.error("Erro ao registrar autorização. Tente novamente.")
+    else:
+        st.error("❌ Link inválido ou expirado.")
+        
+    st.stop() # Impede o sistema de carregar o resto (login, etc)
+    
+# =========================================================
 # CARREGA DADOS
 # =========================================================
 USUARIOS = carregar_usuarios()

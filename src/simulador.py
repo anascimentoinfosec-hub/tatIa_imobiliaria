@@ -11,6 +11,7 @@ from src.simulador_cards import (
 from src.compartilhar import botoes_compartilhar
 from src.regras_entrada_storage import obter_regra_construtora
 from src.regras_entrada_calculo import calcular_plano_entrada
+from src.documentos_storage import upload_documento
 
 
 def pagina_simulador(CONSTRUTORAS, USUARIOS):
@@ -110,22 +111,79 @@ def pagina_simulador(CONSTRUTORAS, USUARIOS):
             # ---------- 4. Enviar Proposta (só no final) ----------
         if idx_escolhido is not None:
             st.markdown("---")
-            st.info("💡 **Revise o plano de entrada** no card acima antes de enviar.")
+            st.info("💡 **Revise o plano de entrada** antes de enviar.")
             
-            # NOVO: Campo de Feedback
-            feedback = st.text_area("📝 Feedback para o Gerente (Por que esse cliente tem potencial?)", 
-                                    placeholder="Ex: Cliente tem FGTS alto e urgência na mudança.", key="feedback_proposta")
-
-            if st.button("📤 Enviar Proposta ao Gerente", use_container_width=True, type="primary"):
-                num_pre = st.session_state.get(f"plano_pre_{idx_escolhido}", 0)
-                num_pos = st.session_state.get(f"plano_pos_{idx_escolhido}", 0)
-                _salvar_proposta(
-                    sim, top_refinado, idx_escolhido, usuario_logado, USUARIOS,
-                    num_pre=num_pre, num_pos=num_pos, feedback_corretor=feedback # <--- Passa o feedback
-                )
-                st.success("✅ Proposta enviada! **O gerente foi notificado.**")
-                st.rerun()
-
+            feedback = st.text_area("📝 Feedback para o Gerente", key="feedback_proposta")
+            
+            # === LGPD E DOCUMENTOS ===
+            st.markdown("### 📎 Documentos do Cliente (LGPD)")
+            
+            from src.documentos_storage import criar_token_consentimento, verificar_consentimento
+            
+            # Verifica se já gerou um link nessa sessão
+            token_key = "lgpd_token_{sim['nome_cliente']}"
+            token_atual = st.session_state.get(token_key)
+            
+            if not token_atual:
+                if st.button("🔗 Gerar Link de Consentimento LGPD"):
+                    with st.spinner("Gerando link..."):
+                        token_atual = criar_token_consentimento(sim["nome_cliente"])
+                        st.session_state[token_key] = token_atual
+                        st.rerun()
+            else:
+                status = verificar_consentimento(token_atual)
+                
+                if status == "pendente":
+                    st.warning("⏳ Aguardando o cliente clicar no link de autorização.")
+                    
+                    try:
+                        base_url = st.secrets.get("APP_BASE_URL", "http://localhost:8080")
+                    except:
+                        base_url = "http://localhost:8080"
+                    link = f"{base_url}/?consentimento={token_atual}"
+                    
+                    st.code(link, language="text")
+                    st.caption("Envie este link para o cliente via WhatsApp:")
+                    
+                    import urllib.parse
+                    texto_wa = f"Olá {sim['nome_cliente']}, para darmos andamento na sua proposta, por favor autorize o uso dos seus documentos neste link: {link}"
+                    link_wa = f"https://wa.me/?text={urllib.parse.quote(texto_wa)}"
+                    st.markdown(f'<a href="{link_wa}" target="_blank" style="display:block; background-color:#25D366; color:white; text-align:center; padding:8px; border-radius:8px; text-decoration:none; font-weight:600;">📱 Enviar Link no WhatsApp</a>', unsafe_allow_html=True)
+                    
+                    if st.button("🔄 Verificar se o cliente autorizou"):
+                        st.rerun()
+                        
+                elif status == "autorizado":
+                    st.success("✅ Cliente autorizou o uso dos documentos!")
+                    
+                    arquivos = st.file_uploader("Anexe RG, CPF e Comprovante de Renda", 
+                                                accept_multiple_files=True, 
+                                                type=["pdf", "png", "jpg", "jpeg"])
+                    
+                    if st.button("📤 Enviar Proposta ao Gerente", use_container_width=True, type="primary"):
+                        with st.spinner("Enviando proposta..."):
+                            caminhos_docs = []
+                            if arquivos:
+                                from src.documentos_storage import upload_documento
+                                for arq in arquivos:
+                                    path = upload_documento(arq, sim["nome_cliente"], tipo_doc=arq.name)
+                                    if path:
+                                        caminhos_docs.append(path)
+                                        
+                            num_pre = st.session_state.get(f"plano_pre_{idx_escolhido}", 0)
+                            num_pos = st.session_state.get(f"plano_pos_{idx_escolhido}", 0)
+                            
+                            _salvar_proposta(
+                                sim, top_refinado, idx_escolhido, usuario_logado, USUARIOS,
+                                num_pre=num_pre, num_pos=num_pos, 
+                                feedback_corretor=feedback,
+                                documentos_paths=caminhos_docs,
+                                lgpd_token=token_atual
+                            )
+                            st.success("✅ Proposta enviada ao Gerente!")
+                            # Limpa o token da sessão após envio
+                            del st.session_state[token_key]
+                            st.rerun()
         st.markdown("---")
         renderizar_ajuste_global(df_total, "PREÇO")
 
@@ -207,12 +265,15 @@ def _montar_resumo_texto(sim, usuario_logado, USUARIOS, top_filtrado, plano=None
 
 # =========================================================
 def _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS,
-                     num_pre=0, num_pos=0, feedback_corretor=""):
+                     num_pre=0, num_pos=0, feedback_corretor="", lgpd_token=""):
     # ... código anterior ...
     dados_extra = {
         # ... outros campos ...
         "plano_entrada": _serializar_plano(plano),
         "feedback_corretor": feedback_corretor, # <--- SALVA NO BANCO
+        # ...
+        "documentos": documentos_paths,
+        "lgpd_token": lgpd_token, # <-- Salva o token
     }
     # ... resto do código ...
     from src.simulacoes_storage import salvar_simulacao

@@ -6,6 +6,7 @@ from src.simulacoes_storage import (
 )
 from src.utils import formatar_valor_br
 from src.unidades_status_storage import marcar_unidade, desmarcar_unidade
+from src.documentos_storage import gerar_link_temporario
 
 
 # =========================================================
@@ -226,6 +227,22 @@ def _renderizar_card_simulacao(sim, is_gerente):
             st.info(f"📝 **Feedback do Corretor:** {sim['feedback_corretor']}")
 
         plano = sim.get("plano_entrada")
+
+        # === MOSTRAR DOCUMENTOS ANEXADOS ===
+        documentos = sim.get("documentos", [])
+        if documentos:
+            st.markdown("---")
+            st.markdown("##### 📎 Documentos Anexados pelo Corretor")
+            st.caption("🔒 Links seguros gerados na hora (expiram em 1 hora).")
+            for doc_path in documentos:
+                link = gerar_link_temporario(doc_path)
+                if link:
+                    # Pega só o final do nome do arquivo para mostrar na tela
+                    nome_arquivo = doc_path.split('_')[-1] 
+                    st.markdown(f"📄 [Baixar {nome_arquivo}]({link})")
+                else:
+                    st.warning("Erro ao gerar link para um documento.")
+
         if plano:
             st.markdown("---")
             st.markdown("##### 💰 Plano de Entrada")
@@ -443,3 +460,26 @@ def _formatar_data(iso_str):
         return dt.strftime("%d/%m/%Y %H:%M")
     except Exception:
         return "Data desconhecida"
+
+# === MOSTRAR DOCUMENTOS E LGPD ===
+        documentos = sim.get("documentos", [])
+        lgpd_token = sim.get("lgpd_token", "")
+        
+        if documentos or lgpd_token:
+            st.markdown("---")
+            st.markdown("##### 📎 Documentos e LGPD")
+            
+            if lgpd_token:
+                from src.documentos_storage import obter_data_consentimento
+                data_aut = obter_data_consentimento(lgpd_token)
+                if data_aut:
+                    st.success(f"🔒 **Consentimento LGPD registrado em {data_aut}**")
+                else:
+                    st.warning("⚠️ Link gerado, mas consentimento não registrado.")
+            
+            for doc_path in documentos:
+                from src.documentos_storage import gerar_link_temporario
+                link = gerar_link_temporario(doc_path)
+                if link:
+                    nome_arquivo = doc_path.split('_')[-1] 
+                    st.markdown(f"📄 [Baixar {nome_arquivo}]({link})")
