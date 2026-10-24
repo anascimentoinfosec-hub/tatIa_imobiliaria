@@ -272,19 +272,12 @@ def _montar_resumo_texto(sim, usuario_logado, USUARIOS, top_filtrado, plano=None
 
 # =========================================================
 def _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS,
-                     num_pre=0, num_pos=0, feedback_corretor="", lgpd_token=""):
-    # ... código anterior ...
-    dados_extra = {
-        # ... outros campos ...
-        "plano_entrada": _serializar_plano(plano),
-        "feedback_corretor": feedback_corretor, # <--- SALVA NO BANCO
-        # ...
-        "documentos": documentos_paths,
-        "lgpd_token": lgpd_token, # <-- Salva o token
-    }
-    # ... resto do código ...
+                     num_pre=0, num_pos=0, feedback_corretor="", documentos_paths=None, lgpd_token=""):
     from src.simulacoes_storage import salvar_simulacao
     from src.unidades_status_storage import marcar_unidade
+
+    if documentos_paths is None:
+        documentos_paths = []
 
     top_unit = top.loc[[idx_escolhido]]
     nome_gerente = USUARIOS[usuario_logado]["nome"] if usuario_logado in USUARIOS else ""
@@ -318,13 +311,14 @@ def _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS,
         "financiamento_caixa": sim.get("financiamento_caixa", 0),
         "documentacao_paga": sim.get("documentacao_paga", False),
         "plano_entrada": _serializar_plano(plano),
+        "feedback_corretor": feedback_corretor,     # <-- NOVO
+        "documentos": documentos_paths,             # <-- NOVO
+        "lgpd_token": lgpd_token,                   # <-- NOVO
     }
-    
-    # === NOVO: CARIMBA O LEAD_ID ===
+
+    # Se o lead veio do CRM, amarra o ID
     if "lead_para_simular" in st.session_state:
         dados_extra["lead_id"] = st.session_state["lead_para_simular"]["id"]
-
-    # ... e mantém o resto do código de salvar_simulacao e marcar_unidade ...
 
     sim_id = salvar_simulacao(
         nome_cliente=sim["nome_cliente"],
@@ -340,7 +334,7 @@ def _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS,
         dados_extra=dados_extra,
     )
 
-    # === MARCA A UNIDADE COMO EM PROCESSO ===
+    # Marca a unidade como em processo no ERP
     marcar_unidade(
         construtora=construtora,
         produto=produto,
@@ -351,26 +345,13 @@ def _salvar_proposta(sim, top, idx_escolhido, usuario_logado, USUARIOS,
         corretor=nome_gerente,
     )
 
-    # === LIMPA O ESTADO DO SIMULADOR ===
-    _limpar_estado_simulador()
-
-    # === MENSAGEM DE SUCESSO (persiste após o rerun) ===
-    st.session_state["_msg_sucesso_simulador"] = (
-        f"✅ Proposta enviada com sucesso! (ID: {sim_id[-6:]})"
-    )
-
-    # === SCROLL PARA O TOPO ===
-    _scroll_para_topo()
-
-    # === A PONTE COM O CRM ===
+    # Sincroniza com o CRM (Kanban)
     if "lead_para_simular" in st.session_state:
         from src.crm.leads_storage import atualizar_status_lead
         lead_id = st.session_state["lead_para_simular"]["id"]
-        # Quando envia pro gerente, vai para "Em aprovação"
-        atualizar_status_lead(lead_id, "aprovacao") 
-        
+        atualizar_status_lead(lead_id, "aprovacao")
         del st.session_state["lead_para_simular"]
-        st.toast("🤝 Lead enviado para Aprovação da Acessória no CRM!")
+        st.toast("🤝 Lead atualizado no CRM!")
 
 def _limpar_estado_simulador():
     """Remove todas as chaves do session_state do simulador."""
