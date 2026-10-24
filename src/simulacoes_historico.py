@@ -6,8 +6,7 @@ from src.simulacoes_storage import (
 )
 from src.utils import formatar_valor_br
 from src.unidades_status_storage import marcar_unidade, desmarcar_unidade
-from src.documentos_storage import gerar_link_temporario
-
+from src.documentos_storage import obter_data_consentimento,gerar_link_temporario
 
 # =========================================================
 # SINCRONIZAÇÃO COM O CRM
@@ -228,62 +227,34 @@ def _renderizar_card_simulacao(sim, is_gerente):
 
         plano = sim.get("plano_entrada")
 
-        # === MOSTRAR DOCUMENTOS ANEXADOS ===
+        # === MOSTRAR DOCUMENTOS E LGPD ===
         documentos = sim.get("documentos", [])
-        if documentos:
+        lgpd_token = sim.get("lgpd_token", "")
+        
+        if documentos or lgpd_token:
             st.markdown("---")
-            st.markdown("##### 📎 Documentos Anexados pelo Corretor")
-            st.caption("🔒 Links seguros gerados na hora (expiram em 1 hora).")
-            for doc_path in documentos:
-                link = gerar_link_temporario(doc_path)
-                if link:
-                    # Pega só o final do nome do arquivo para mostrar na tela
-                    nome_arquivo = doc_path.split('_')[-1] 
-                    st.markdown(f"📄 [Baixar {nome_arquivo}]({link})")
+            st.markdown("##### 📎 Documentação Anexada")
+            
+            # Mostra o carimbo de consentimento LGPD
+            if lgpd_token:
+                from src.documentos_storage import obter_data_consentimento
+                data_aut = obter_data_consentimento(lgpd_token)
+                if data_aut:
+                    st.success(f"🔒 **Consentimento LGPD registrado em {data_aut}**")
                 else:
-                    st.warning("Erro ao gerar link para um documento.")
-
-        if plano:
-            st.markdown("---")
-            st.markdown("##### 💰 Plano de Entrada")
-            col_p1, col_p2, col_p3 = st.columns(3)
-            with col_p1:
-                st.write(f"**Entrada:** {formatar_valor_br(plano.get('valor_entrada', 0))}")
-                st.write(f"**Ato mínimo:** {formatar_valor_br(plano.get('ato', 0))}")
-            with col_p2:
-                st.write(f"**Comissão:** {formatar_valor_br(plano.get('comissao_total', 0))}")
-                st.write(f"**A parcelar:** {formatar_valor_br(plano.get('a_parcelar', 0))}")
-            with col_p3:
-                if plano.get("teto_parcelamento"):
-                    st.write(f"**Teto ({plano.get('teto_pct', 15)}%):** {formatar_valor_br(plano['teto_parcelamento'])}")
-
-            col_pre, col_pos = st.columns(2)
-            with col_pre:
-                st.markdown("**⏳ Pré-chaves**")
-                if plano.get("num_pre", 0) > 0:
-                    st.write(f"{plano['num_pre']}x de **{formatar_valor_br(plano.get('valor_pre', 0))}**")
-                    st.caption(f"Máx {plano.get('pre_pct', 30)}% renda")
-                else:
-                    st.caption("Sem parcelas pré-chaves")
-            with col_pos:
-                st.markdown("**🔑 Pós-chaves**")
-                if plano.get("num_pos", 0) > 0:
-                    st.write(f"{plano['num_pos']}x de **{formatar_valor_br(plano.get('valor_pos', 0))}**")
-                    st.caption(f"Máx {plano.get('pos_pct', 5)}% renda")
-                else:
-                    st.caption("Sem parcelas pós-chaves")
-
-            alertas = plano.get("alertas", [])
-            if alertas:
-                for a in alertas:
-                    if "🟢" in a:
-                        st.success(a)
-                    elif "🔴" in a:
-                        st.error(a)
+                    st.warning("⚠️ Link gerado, mas consentimento não registrado.")
+            
+            # Mostra a lista de arquivos
+            if documentos:
+                from src.documentos_storage import gerar_link_temporario
+                for doc_path in documentos:
+                    link = gerar_link_temporario(doc_path)
+                    if link:
+                        nome_arquivo = doc_path.split('_')[-1]
+                        st.markdown(f"📄 **[Baixar Documento: {nome_arquivo}]({link})**")
                     else:
-                        st.warning(a)
-            elif plano.get("viavel"):
-                st.success("✅ Plano viável dentro das regras da construtora.")
+                        st.warning("Erro ao gerar link para um documento.")
+            
 
         # === AÇÕES DO GERENTE ===
         if is_gerente:
