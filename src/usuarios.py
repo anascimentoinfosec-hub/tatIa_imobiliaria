@@ -3,9 +3,11 @@ import pandas as pd
 from src.utils import hash_senha
 from src.auth import salvar_usuarios, carregar_usuarios
 
+# Lista de todas as páginas controláveis
 PAGINAS_SISTEMA = {
     "operacional": ["simulador", "crm", "vendas", "simulacoes", "chat_ia"],
-    "gestao": ["dashboard", "dashboard_vendas", "construtoras", "regras_fin", "regras_ent", "origens", "usuarios"]
+    "gestao": ["dashboard", "dashboard_vendas", "construtoras", "regras_fin", "regras_ent", "origens", "usuarios", "campanhas", "configuracoes", "war_room"],
+    "diretoria": ["diretor_comercial"]
 }
 
 # Template de permissões padrão por perfil
@@ -29,16 +31,16 @@ PERMISSOES_PADRAO = {
         "configuracoes": False, "war_room": True, "diretor_comercial": True
     },
     "superadmin": {
-        # Superadmin tem tudo True
         pag: True for pag in sum(PAGINAS_SISTEMA.values(), [])
     }
 }
 
 def renderizar_tela_permissoes(permissoes_atuais, prefixo, sufixo=""):
-    """Renderiza os checkboxes agrupados. O 'sufixo' evita erro de cache entre usuários."""
+    """Renderiza os checkboxes agrupados em 3 colunas."""
     novas_permissoes = {}
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
+    
     with col1:
         st.markdown("**📈 Operacional**")
         for pag in PAGINAS_SISTEMA["operacional"]:
@@ -46,7 +48,7 @@ def renderizar_tela_permissoes(permissoes_atuais, prefixo, sufixo=""):
             novas_permissoes[pag] = st.checkbox(
                 pag.capitalize().replace("_", " "), 
                 value=valor_atual, 
-                key=f"{prefixo}_perm_{pag}_{sufixo}" # <-- A MÁGICA ESTÁ AQUI
+                key=f"{prefixo}_perm_{pag}_{sufixo}"
             )
             
     with col2:
@@ -56,7 +58,17 @@ def renderizar_tela_permissoes(permissoes_atuais, prefixo, sufixo=""):
             novas_permissoes[pag] = st.checkbox(
                 pag.capitalize().replace("_", " "), 
                 value=valor_atual, 
-                key=f"{prefixo}_perm_{pag}_{sufixo}" # <-- A MÁGICA ESTÁ AQUI
+                key=f"{prefixo}_perm_{pag}_{sufixo}"
+            )
+
+    with col3:
+        st.markdown("**👔 Diretoria**")
+        for pag in PAGINAS_SISTEMA["diretoria"]:
+            valor_atual = permissoes_atuais.get(pag, True)
+            novas_permissoes[pag] = st.checkbox(
+                pag.capitalize().replace("_", " "), 
+                value=valor_atual, 
+                key=f"{prefixo}_perm_{pag}_{sufixo}"
             )
             
     return novas_permissoes
@@ -64,7 +76,6 @@ def renderizar_tela_permissoes(permissoes_atuais, prefixo, sufixo=""):
 def pagina_gestao_usuarios(USUARIOS):
     st.title("👥 Gestão de Usuários")
     
-    # === TOAST DE SUCESSO ===
     if "msg_sucesso_usuario" in st.session_state:
         st.toast(st.session_state["msg_sucesso_usuario"], icon="✅")
         del st.session_state["msg_sucesso_usuario"]
@@ -98,23 +109,24 @@ def pagina_gestao_usuarios(USUARIOS):
             email = st.text_input("E-mail", key="add_email")
         with col2:
             senha = st.text_input("Senha", type="password", key="add_senha")
+            
+            # Se o cara for superadmin, ele pode escolher qualquer perfil
             if perfil_logado == "superadmin":
                 perfis = ["corretor", "gerente", "diretor_comercial", "superadmin"]
                 perfil = st.selectbox("Perfil", perfis, key="add_perfil")
             else:
                 perfil = "corretor"
-                st.info("Perfil: corretor")
+                st.info("Perfil: Corretor")
+                
             ativo = st.checkbox("Ativo", value=True, key="add_ativo")
         
         st.markdown("---")
         st.markdown("### 🔐 Permissões de Acesso")
-        st.caption("As caixinhas abaixo já vêm pré-selecionadas conforme o perfil escolhido, mas você pode ajustar manualmente.")
+        st.caption("As caixinhas abaixo já vêm pré-selecionadas conforme o perfil escolhido, mas você pode ajustar.")
         
         # Pega o template baseado no perfil selecionado
         template_atual = PERMISSOES_PADRAO.get(perfil, {})
-        
-        # Renderiza os checkboxes já com os valores do template
-        permissoes_novas = renderizar_tela_permissoes(template_atual, prefixo="add")
+        permissoes_novas = renderizar_tela_permissoes(template_atual, prefixo="add", sufixo=perfil)
         
         if st.button("➕ Adicionar Usuário", use_container_width=True, type="primary"):
             if login and nome and senha and email:
@@ -126,7 +138,9 @@ def pagina_gestao_usuarios(USUARIOS):
                         "ativo": ativo, "email": email, "permissoes": permissoes_novas
                     }
                     salvar_usuarios(USUARIOS)
-                    st.session_state["msg_sucesso_usuario"] = f"Usuário '{login}' criado como {perfil}!"
+                    st.session_state["msg_sucesso_usuario"] = f"Usuário '{login}' adicionado!"
+                    for key in ["add_login", "add_nome", "add_email", "add_senha"]:
+                        if key in st.session_state: del st.session_state[key]
                     st.rerun()
             else:
                 st.error("❌ Preencha todos os campos!")
@@ -150,7 +164,7 @@ def pagina_gestao_usuarios(USUARIOS):
                         nome = st.text_input("Nome", value=dados["nome"])
                         email = st.text_input("E-mail", value=dados.get("email", ""))
                         if perfil_logado == "superadmin":
-                            perfis = ["corretor", "gerente", "superadmin"]
+                            perfis = ["corretor", "gerente", "diretor_comercial", "superadmin"]
                             idx = perfis.index(dados["perfil"]) if dados["perfil"] in perfis else 0
                             perfil = st.selectbox("Perfil", perfis, index=idx)
                         else:
@@ -164,7 +178,7 @@ def pagina_gestao_usuarios(USUARIOS):
                     st.markdown("---")
                     st.markdown("### 🔐 Permissões de Acesso")
                     permissoes_atuais = dados.get("permissoes", {})
-                    permissoes_editadas = renderizar_tela_permissoes(permissoes_atuais, prefixo="edit", sufixo="novo")
+                    permissoes_editadas = renderizar_tela_permissoes(permissoes_atuais, prefixo="edit", sufixo=usuario_editar)
                     
                     col_btn1, col_btn2 = st.columns(2)
                     with col_btn1:
@@ -177,7 +191,7 @@ def pagina_gestao_usuarios(USUARIOS):
                             dados["permissoes"] = permissoes_editadas
                             
                             salvar_usuarios(USUARIOS)
-                            st.session_state["msg_sucesso_usuario"] = "Usuário atualizado com sucesso!"
+                            st.session_state["msg_sucesso_usuario"] = "Usuário atualizado!"
                             st.rerun()
                     
                     with col_btn2:
@@ -189,5 +203,9 @@ def pagina_gestao_usuarios(USUARIOS):
                                 else:
                                     del USUARIOS[usuario_editar]
                                     salvar_usuarios(USUARIOS)
-                                    st.session_state["msg_sucesso_usuario"] = "Usuário excluído com sucesso!"
+                                    st.session_state["msg_sucesso_usuario"] = "Usuário excluído!"
                                     st.rerun()
+                        else:
+                            st.warning("⚠️ Você não tem permissão para excluir este usuário.")
+        else:
+            st.warning("Nenhum usuário cadastrado.")
