@@ -1,25 +1,21 @@
+import streamlit as st
 from src.db import get_client
+from datetime import datetime
 import uuid
 import secrets
-from datetime import datetime
 
 BUCKET = "documentos-clientes"
 
 def upload_documento(arquivo, cliente_nome, tipo_doc="doc"):
-    """
-    Faz o upload de um arquivo para o bucket privado.
-    Retorna o caminho (path) do arquivo salvo.
-    """
     client = get_client()
     try:
-        # Gera um nome único para o arquivo (evita substituições)
         nome_limpo = cliente_nome.strip().replace(" ", "_").lower()
         extensao = arquivo.name.split('.')[-1]
         nome_unico = f"{nome_limpo}_{uuid.uuid4().hex[:6]}.{extensao}"
-        path = f"{nome_unico}"
+        path = nome_unico
 
-        # Lê os bytes e faz o upload
         bytes_data = arquivo.getvalue()
+        # Tenta fazer o upload
         client.storage.from_(BUCKET).upload(
             path=path,
             file=bytes_data,
@@ -27,25 +23,22 @@ def upload_documento(arquivo, cliente_nome, tipo_doc="doc"):
         )
         return path
     except Exception as e:
-        print(f"Erro no upload: {e}")
+        # AQUI ESTÁ O SEGREDO: Mostra o erro na tela!
+        st.error(f"❌ Erro ao enviar arquivo para o Supabase Storage: {str(e)}")
         return None
 
 def gerar_link_temporario(path, expira_em_segundos=3600):
-    """Gera um link seguro que expira (padrão 1 hora)."""
     client = get_client()
     try:
         response = client.storage.from_(BUCKET).create_signed_url(
-            path=path, 
-            expires_in=expira_em_segundos
+            path=path, expires_in=expira_em_segundos
         )
-        # O Supabase retorna a URL dentro de um dicionário
         return response.get("signedURL") or response.get("signed_url")
     except Exception as e:
-        print(f"Erro ao gerar link: {e}")
+        st.warning(f"⚠️ Erro ao gerar link de download: {str(e)}")
         return None
 
 def criar_token_consentimento(cliente_nome):
-    """Gera um token único e salva como pendente no banco."""
     client = get_client()
     try:
         token = secrets.token_urlsafe(16)
@@ -61,7 +54,6 @@ def criar_token_consentimento(cliente_nome):
         return None
 
 def verificar_consentimento(token):
-    """Retorna 'pendente' ou 'autorizado'."""
     client = get_client()
     try:
         res = client.table("consentimentos_lgpd").select("status").eq("token", token).execute()
@@ -72,7 +64,6 @@ def verificar_consentimento(token):
     return "nao_encontrado"
 
 def autorizar_consentimento(token):
-    """O cliente clicou no botão de autorizar."""
     client = get_client()
     try:
         client.table("consentimentos_lgpd").update({
