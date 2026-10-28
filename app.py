@@ -204,6 +204,27 @@ with st.sidebar:
 
         st.markdown("---")
 
+        if perfil in ["corretor", "gerente"]:
+            st.markdown("---")
+            st.markdown("### 📍 Meu Ponto")
+            
+            from src.crm.roleta import bater_ponto, sair_do_ponto
+            
+            # Botões de Ponto
+            col_pt1, col_pt2 = st.columns(2)
+            with col_pt1:
+                if st.button("🏢 Stand", use_container_width=True):
+                    if bater_ponto(usuario, "stand"):
+                        st.success("Ponto batido no Stand! Você está na roleta.")
+            with col_pt2:
+                if st.button("🏠 Home", use_container_width=True):
+                    if bater_ponto(usuario, "home"):
+                        st.success("Ponto batido no Home! Você está na roleta.")
+                        
+            if st.button("🚪 Sair da Roleta", use_container_width=True):
+                if sair_do_ponto(usuario):
+                    st.warning("Você saiu da roleta.")
+
         if st.button("🚪 Sair", use_container_width=True):
             import time
             from streamlit_cookies_controller import CookieController

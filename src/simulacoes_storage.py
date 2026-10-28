@@ -1,9 +1,12 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from src.db import supabase_disponivel
 
 ARQUIVO_SIMULACOES = "dados/simulacoes.json"
+
+# Define o fuso horário de Brasília (UTC-3)
+FUSO_BR = timezone(timedelta(hours=-3))
 
 STATUS_PROPOSTA = {
     "pendente": {"nome": "🔔 Pendente (cliente aceitou)", "cor": "#f59e0b", "ordem": 1, "acao": "Enviar para análise"},
@@ -14,7 +17,6 @@ STATUS_PROPOSTA = {
     "venda_confirmada": {"nome": "🎉 Venda confirmada", "cor": "#10b981", "ordem": 6, "acao": None},
     "rejeitada": {"nome": "❌ Rejeitada", "cor": "#ef4444", "ordem": 99, "acao": None},
 }
-
 
 # =========================================================
 # FALLBACK JSON
@@ -28,16 +30,13 @@ def _carregar_raw():
         pass
     return []
 
-
 def _salvar_raw(simulacoes):
     os.makedirs(os.path.dirname(ARQUIVO_SIMULACOES), exist_ok=True)
     with open(ARQUIVO_SIMULACOES, "w", encoding="utf-8") as f:
         json.dump(simulacoes, f, indent=2, ensure_ascii=False, default=str)
 
-
 def _gerar_id():
-    return datetime.now().strftime("%Y%m%d%H%M%S%f")
-
+    return datetime.now(FUSO_BR).strftime("%Y%m%d%H%M%S%f")
 
 # =========================================================
 # SALVAR
@@ -45,9 +44,6 @@ def _gerar_id():
 def salvar_simulacao(nome_cliente, renda, entrada, bairro, origem,
                      desconto, tipo_desconto, gerente, top_recomendacoes,
                      status_proposta="pendente", dados_extra=None):
-    # Limpa NaN do top_recomendacoes antes de iterar
-    if top_recomendacoes is not None and not top_recomendacoes.empty:
-        top_recomendacoes = top_recomendacoes.fillna("")
     oportunidades = []
     if top_recomendacoes is not None and not top_recomendacoes.empty:
         for _, row in top_recomendacoes.iterrows():
@@ -62,7 +58,7 @@ def salvar_simulacao(nome_cliente, renda, entrada, bairro, origem,
 
     registro = {
         "id": _gerar_id(),
-        "data_hora": datetime.now().isoformat(),
+        "data_hora": datetime.now(FUSO_BR).isoformat(), # <-- FUSO BRASIL AQUI
         "cliente": nome_cliente,
         "renda": float(renda),
         "entrada": float(entrada),
@@ -76,7 +72,7 @@ def salvar_simulacao(nome_cliente, renda, entrada, bairro, origem,
         "status_proposta": status_proposta,
         "historico_status": [{
             "status": status_proposta,
-            "data": datetime.now().isoformat(),
+            "data": datetime.now(FUSO_BR).isoformat(), # <-- FUSO BRASIL AQUI
             "por": gerente or "",
             "motivo": "",
         }],
@@ -96,7 +92,6 @@ def salvar_simulacao(nome_cliente, renda, entrada, bairro, origem,
 
     return registro["id"]
 
-
 # =========================================================
 # CARREGAR
 # =========================================================
@@ -113,7 +108,6 @@ def carregar_simulacoes():
     simulacoes = _carregar_raw()
     return list(reversed(simulacoes))
 
-
 def carregar_simulacao_por_id(sim_id):
     if supabase_disponivel():
         for sim in carregar_simulacoes():
@@ -125,7 +119,6 @@ def carregar_simulacao_por_id(sim_id):
         if sim["id"] == sim_id:
             return sim
     return None
-
 
 # =========================================================
 # ATUALIZAR STATUS
@@ -142,7 +135,7 @@ def atualizar_status_proposta(sim_id, novo_status, por_usuario="", motivo=""):
                 hist = sim.get("historico_status", [])
                 hist.append({
                     "status": novo_status,
-                    "data": datetime.now().isoformat(),
+                    "data": datetime.now(FUSO_BR).isoformat(),
                     "por": por_usuario,
                     "motivo": motivo,
                 })
@@ -158,7 +151,7 @@ def atualizar_status_proposta(sim_id, novo_status, por_usuario="", motivo=""):
             hist = sim.get("historico_status", [])
             hist.append({
                 "status": novo_status,
-                "data": datetime.now().isoformat(),
+                "data": datetime.now(FUSO_BR).isoformat(),
                 "por": por_usuario,
                 "motivo": motivo,
             })
@@ -166,7 +159,6 @@ def atualizar_status_proposta(sim_id, novo_status, por_usuario="", motivo=""):
             _salvar_raw(simulacoes)
             return True
     return False
-
 
 # =========================================================
 # EXCLUIR
@@ -183,7 +175,6 @@ def excluir_simulacao(sim_id):
         return True
     return False
 
-
 # =========================================================
 # HELPERS
 # =========================================================
@@ -191,11 +182,9 @@ def contar_propostas_pendentes():
     simulacoes = carregar_simulacoes()
     return sum(1 for s in simulacoes if s.get("status_proposta") == "pendente")
 
-
 def listar_propostas_por_status(status):
     simulacoes = carregar_simulacoes()
     return [s for s in simulacoes if s.get("status_proposta") == status]
-
 
 def listar_propostas_ativas():
     ativos = {"pendente", "em_analise", "aprovada", "aguardando_construtora", "contrato_enviado"}
