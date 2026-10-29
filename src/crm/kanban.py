@@ -49,12 +49,20 @@ def renderizar_kanban(usuario_logado, USUARIOS):
                     if not nome:
                         st.warning("⚠️ O nome é obrigatório.")
                     else:
-                        sucesso, _ = criar_lead(
+                        # 1. Salva o lead no banco
+                        sucesso, novo_lead_id = criar_lead(
                             nome=nome, telefone=telefone, email="", renda=renda,
                             origem=origem, corretor=nome_usuario if perfil == "corretor" else "Não atribuído"
                         )
-                        if sucesso:
-                            st.success("Lead adicionado ao funil!")
+                        if sucesso and novo_lead_id:
+                            # 2. CHAMA A ROLETA PARA DISTRIBUIR!
+                            from src.crm.roleta import distribuir_lead
+                            corretor_escolhido = distribuir_lead(novo_lead_id)
+                            
+                            if corretor_escolhido:
+                                st.success(f"Lead adicionado e distribuído para **{corretor_escolhido}**!")
+                            else:
+                                st.warning("Lead adicionado, mas ninguém estava na roleta (Check-in).")
                             st.rerun()
 
     leads = carregar_leads(corretor=corretor_filtro)

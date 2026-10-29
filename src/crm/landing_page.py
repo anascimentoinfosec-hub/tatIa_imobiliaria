@@ -100,7 +100,7 @@ def renderizar_landing_page(campanha_id=None):
                 
                 st.session_state.dados_lead["telefone"] = tel_limpo
 
-                criar_lead(
+                sucesso, novo_lead_id = criar_lead(
                     nome=st.session_state.dados_lead["nome"],
                     telefone=st.session_state.dados_lead["telefone"],
                     email="",
@@ -109,6 +109,12 @@ def renderizar_landing_page(campanha_id=None):
                     corretor="Não atribuído",
                     campanha_id=campanha_id
                 )
+                
+                # === DISTRIBUI PARA A ROLETA ===
+                if sucesso and novo_lead_id:
+                    from src.crm.roleta import distribuir_lead
+                    distribuir_lead(novo_lead_id)
+                    
                 st.session_state["lead_salvo"] = True
                 st.rerun()
 
