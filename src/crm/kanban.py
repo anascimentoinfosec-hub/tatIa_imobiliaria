@@ -106,31 +106,27 @@ def _renderizar_coluna(status, leads, mapa_campanhas):
 
     for lead in leads:
         # Traduz a origem
-        origem_id = lead.get('origem', '-')
-        origem_exibicao = mapa_campanhas.get(origem_id, origem_id)
-        
-        # Cria o link do WhatsApp para o corretor
-        telefone_lead = lead.get('telefone', '')
-        link_corretor = f"https://wa.me/{telefone_lead}" if telefone_lead else "#"
+            origem_id = lead.get('origem', '-')
+            origem_exibicao = mapa_campanhas.get(origem_id, origem_id)
+            
+            # Pega o corretor (se tiver)
+            corretor_atribuido = lead.get('corretor', 'Não atribuído')
 
-        with st.container():
-            st.markdown(
-                f"""
-                <div style='background-color:white; border-left: 4px solid {info['cor']}; 
-                padding:10px; border-radius:5px; margin-bottom:10px; 
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);'>
-                    <h4 style='margin:0; font-size:16px;'>{lead['nome']}</h4>
-                    <p style='margin:2px 0; font-size:12px;'>
-                        <a href="{link_corretor}" target="_blank" style="text-decoration:none; color:#25D366; font-weight:bold;">
-                            📱 {lead.get('telefone', 'Sem tel')}
-                        </a>
-                    </p>
-                    <p style='margin:2px 0; font-size:12px; color:#666;'>💰 R$ {lead.get('renda', 0):,.2f}</p>
-                    <p style='margin:2px 0; font-size:11px; color:#999;'>Origem: {origem_exibicao}</p>
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
+            with st.container():
+                st.markdown(
+                    f"""
+                    <div style='background-color:white; border-left: 4px solid {info['cor']}; 
+                    padding:10px; border-radius:5px; margin-bottom:10px; 
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);'>
+                        <h4 style='margin:0; font-size:16px;'>{lead['nome']}</h4>
+                        <p style='margin:2px 0; font-size:12px; color:#666;'>📱 {lead.get('telefone', 'Sem tel')}</p>
+                        <p style='margin:2px 0; font-size:12px; color:#666;'>💰 R$ {lead.get('renda', 0):,.2f}</p>
+                        <p style='margin:2px 0; font-size:11px; color:#999;'>Origem: {origem_exibicao}</p>
+                        <p style='margin:2px 0; font-size:12px; color:#0ea5e9; font-weight:bold;'>👤 Corretor: {corretor_atribuido}</p>
+                    </div>
+                    """, 
+                    unsafe_allow_html=True
+                )
             
             col_b1, col_b2 = st.columns(2)
             with col_b1:
