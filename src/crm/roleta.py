@@ -19,8 +19,12 @@ def bater_ponto(corretor, local):
             "ativo": True
         }).execute()
         
-        # 3. Adiciona/Atualiza na fila da roleta
-        client.table("roleta_fila").upsert({"corretor": corretor, "ultimo_lead_recebido": datetime.now(FUSO_BR).isoformat()}).execute()
+        # 3. A MÁGICA ESTÁ AQUI: Adiciona o on_conflict="corretor"
+        client.table("roleta_fila").upsert({
+            "corretor": corretor, 
+            "ultimo_lead_recebido": datetime.now(FUSO_BR).isoformat()
+        }, on_conflict="corretor").execute()
+        
         return True
     except Exception as e:
         st.error(f"❌ Erro ao bater ponto: {str(e)}")
