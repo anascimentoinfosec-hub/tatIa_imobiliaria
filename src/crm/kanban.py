@@ -49,20 +49,25 @@ def renderizar_kanban(usuario_logado, USUARIOS):
                     if not nome:
                         st.warning("⚠️ O nome é obrigatório.")
                     else:
-                        # 1. Salva o lead no banco
+                        # Se for corretor, o lead já nasce atribuído a ele
+                        corretor_inicial = nome_usuario if perfil == "corretor" else "Não atribuído"
+                        
                         sucesso, novo_lead_id = criar_lead(
                             nome=nome, telefone=telefone, email="", renda=renda,
-                            origem=origem, corretor=nome_usuario if perfil == "corretor" else "Não atribuído"
+                            origem=origem, corretor=corretor_inicial
                         )
+                        
                         if sucesso and novo_lead_id:
-                            # 2. CHAMA A ROLETA PARA DISTRIBUIR!
-                            from src.crm.roleta import distribuir_lead
-                            corretor_escolhido = distribuir_lead(novo_lead_id)
-                            
-                            if corretor_escolhido:
-                                st.success(f"Lead adicionado e distribuído para **{corretor_escolhido}**!")
+                            # REGRA 2: Se for corretor, NÃO vai para a roleta.
+                            if perfil != "corretor":
+                                from src.crm.roleta import distribuir_lead
+                                corretor_escolhido = distribuir_lead(novo_lead_id)
+                                if corretor_escolhido:
+                                    st.success(f"Lead adicionado e distribuído para **{corretor_escolhido}**!")
+                                else:
+                                    st.warning("Lead adicionado, mas ninguém estava na roleta (Check-in).")
                             else:
-                                st.warning("Lead adicionado, mas ninguém estava na roleta (Check-in).")
+                                st.success("Lead cadastrado na sua carteira particular!")
                             st.rerun()
 
     leads = carregar_leads(corretor=corretor_filtro)

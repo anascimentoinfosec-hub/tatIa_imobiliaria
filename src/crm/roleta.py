@@ -42,7 +42,7 @@ def sair_do_ponto(corretor):
         return False
 
 def proximo_corretor_disponivel():
-    """Acha o próximo corretor da fila que está no Stand (ou online)."""
+    """Acha o próximo corretor da fila que está no Stand e não recebeu lead nos últimos 10 min."""
     client = get_client()
     try:
         checkins = client.table("checkins_corretores").select("corretor, local").eq("ativo", True).execute().data
@@ -50,15 +50,35 @@ def proximo_corretor_disponivel():
             return None
             
         no_stand = [c["corretor"] for c in checkins if c["local"] == "stand"]
-        fila = client.table("roleta_fila").select("corretor").order("ultimo_lead_recebido").execute().data
+        
+        # Pega a fila ordenada por quem recebeu lead há mais tempo
+        fila = client.table("roleta_fila").select("corretor, ultimo_lead_recebido").order("ultimo_lead_recebido").execute().data
+        
+        agora = datetime.now(FUSO_BR)
         
         for item in fila:
-            if item["corretor"] in no_stand:
-                return item["corretor"] 
+            corretor = item["corretor"]
+            ultimo_recebido_str = item.get("ultimo_lead_recebido")
+            
+            # REGRA 1: TEMPO DE DESCANSO DE 10 MINUTOS
+            if ultimo_recebido_str:
+                try:
+                    # Converte a string do banco para datetime
+                    ultimo_recebido = datetime.fromisoformat(ultimo_recebido_str.replace("Z", "+00:00"))
+                    diferenca_minutos = (agora - ultimo_recebido).total_seconds() / 60
+                    
+                    # Se recebeu um lead há menos de 10 min, pula ele
+                    if diferenca_minutos < 10:
+                        continue 
+                except Exception:
+                    pass # Se der erro na data, ignora a regra e deixa passar
+            
+            # Se ele está no stand (ou se não tem ninguém no stand, pega o primeiro da fila geral)
+            if (no_stand and corretor in no_stand) or (not no_stand):
+                return corretor
                 
-        if fila:
-            return fila[0]["corretor"]
-        return None
+        # Se todos estiverem no período de descanso, retorna None
+        return None 
     except Exception as e:
         st.error(f"❌ Erro na roleta: {str(e)}")
         return None
