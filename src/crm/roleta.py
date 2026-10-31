@@ -17,12 +17,12 @@ def bater_ponto(corretor, local):
             "ativo": True
         }).execute()
         
-        # Salva o timestamp atual (segundos) como string
-        agora_ts = str(datetime.now(FUSO_BR).timestamp())
+        # SALVA NO FORMATO ISO 8601 (O PostgreSQL aceita!)
+        agora_iso = datetime.now(FUSO_BR).isoformat()
         
         client.table("roleta_fila").upsert({
             "corretor": corretor, 
-            "ultimo_lead_recebido": agora_ts
+            "ultimo_lead_recebido": agora_iso
         }, on_conflict="corretor").execute()
         
         return True
@@ -54,22 +54,26 @@ def proximo_corretor_disponivel():
         # Pega a fila ordenada por quem recebeu lead há mais tempo
         fila = client.table("roleta_fila").select("corretor, ultimo_lead_recebido").order("ultimo_lead_recebido").execute().data
         
-        agora_ts = datetime.now(FUSO_BR).timestamp()
+        agora = datetime.now(FUSO_BR)
         
         for item in fila:
             corretor = item["corretor"]
-            ultimo_ts_str = item.get("ultimo_lead_recebido")
+            ultimo_recebido_str = item.get("ultimo_lead_recebido")
             
-            # REGRA DOS 10 MINUTOS (600 SEGUNDOS)
-            if ultimo_ts_str:
+            # REGRA DOS 10 MINUTOS
+            if ultimo_recebido_str:
                 try:
-                    ultimo_ts = float(ultimo_ts_str)
-                    diferenca_segundos = agora_ts - ultimo_ts
+                    # Converte a string ISO de volta para datetime
+                    ultimo_recebido = datetime.fromisoformat(ultimo_recebido_str)
                     
-                    if diferenca_segundos < 600:  # Se passaram menos de 10 min (600s)
-                        continue # Pula esse corretor (está em descanso)
-                except ValueError:
-                    pass # Se não for um número (ex: é uma data ISO antiga), ignora
+                    # Calcula a diferença em minutos
+                    diferenca_minutos = (agora - ultimo_recebido).total_seconds() / 60
+                    
+                    if diferenca_minutos < 10:  # Se passaram menos de 10 min
+                        continue  # Pula esse corretor (está em descanso)
+                except Exception as e:
+                    # Se der erro na conversão, apenas ignora a regra e deixa passar
+                    pass
             
             # Se passou pelo descanso, e está no stand, retorna ele!
             if (no_stand and corretor in no_stand) or (not no_stand):
@@ -87,9 +91,9 @@ def distribuir_lead(lead_id):
         client = get_client()
         try:
             client.table("crm_leads").update({"corretor": corretor}).eq("id", lead_id).execute()
-            # Atualiza a hora atual em Timestamp
-            agora_ts = str(datetime.now(FUSO_BR).timestamp())
-            client.table("roleta_fila").update({"ultimo_lead_recebido": agora_ts}).eq("corretor", corretor).execute()
+            # Atualiza a hora atual em formato ISO
+            agora_iso = datetime.now(FUSO_BR).isoformat()
+            client.table("roleta_fila").update({"ultimo_lead_recebido": agora_iso}).eq("corretor", corretor).execute()
             return corretor
         except Exception as e:
             st.error(f"❌ Erro ao distribuir lead: {str(e)}")
