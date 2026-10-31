@@ -8,10 +8,8 @@ def bater_ponto(corretor, local):
     """Corretor entra na fila."""
     client = get_client()
     try:
-        # 1. Desativa check-ins antigos desse corretor
         client.table("checkins_corretores").update({"ativo": False, "data_saida": datetime.now(FUSO_BR).isoformat()}).eq("corretor", corretor).eq("ativo", True).execute()
         
-        # 2. Cria o novo check-in
         client.table("checkins_corretores").insert({
             "id": f"{corretor}_{datetime.now().timestamp()}",
             "corretor": corretor,
@@ -19,10 +17,12 @@ def bater_ponto(corretor, local):
             "ativo": True
         }).execute()
         
-        # 3. A MÁGICA ESTÁ AQUI: Adiciona o on_conflict="corretor"
+        # Salva o timestamp atual (segundos) como string
+        agora_ts = str(datetime.now(FUSO_BR).timestamp())
+        
         client.table("roleta_fila").upsert({
             "corretor": corretor, 
-            "ultimo_lead_recebido": datetime.now(FUSO_BR).isoformat()
+            "ultimo_lead_recebido": agora_ts
         }, on_conflict="corretor").execute()
         
         return True
@@ -42,7 +42,7 @@ def sair_do_ponto(corretor):
         return False
 
 def proximo_corretor_disponivel():
-    """Acha o próximo corretor da fila que está no Stand e não recebeu lead nos últimos 10 min."""
+    """Acha o próximo corretor no Stand que não recebeu lead nos últimos 10 min."""
     client = get_client()
     try:
         checkins = client.table("checkins_corretores").select("corretor, local").eq("ativo", True).execute().data
@@ -54,30 +54,27 @@ def proximo_corretor_disponivel():
         # Pega a fila ordenada por quem recebeu lead há mais tempo
         fila = client.table("roleta_fila").select("corretor, ultimo_lead_recebido").order("ultimo_lead_recebido").execute().data
         
-        agora = datetime.now(FUSO_BR)
+        agora_ts = datetime.now(FUSO_BR).timestamp()
         
         for item in fila:
             corretor = item["corretor"]
-            ultimo_recebido_str = item.get("ultimo_lead_recebido")
+            ultimo_ts_str = item.get("ultimo_lead_recebido")
             
-            # REGRA 1: TEMPO DE DESCANSO DE 10 MINUTOS
-            if ultimo_recebido_str:
+            # REGRA DOS 10 MINUTOS (600 SEGUNDOS)
+            if ultimo_ts_str:
                 try:
-                    # Converte a string do banco para datetime
-                    ultimo_recebido = datetime.fromisoformat(ultimo_recebido_str.replace("Z", "+00:00"))
-                    diferenca_minutos = (agora - ultimo_recebido).total_seconds() / 60
+                    ultimo_ts = float(ultimo_ts_str)
+                    diferenca_segundos = agora_ts - ultimo_ts
                     
-                    # Se recebeu um lead há menos de 10 min, pula ele
-                    if diferenca_minutos < 10:
-                        continue 
-                except Exception:
-                    pass # Se der erro na data, ignora a regra e deixa passar
+                    if diferenca_segundos < 600:  # Se passaram menos de 10 min (600s)
+                        continue # Pula esse corretor (está em descanso)
+                except ValueError:
+                    pass # Se não for um número (ex: é uma data ISO antiga), ignora
             
-            # Se ele está no stand (ou se não tem ninguém no stand, pega o primeiro da fila geral)
+            # Se passou pelo descanso, e está no stand, retorna ele!
             if (no_stand and corretor in no_stand) or (not no_stand):
                 return corretor
                 
-        # Se todos estiverem no período de descanso, retorna None
         return None 
     except Exception as e:
         st.error(f"❌ Erro na roleta: {str(e)}")
@@ -90,8 +87,11 @@ def distribuir_lead(lead_id):
         client = get_client()
         try:
             client.table("crm_leads").update({"corretor": corretor}).eq("id", lead_id).execute()
-            client.table("roleta_fila").update({"ultimo_lead_recebido": datetime.now(FUSO_BR).isoformat()}).eq("corretor", corretor).execute()
-        except Exception:
-            pass
-        return corretor
+            # Atualiza a hora atual em Timestamp
+            agora_ts = str(datetime.now(FUSO_BR).timestamp())
+            client.table("roleta_fila").update({"ultimo_lead_recebido": agora_ts}).eq("corretor", corretor).execute()
+            return corretor
+        except Exception as e:
+            st.error(f"❌ Erro ao distribuir lead: {str(e)}")
+            return None
     return None
