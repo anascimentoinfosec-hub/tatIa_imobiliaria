@@ -65,7 +65,7 @@ def renderizar_kanban(usuario_logado, USUARIOS):
                                 if corretor_escolhido:
                                     st.success(f"Lead adicionado e distribuído para **{corretor_escolhido}**!")
                                 else:
-                                    st.warning("Lead adicionado, mas ninguém estava na roleta (Check-in).")
+                                    st.warning("⚠️ Lead adicionado como 'Não atribuído'. Ninguém estava no Stand ou todos estavam em descanso.")
                             else:
                                 st.success("Lead cadastrado na sua carteira particular!")
                             st.rerun()

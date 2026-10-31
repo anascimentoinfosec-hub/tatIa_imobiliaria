@@ -5,11 +5,13 @@ from datetime import datetime, timezone, timedelta
 FUSO_BR = timezone(timedelta(hours=-3))
 
 def bater_ponto(corretor, local):
-    """Corretor entra na fila."""
+    """Corretor entra na fila (reseta o tempo)."""
     client = get_client()
     try:
+        # 1. Desativa check-ins antigos
         client.table("checkins_corretores").update({"ativo": False, "data_saida": datetime.now(FUSO_BR).isoformat()}).eq("corretor", corretor).eq("ativo", True).execute()
         
+        # 2. Cria o novo check-in
         client.table("checkins_corretores").insert({
             "id": f"{corretor}_{datetime.now().timestamp()}",
             "corretor": corretor,
@@ -17,13 +19,12 @@ def bater_ponto(corretor, local):
             "ativo": True
         }).execute()
         
-        # A CORREÇÃO ESTÁ AQUI: 
-        # Não enviamos "ultimo_lead_recebido" no upsert. 
-        # Se ele já existe na fila, a data antiga dele é mantida.
-        # Se é a primeira vez dele, o campo fica nulo e ele recebe lead na hora.
-        client.table("roleta_fila").upsert({
+        # 3. A MÁGICA: Deleta o registro antigo da fila e insere um novo (com tempo zerado)
+        client.table("roleta_fila").delete().eq("corretor", corretor).execute()
+        client.table("roleta_fila").insert({
             "corretor": corretor
-        }, on_conflict="corretor").execute()
+            # ultimo_lead_recebido fica vazio, então ele está livre!
+        }).execute()
         
         return True
     except Exception as e:
