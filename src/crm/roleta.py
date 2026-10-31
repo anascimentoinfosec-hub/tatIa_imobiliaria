@@ -17,12 +17,12 @@ def bater_ponto(corretor, local):
             "ativo": True
         }).execute()
         
-        # SALVA NO FORMATO ISO 8601 (O PostgreSQL aceita!)
-        agora_iso = datetime.now(FUSO_BR).isoformat()
-        
+        # A CORREÇÃO ESTÁ AQUI: 
+        # Não enviamos "ultimo_lead_recebido" no upsert. 
+        # Se ele já existe na fila, a data antiga dele é mantida.
+        # Se é a primeira vez dele, o campo fica nulo e ele recebe lead na hora.
         client.table("roleta_fila").upsert({
-            "corretor": corretor, 
-            "ultimo_lead_recebido": agora_iso
+            "corretor": corretor
         }, on_conflict="corretor").execute()
         
         return True
