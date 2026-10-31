@@ -43,7 +43,7 @@ def sair_do_ponto(corretor):
         return False
 
 def proximo_corretor_disponivel():
-    """Acha o próximo corretor no Stand que não recebeu lead nos últimos 10 min."""
+    """Acha o próximo corretor no Stand (Regra de 10 min desativada temporariamente)."""
     client = get_client()
     try:
         checkins = client.table("checkins_corretores").select("corretor, local").eq("ativo", True).execute().data
@@ -51,34 +51,10 @@ def proximo_corretor_disponivel():
             return None
             
         no_stand = [c["corretor"] for c in checkins if c["local"] == "stand"]
-        fila = client.table("roleta_fila").select("corretor, ultimo_lead_recebido").order("ultimo_lead_recebido").execute().data
-        
-        agora = datetime.now(FUSO_BR)
+        fila = client.table("roleta_fila").select("corretor").order("ultimo_lead_recebido").execute().data
         
         for item in fila:
             corretor = item["corretor"]
-            ultimo_recebido = item.get("ultimo_lead_recebido")
-            
-            # REGRA DOS 10 MINUTOS BLINDADA
-            if ultimo_recebido:
-                try:
-                    # Se o Supabase mandou como texto, converte.
-                    if isinstance(ultimo_recebido, str):
-                        ultimo_dt = datetime.fromisoformat(ultimo_recebido.replace("Z", "+00:00"))
-                    else:
-                        # Se já mandou como datetime (o que estava causando o erro)
-                        ultimo_dt = ultimo_recebido
-                    
-                    # Garante que tem fuso horário
-                    if ultimo_dt.tzinfo is None:
-                        ultimo_dt = ultimo_dt.replace(tzinfo=FUSO_BR)
-                        
-                    diferenca_minutos = (agora - ultimo_dt).total_seconds() / 60
-                    
-                    if diferenca_minutos < 10:
-                        continue  # Pula o corretor (descanso)
-                except Exception:
-                    pass # Se der erro na data, ignora e deixa o corretor passar
             
             # Se está no stand (ou não tem ninguém no stand), retorna ele!
             if (no_stand and corretor in no_stand) or (not no_stand):
