@@ -51,32 +51,36 @@ def proximo_corretor_disponivel():
             return None
             
         no_stand = [c["corretor"] for c in checkins if c["local"] == "stand"]
-        
-        # Pega a fila ordenada por quem recebeu lead há mais tempo
         fila = client.table("roleta_fila").select("corretor, ultimo_lead_recebido").order("ultimo_lead_recebido").execute().data
         
         agora = datetime.now(FUSO_BR)
         
         for item in fila:
             corretor = item["corretor"]
-            ultimo_recebido_str = item.get("ultimo_lead_recebido")
+            ultimo_recebido = item.get("ultimo_lead_recebido")
             
-            # REGRA DOS 10 MINUTOS
-            if ultimo_recebido_str:
+            # REGRA DOS 10 MINUTOS BLINDADA
+            if ultimo_recebido:
                 try:
-                    # Converte a string ISO de volta para datetime
-                    ultimo_recebido = datetime.fromisoformat(ultimo_recebido_str)
+                    # Se o Supabase mandou como texto, converte.
+                    if isinstance(ultimo_recebido, str):
+                        ultimo_dt = datetime.fromisoformat(ultimo_recebido.replace("Z", "+00:00"))
+                    else:
+                        # Se já mandou como datetime (o que estava causando o erro)
+                        ultimo_dt = ultimo_recebido
                     
-                    # Calcula a diferença em minutos
-                    diferenca_minutos = (agora - ultimo_recebido).total_seconds() / 60
+                    # Garante que tem fuso horário
+                    if ultimo_dt.tzinfo is None:
+                        ultimo_dt = ultimo_dt.replace(tzinfo=FUSO_BR)
+                        
+                    diferenca_minutos = (agora - ultimo_dt).total_seconds() / 60
                     
-                    if diferenca_minutos < 10:  # Se passaram menos de 10 min
-                        continue  # Pula esse corretor (está em descanso)
-                except Exception as e:
-                    # Se der erro na conversão, apenas ignora a regra e deixa passar
-                    pass
+                    if diferenca_minutos < 10:
+                        continue  # Pula o corretor (descanso)
+                except Exception:
+                    pass # Se der erro na data, ignora e deixa o corretor passar
             
-            # Se passou pelo descanso, e está no stand, retorna ele!
+            # Se está no stand (ou não tem ninguém no stand), retorna ele!
             if (no_stand and corretor in no_stand) or (not no_stand):
                 return corretor
                 
@@ -100,3 +104,16 @@ def distribuir_lead(lead_id):
             st.error(f"❌ Erro ao distribuir lead: {str(e)}")
             return None
     return None
+
+def zerar_roleta():
+    """Limpa a fila e tira todos os corretores do ponto (Ação de Admin)."""
+    client = get_client()
+    try:
+        # Deleta todos da fila
+        client.table("roleta_fila").delete().neq("corretor", "x").execute()
+        # Desativa todos os check-ins
+        client.table("checkins_corretores").update({"ativo": False}).eq("ativo", True).execute()
+        return True
+    except Exception as e:
+        st.error(f"❌ Erro ao zerar roleta: {str(e)}")
+        return False

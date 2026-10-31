@@ -259,6 +259,11 @@ with st.sidebar:
                 st.session_state.pagina = "Creditos"; st.rerun()
             if st.button("🔄 Resetar Base", key="btn_admin_reset", use_container_width=True):
                 st.session_state.pagina = "LimpezaTeste"; st.rerun()
+            if st.button("🔄 Zerar Roleta (Admin)", key="btn_zerar_roleta", use_container_width=True):
+                from src.crm.roleta import zerar_roleta
+                if zerar_roleta():
+                    st.success("Roleta zerada com sucesso! Todos fora do ponto.")
+                    st.rerun()
 
         # --- 4. BOTÃO SAIR (Sempre no final) ---
         st.markdown("---")
