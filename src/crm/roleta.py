@@ -118,15 +118,30 @@ def zerar_roleta():
         return False
 
 def puxar_lead_orfao(corretor):
-    """Busca um lead 'Novo' e 'Não atribuído' e atribui ao corretor."""
+    """Busca um lead 'Novo' e 'Não atribuído', respeitando a regra de 10 min."""
     client = get_client()
     try:
+        # VERIFICA SE ELE ESTÁ EM DESCANSO
+        res_fila = client.table("roleta_fila").select("ultimo_lead_recebido").eq("corretor", corretor).execute()
+        if res_fila.data and res_fila.data[0].get("ultimo_lead_recebido"):
+            ultimo_recebido_str = res_fila.data[0]["ultimo_lead_recebido"]
+            # Converte a string ISO de volta para datetime e calcula a diferença
+            ultimo_dt = datetime.fromisoformat(ultimo_recebido_str.replace("Z", "+00:00"))
+            agora = datetime.now(FUSO_BR)
+            
+            diferenca_minutos = (agora - ultimo_dt).total_seconds() / 60
+            if diferenca_minutos < 10:
+                st.warning(f"⏳ Calma aí! Você só pode puxar um novo lead em {int(10 - diferenca_minutos)} minutos.")
+                return False
+
         # Busca apenas leads NOVOS e SEM DONO
         res = client.table("crm_leads").select("id").eq("corretor", "Não atribuído").eq("status", "novo").order("criado_em").limit(1).execute()
         
         if res.data:
             lead_id = res.data[0]["id"]
             client.table("crm_leads").update({"corretor": corretor}).eq("id", lead_id).execute()
+            
+            # Atualiza o relógio na roleta
             agora_iso = datetime.now(FUSO_BR).isoformat()
             client.table("roleta_fila").update({"ultimo_lead_recebido": agora_iso}).eq("corretor", corretor).execute()
             return True

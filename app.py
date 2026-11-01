@@ -174,35 +174,34 @@ with st.sidebar:
             st.markdown("#### 📍 Meu Ponto")
             from src.crm.roleta import bater_ponto, sair_do_ponto, puxar_lead_orfao, verificar_se_esta_na_roleta
             
-            # Verifica o status atual
+            # Verifica o status atual no banco
             esta_na_roleta = verificar_se_esta_na_roleta(usuario)
+            
+            # Se estiver na roleta, mostra mensagem verde
+            if esta_na_roleta:
+                st.success("Você está disponível na roleta!")
             
             col_pt1, col_pt2 = st.columns(2)
             with col_pt1:
                 if st.button("🏢 Stand", key="btn_stand", use_container_width=True):
                     if bater_ponto(usuario, "stand"):
-                        st.success("No Stand!")
-                        st.rerun() # <-- O rerun é essencial para atualizar o botão de sair
+                        st.rerun() # Atualiza a tela para mudar o status
             with col_pt2:
                 if st.button("🏠 Home", key="btn_home", use_container_width=True):
                     if bater_ponto(usuario, "home"):
-                        st.success("No Home!")
                         st.rerun()
             
-            # O botão de sair fica desabilitado se ele não estiver na roleta
+            # O botão de sair fica desabilitado (cinza) se ele NÃO estiver na roleta
             if st.button("🚪 Sair da Roleta", key="btn_sair_roleta", use_container_width=True, disabled=not esta_na_roleta):
                 if sair_do_ponto(usuario):
-                    st.warning("Fora da roleta.")
-                    st.rerun()
+                    st.rerun() # Recarrega para desabilitar o botão
             
-            # Botão de Puxar Lead (só aparece se estiver na roleta)
+            # O botão de Puxar Lead só aparece se ele estiver na roleta
             if esta_na_roleta:
                 if st.button("🎯 Puxar Lead Órfão", key="btn_puxar_lead", use_container_width=True):
                     if puxar_lead_orfao(usuario):
                         st.success("Você puxou um lead com sucesso!")
                         st.rerun()
-                    else:
-                        st.warning("Nenhum lead novo órfão disponível.")
 
         st.markdown("---")
 
