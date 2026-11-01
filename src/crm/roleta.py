@@ -93,3 +93,24 @@ def zerar_roleta():
     except Exception as e:
         st.error(f"❌ Erro ao zerar roleta: {str(e)}")
         return False
+
+def puxar_lead_orfao(corretor):
+    """Busca um lead 'Não atribuído' e atribui ao corretor."""
+    client = get_client()
+    try:
+        # Busca o lead mais antigo sem corretor
+        res = client.table("crm_leads").select("id").eq("corretor", "Não atribuído").order("criado_em").limit(1).execute()
+        
+        if res.data:
+            lead_id = res.data[0]["id"]
+            # Atribui ao corretor
+            client.table("crm_leads").update({"corretor": corretor}).eq("id", lead_id).execute()
+            
+            # Atualiza o tempo dele na roleta para não receber outro agora
+            agora_iso = datetime.now(FUSO_BR).isoformat()
+            client.table("roleta_fila").update({"ultimo_lead_recebido": agora_iso}).eq("corretor", corretor).execute()
+            return True
+        return False
+    except Exception as e:
+        st.error(f"❌ Erro ao puxar lead: {str(e)}")
+        return False

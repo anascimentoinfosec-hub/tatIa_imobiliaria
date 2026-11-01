@@ -188,6 +188,14 @@ with st.sidebar:
                 if sair_do_ponto(usuario):
                     st.warning("Fora da roleta.")
 
+            if st.button("🎯 Puxar Lead Órfão", key="btn_puxar_lead", use_container_width=True):
+                from src.crm.roleta import puxar_lead_orfao
+                if puxar_lead_orfao(usuario):
+                    st.success("Você puxou um lead com sucesso!")
+                    st.rerun()
+                else:
+                    st.warning("Nenhum lead órfão disponível no momento.")
+
         st.markdown("---")
 
         # --- 3. MENUS ---
