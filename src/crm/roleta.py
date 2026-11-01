@@ -43,7 +43,7 @@ def sair_do_ponto(corretor):
         return False
 
 def proximo_corretor_disponivel():
-    """Acha o próximo corretor no Stand (Regra de 10 min desativada temporariamente)."""
+    """Acha o próximo corretor no Stand que não recebeu lead nos últimos 10 min."""
     client = get_client()
     try:
         checkins = client.table("checkins_corretores").select("corretor, local").eq("ativo", True).execute().data
@@ -51,10 +51,33 @@ def proximo_corretor_disponivel():
             return None
             
         no_stand = [c["corretor"] for c in checkins if c["local"] == "stand"]
-        fila = client.table("roleta_fila").select("corretor").order("ultimo_lead_recebido").execute().data
+        fila = client.table("roleta_fila").select("corretor, ultimo_lead_recebido").order("ultimo_lead_recebido").execute().data
+        
+        agora_ts = datetime.now(FUSO_BR).timestamp()
         
         for item in fila:
             corretor = item["corretor"]
+            ultimo_recebido = item.get("ultimo_lead_recebido")
+            
+            # REGRA DOS 10 MINUTOS
+            if ultimo_recebido:
+                try:
+                    # Se o banco retornou como texto (string)
+                    if isinstance(ultimo_recebido, str):
+                        # Tenta converter para datetime, e depois para timestamp (segundos)
+                        ultimo_dt = datetime.fromisoformat(ultimo_recebido.replace("Z", "+00:00"))
+                        ultimo_ts = ultimo_dt.timestamp()
+                    else:
+                        # Se o banco retornou como datetime (raro, mas acontece)
+                        ultimo_ts = ultimo_recebido.timestamp()
+                    
+                    diferenca_segundos = agora_ts - ultimo_ts
+                    
+                    # Se passaram menos de 10 min (600s), pula ele!
+                    if diferenca_segundos < 600:
+                        continue
+                except Exception:
+                    pass # Se der erro na data, ignora e deixa o corretor passar
             
             # Se está no stand (ou não tem ninguém no stand), retorna ele!
             if (no_stand and corretor in no_stand) or (not no_stand):
