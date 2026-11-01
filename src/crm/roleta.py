@@ -118,22 +118,28 @@ def zerar_roleta():
         return False
 
 def puxar_lead_orfao(corretor):
-    """Busca um lead 'Não atribuído' e atribui ao corretor."""
+    """Busca um lead 'Novo' e 'Não atribuído' e atribui ao corretor."""
     client = get_client()
     try:
-        # Busca o lead mais antigo sem corretor
-        res = client.table("crm_leads").select("id").eq("corretor", "Não atribuído").order("criado_em").limit(1).execute()
+        # Busca apenas leads NOVOS e SEM DONO
+        res = client.table("crm_leads").select("id").eq("corretor", "Não atribuído").eq("status", "novo").order("criado_em").limit(1).execute()
         
         if res.data:
             lead_id = res.data[0]["id"]
-            # Atribui ao corretor
             client.table("crm_leads").update({"corretor": corretor}).eq("id", lead_id).execute()
-            
-            # Atualiza o tempo dele na roleta para não receber outro agora
             agora_iso = datetime.now(FUSO_BR).isoformat()
             client.table("roleta_fila").update({"ultimo_lead_recebido": agora_iso}).eq("corretor", corretor).execute()
             return True
         return False
     except Exception as e:
         st.error(f"❌ Erro ao puxar lead: {str(e)}")
+        return False
+
+def verificar_se_esta_na_roleta(corretor):
+    """Verifica se o corretor tem um check-in ativo."""
+    client = get_client()
+    try:
+        res = client.table("checkins_corretores").select("id").eq("corretor", corretor).eq("ativo", True).execute()
+        return len(res.data) > 0
+    except Exception:
         return False
