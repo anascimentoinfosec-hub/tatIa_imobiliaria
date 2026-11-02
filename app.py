@@ -176,40 +176,41 @@ with st.sidebar:
         st.markdown(f'<span class="badge-perfil {badge_class}">{perfil.upper()}</span>', unsafe_allow_html=True)
 
         # --- 2. CHECK-IN / MEU PONTO ---
-        if perfil in ["corretor", "gerente"]:
+        if perfil == "corretor":
             st.markdown("---")
             st.markdown("#### 📍 Meu Ponto")
             from src.crm.roleta import bater_ponto, sair_do_ponto, puxar_lead_orfao, verificar_se_esta_na_roleta
             
-            # Verifica o status atual no banco
             esta_na_roleta = verificar_se_esta_na_roleta(usuario)
             
-            # Se estiver na roleta, mostra mensagem verde
+            # Mensagem visual clara
             if esta_na_roleta:
-                st.success("Você está disponível na roleta!")
+                st.success("🟢 Você está na roleta. Pronto para receber leads!")
+            else:
+                st.error("🔴 Você NÃO está na roleta. Clique em Stand ou Home para receber leads.")
             
             col_pt1, col_pt2 = st.columns(2)
             with col_pt1:
                 if st.button("🏢 Stand", key="btn_stand", use_container_width=True):
                     if bater_ponto(usuario, "stand"):
-                        st.rerun() # Atualiza a tela para mudar o status
+                        st.rerun()
             with col_pt2:
                 if st.button("🏠 Home", key="btn_home", use_container_width=True):
                     if bater_ponto(usuario, "home"):
                         st.rerun()
             
-            # O botão de sair fica desabilitado (cinza) se ele NÃO estiver na roleta
             if st.button("🚪 Sair da Roleta", key="btn_sair_roleta", use_container_width=True, disabled=not esta_na_roleta):
                 if sair_do_ponto(usuario):
-                    st.rerun() # Recarrega para desabilitar o botão
+                    st.rerun() 
             
-            # O botão de Puxar Lead só aparece se ele estiver na roleta
             if esta_na_roleta:
                 if st.button("🎯 Puxar Lead Órfão", key="btn_puxar_lead", use_container_width=True):
                     if puxar_lead_orfao(usuario):
                         st.success("Você puxou um lead com sucesso!")
                         st.rerun()
-
+                    else:
+                        st.warning("Nenhum lead novo órfão disponível.")
+                        
         st.markdown("---")
 
         # --- 3. MENUS ---
