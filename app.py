@@ -100,6 +100,13 @@ st.markdown("""
     .badge-gerente { background-color: #1a73e8 !important; }
     .badge-corretor { background-color: #28a745 !important; }
     hr { margin: 2rem 0 !important; border: 0 !important; border-top: 1px solid #e2e8f0 !important; }
+    
+    .stButton button:disabled {
+        background-color: #e2e8f0 !important;
+        color: #94a3b8 !important;
+        border: 1px solid #cbd5e1 !important;
+        cursor: not-allowed !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
