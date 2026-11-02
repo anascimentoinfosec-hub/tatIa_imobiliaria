@@ -114,24 +114,8 @@ def renderizar_landing_page(campanha_id=None):
                 # 2. A MÁGICA: Joga o lead na Roleta!
                 if sucesso and novo_lead_id:
                     from src.crm.roleta import distribuir_lead
-                    corretor_escolhido = distribuir_lead(novo_lead_id)
-                    
-                    # RAIO-X (Debug)
-                    if corretor_escolhido:
-                        st.success(f"🤖 [Debug] Lead foi para: {corretor_escolhido}")
-                    else:
-                        st.error(f"❌ [Debug] A roleta não achou ninguém! Checando banco...")
-                        from src.db import get_client
-                        client_db = get_client()
-                        
-                        checkins = client_db.table("checkins_corretores").select("corretor, local").eq("ativo", True).execute().data
-                        st.write(f"**Corretores ativos no Check-in:** {checkins}")
-                        
-                        fila_db = client_db.table("roleta_fila").select("corretor, ultimo_lead_recebido").execute().data
-                        st.write(f"**Fila da roleta:** {fila_db}")
-                        
-                        st.stop() # <--- ISSO TRAVA A TELA PARA VOCÊ VER O ERRO!
-                        
+                    distribuir_lead(novo_lead_id)
+                                                               
                 st.session_state["lead_salvo"] = True
                 st.rerun()
 
