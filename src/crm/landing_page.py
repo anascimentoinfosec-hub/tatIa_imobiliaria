@@ -91,29 +91,41 @@ def renderizar_landing_page(campanha_id=None):
                 st.session_state.hist_landing.append({"role": "assistant", "content": resposta})
                 st.session_state.dados_lead.update(lead_pronto)
 
-      # 2. A MÁGICA: Joga o lead na Roleta!
+        if st.session_state.dados_lead["nome"] and st.session_state.dados_lead["telefone"] and st.session_state.dados_lead["renda"] > 0:
+            if not st.session_state.get("lead_salvo", False):
+                # Limpa o telefone (só números)
+                tel_limpo = re.sub(r'\D', '', str(st.session_state.dados_lead["telefone"]))
+                if len(tel_limpo) in (10, 11):
+                    tel_limpo = "55" + tel_limpo
+                
+                st.session_state.dados_lead["telefone"] = tel_limpo
+
+                # 1. Cria o lead no banco
+                sucesso, novo_lead_id = criar_lead(
+                    nome=st.session_state.dados_lead["nome"],
+                    telefone=st.session_state.dados_lead["telefone"],
+                    email="",
+                    renda=st.session_state.dados_lead["renda"],
+                    origem=st.session_state.dados_lead["origem"],
+                    corretor="Não atribuído",
+                    campanha_id=campanha_id
+                )
+                
+                # 2. A MÁGICA: Joga o lead na Roleta!
                 if sucesso and novo_lead_id:
                     from src.crm.roleta import distribuir_lead
                     corretor_escolhido = distribuir_lead(novo_lead_id)
                     
-                    # RAIO-X (Depois a gente apaga)
+                    # RAIO-X (Debug)
                     if corretor_escolhido:
                         st.success(f"🤖 [Debug] Lead foi para: {corretor_escolhido}")
                     else:
                         st.error(f"❌ [Debug] A roleta não achou ninguém! Checando banco...")
                         from src.db import get_client
-                        client = get_client()
-                        checkins = client.table("checkins_corretores").select("corretor").eq("ativo", True).execute().data
+                        client_db = get_client()
+                        checkins = client_db.table("checkins_corretores").select("corretor, local").eq("ativo", True).execute().data
                         st.write(f"Corretores ativos no Stand/Home: {checkins}")
                         
-                st.session_state["lead_salvo"] = True
-                st.rerun()
-                
-                # === DISTRIBUI PARA A ROLETA ===
-                if sucesso and novo_lead_id:
-                    from src.crm.roleta import distribuir_lead
-                    distribuir_lead(novo_lead_id)
-                    
                 st.session_state["lead_salvo"] = True
                 st.rerun()
 
