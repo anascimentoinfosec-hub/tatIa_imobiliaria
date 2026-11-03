@@ -20,10 +20,11 @@ def bater_ponto(corretor, local):
             "ativo": True
         }).execute()
         
-        # Limpa o tempo antigo na fila para ele ficar 100% disponível
+        # Limpa a fila e força uma data no passado (Ano 2000) para ele ficar 100% disponível!
         client.table("roleta_fila").delete().eq("corretor", corretor).execute()
         client.table("roleta_fila").insert({
-            "corretor": corretor
+            "corretor": corretor,
+            "ultimo_lead_recebido": "2000-01-01T00:00:00+00:00"
         }).execute()
         
         return True
