@@ -67,7 +67,7 @@ def renderizar_landing_page(campanha_id=None):
         """, unsafe_allow_html=True)
         
         st.markdown("---")
-        # BOTÃO PARA TESTAR NOVAMENTE
+        # BOTÃO PARA TESTAR NOVAMENTE (Limpar conversa)
         if st.button("🔄 Fazer nova simulação (Limpar conversa)"):
             for k in list(st.session_state.keys()):
                 if k in ["hist_landing", "dados_lead", "lead_salvo"]:
@@ -91,6 +91,7 @@ def renderizar_landing_page(campanha_id=None):
                 st.session_state.hist_landing.append({"role": "assistant", "content": resposta})
                 st.session_state.dados_lead.update(lead_pronto)
 
+        # Se já temos todos os dados, salva o lead
         if st.session_state.dados_lead["nome"] and st.session_state.dados_lead["telefone"] and st.session_state.dados_lead["renda"] > 0:
             if not st.session_state.get("lead_salvo", False):
                 # Limpa o telefone (só números)
@@ -101,16 +102,21 @@ def renderizar_landing_page(campanha_id=None):
                 st.session_state.dados_lead["telefone"] = tel_limpo
 
                 # 1. Cria o lead no banco
+                sucesso, novo_lead_id = criar_lead(
+                    nome=st.session_state.dados_lead["nome"],
+                    telefone=st.session_state.dados_lead["telefone"],
+                    email="",
+                    renda=st.session_state.dados_lead["renda"],
+                    origem=st.session_state.dados_lead["origem"],
+                    corretor="Não atribuído",
+                    campanha_id=campanha_id
+                )
+                
+                # 2. Joga o lead na Roleta (em silêncio)
                 if sucesso and novo_lead_id:
                     from src.crm.roleta import distribuir_lead
-                    corretor_escolhido = distribuir_lead(novo_lead_id)
+                    distribuir_lead(novo_lead_id)
                     
-                    # RAIO-X SILENCIOSO
-                    if corretor_escolhido:
-                        print(f"DEBUG: Lead {novo_lead_id} foi para {corretor_escolhido}")
-                    else:
-                        print(f"DEBUG: Falha! Nenhum corretor encontrado para o lead {novo_lead_id}")
-                        
                 st.session_state["lead_salvo"] = True
                 st.rerun()
 
