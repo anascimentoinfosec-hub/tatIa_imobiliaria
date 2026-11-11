@@ -41,7 +41,6 @@ def renderizar_espelho_vendas():
     marcadas = carregar_todas_marcadas()
 
     # 4. Prepara as colunas de exibição
-    # Descobre a coluna de Bloco/Andar, Unidade e Preço
     col_bloco = next((c for c in ["BLOCO", "TORRE"] if c in df.columns), None)
     col_andar = next((c for c in ["PAVTO", "ANDAR"] if c in df.columns), None)
     col_unidade = next((c for c in ["UNIDADE", "APT"] if c in df.columns), None)
@@ -56,7 +55,6 @@ def renderizar_espelho_vendas():
     st.markdown("🟢 **Disponível** | 🟡 **Em Processo/Reservado** | 🔴 **Vendido** | ⚪ **Sem Info**")
     st.markdown("---")
 
-    # Ordena por bloco e andar para o espelho ficar organizado
     if col_bloco:
         df = df.sort_values(by=[col_bloco, col_andar if col_andar else col_unidade])
     elif col_andar:
@@ -69,11 +67,23 @@ def renderizar_espelho_vendas():
 
 
 def _renderizar_grid_html(df, construtora, produto, marcadas, col_bloco, col_andar, col_unidade, col_preco):
-    """Desenha os quadradinhos coloridos via HTML/CSS."""
+    """Desenha os quadradinhos coloridos via HTML/CSS com rolagem."""
     
-    # Cabeçalho CSS dos cards
+    # Cabeçalho CSS dos cards + O Container com Barra de Rolagem
     st.markdown("""
         <style>
+        /* A CAIXA MÁGICA COM ROLAGEM */
+        .grid-container {
+            max-height: 450px; /* Altura máxima antes de aparecer a barra */
+            overflow-y: auto;  /* Habilita a rolagem vertical */
+            padding: 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background-color: #f8fafc;
+            margin-bottom: 20px;
+        }
+        
+        /* O QUADRADINHO DA UNIDADE */
         .unidade-card {
             display: inline-block;
             width: 90px;
@@ -93,6 +103,8 @@ def _renderizar_grid_html(df, construtora, produto, marcadas, col_bloco, col_and
             transform: scale(1.1);
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
+        
+        /* CORES */
         .status-disponivel { background-color: #22c55e; color: white; }
         .status-em_processo { background-color: #f59e0b; color: white; }
         .status-vendida { background-color: #ef4444; color: white; }
@@ -113,14 +125,9 @@ def _renderizar_grid_html(df, construtora, produto, marcadas, col_bloco, col_and
                 unidade = str(row[col_unidade])
                 chave = (str(construtora), str(produto), unidade)
                 
-                # Verifica o status
                 info = marcadas.get(chave)
-                if info:
-                    status = info.get("status")
-                else:
-                    status = "disponivel" # Se não estiver marcada, está disponível
+                status = info.get("status") if info else "disponivel"
                 
-                # Define a cor e o texto
                 if status == "vendida":
                     classe = "status-vendida"
                     titulo = "Vendida"
@@ -131,7 +138,6 @@ def _renderizar_grid_html(df, construtora, produto, marcadas, col_bloco, col_and
                     classe = "status-disponivel"
                     titulo = "Disponível"
                 
-                # Formata o preço se existir
                 preco_str = ""
                 if col_preco and pd.notna(row[col_preco]):
                     try:
@@ -140,12 +146,12 @@ def _renderizar_grid_html(df, construtora, produto, marcadas, col_bloco, col_and
                     except:
                         pass
                 
-                # Cria o tooltip
                 tooltip = f"{unidade} | {titulo} | {preco_str}"
                 
                 html_str += f'<div class="unidade-card {classe}" title="{tooltip}">{unidade}<br><span style="font-size:10px;">{preco_str}</span></div>'
             
-            st.markdown(html_str, unsafe_allow_html=True)
+            # AQUI ESTÁ A MÁGICA: Colocando o HTML dentro da div com rolagem
+            st.markdown(f'<div class="grid-container">{html_str}</div>', unsafe_allow_html=True)
             st.markdown("---")
     else:
         st.info("A planilha não tem coluna de Bloco ou Andar para agrupar.")
