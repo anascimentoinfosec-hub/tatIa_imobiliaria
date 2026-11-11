@@ -7,23 +7,17 @@ def renderizar_espelho_vendas():
     # === CSS PARA COMPACTAR O TOPO DA TELA ===
     st.markdown("""
         <style>
-        /* Reduz o espaço em branco do topo da página */
         .block-container { padding-top: 1rem !important; padding-bottom: 0rem !important; }
-        /* Deixa o título mais compacto */
         h1 { font-size: 1.8rem !important; margin-top: 0 !important; margin-bottom: 5px !important; padding-bottom: 0 !important; border-bottom: none !important; }
-        /* Reduz o espaço entre os seletores e a legenda */
         div[data-testid="stHorizontalBlock"] { margin-bottom: -10px !important; }
         .stSelectbox { margin-bottom: 0px !important; }
         hr { margin: 0.5rem 0 !important; }
-        /* Legenda compacta */
         .legenda-compacta { font-size: 13px; margin-top: 5px; margin-bottom: 10px; color: #475569; }
         </style>
     """, unsafe_allow_html=True)
 
-    # Título mais próximo do topo
     st.markdown("<h1>🏢 Espelho de Vendas</h1>", unsafe_allow_html=True)
 
-    # 1. Seleção de Construtora e Produto
     from src.construtoras_storage import carregar_construtoras
     construtoras = carregar_construtoras()
     
@@ -31,9 +25,12 @@ def renderizar_espelho_vendas():
         st.warning("Nenhuma construtora cadastrada.")
         return
 
-    col1, col2 = st.columns(2)
+    # === SELETORES (AGORA COM 3 COLUNAS) ===
+    col1, col2, col3 = st.columns(3)
+    
     with col1:
         construtora = st.selectbox("🏗️ Construtora", list(construtoras.keys()), key="esp_c")
+    
     with col2:
         produtos = list(construtoras[construtora].get("produtos", {}).keys())
         if produtos:
@@ -42,7 +39,7 @@ def renderizar_espelho_vendas():
             st.warning("Sem produtos para esta construtora.")
             return
 
-    # 2. Carrega os dados
+    # 2. Carrega os dados para descobrir as colunas
     if not tem_planilha_cache(construtora, produto):
         st.warning(f"⚠️ Nenhuma planilha em cache para {construtora} - {produto}.")
         return
@@ -52,10 +49,6 @@ def renderizar_espelho_vendas():
         st.warning("Planilha vazia.")
         return
 
-    # 3. Carrega os status das unidades do banco
-    marcadas = carregar_todas_marcadas()
-
-    # 4. Prepara as colunas de exibição
     col_bloco = next((c for c in ["BLOCO", "TORRE"] if c in df.columns), None)
     col_andar = next((c for c in ["PAVTO", "ANDAR"] if c in df.columns), None)
     col_unidade = next((c for c in ["UNIDADE", "APT"] if c in df.columns), None)
@@ -65,7 +58,22 @@ def renderizar_espelho_vendas():
         st.error("A planilha não tem uma coluna de Unidade/APT identificável.")
         return
 
-    # 5. Legenda Compacta em uma única linha
+    # === NOVO: SELETOR DE BLOCO ===
+    with col3:
+        if col_bloco:
+            blocos_disponiveis = ["Todos"] + sorted(df[col_bloco].dropna().astype(str).unique().tolist())
+            filtro_bloco = st.selectbox("🏢 Bloco", blocos_disponiveis, key="esp_b")
+            
+            # Filtra o DataFrame se um bloco específico for escolhido
+            if filtro_bloco != "Todos":
+                df = df[df[col_bloco].astype(str) == filtro_bloco]
+        else:
+            st.info("Planilha sem coluna de Bloco.")
+
+    # 3. Carrega os status das unidades do banco
+    marcadas = carregar_todas_marcadas()
+
+    # 4. Legenda Compacta
     st.markdown("""
         <div class="legenda-compacta">
             <b>Legenda:</b> 
@@ -86,7 +94,6 @@ def renderizar_espelho_vendas():
 
     # Renderiza o Grid
     _renderizar_grid_html(df, construtora, produto, marcadas, col_bloco, col_andar, col_unidade, col_preco)
-
 
 def _renderizar_grid_html(df, construtora, produto, marcadas, col_bloco, col_andar, col_unidade, col_preco):
     """Desenha os quadradinhos coloridos via HTML/CSS com rolagem."""
