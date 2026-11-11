@@ -4,9 +4,24 @@ from src.planilha_cache import carregar_planilha_cache, tem_planilha_cache
 from src.unidades_status_storage import carregar_todas_marcadas
 
 def renderizar_espelho_vendas():
-    st.title("🏢 Espelho de Vendas")
-    st.caption("Visão interativa do status de cada unidade do empreendimento.")
-    st.markdown("---")
+    # === CSS PARA COMPACTAR O TOPO DA TELA ===
+    st.markdown("""
+        <style>
+        /* Reduz o espaço em branco do topo da página */
+        .block-container { padding-top: 1rem !important; padding-bottom: 0rem !important; }
+        /* Deixa o título mais compacto */
+        h1 { font-size: 1.8rem !important; margin-top: 0 !important; margin-bottom: 5px !important; padding-bottom: 0 !important; border-bottom: none !important; }
+        /* Reduz o espaço entre os seletores e a legenda */
+        div[data-testid="stHorizontalBlock"] { margin-bottom: -10px !important; }
+        .stSelectbox { margin-bottom: 0px !important; }
+        hr { margin: 0.5rem 0 !important; }
+        /* Legenda compacta */
+        .legenda-compacta { font-size: 13px; margin-top: 5px; margin-bottom: 10px; color: #475569; }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Título mais próximo do topo
+    st.markdown("<h1>🏢 Espelho de Vendas</h1>", unsafe_allow_html=True)
 
     # 1. Seleção de Construtora e Produto
     from src.construtoras_storage import carregar_construtoras
@@ -37,7 +52,7 @@ def renderizar_espelho_vendas():
         st.warning("Planilha vazia.")
         return
 
-    # 3. Carrega os status das unidades do banco (Vendida/Em processo)
+    # 3. Carrega os status das unidades do banco
     marcadas = carregar_todas_marcadas()
 
     # 4. Prepara as colunas de exibição
@@ -50,11 +65,18 @@ def renderizar_espelho_vendas():
         st.error("A planilha não tem uma coluna de Unidade/APT identificável.")
         return
 
-    # 5. Agrupa os dados para montar o Grid
-    st.markdown("### Legenda:")
-    st.markdown("🟢 **Disponível** | 🟡 **Em Processo/Reservado** | 🔴 **Vendido** | ⚪ **Sem Info**")
-    st.markdown("---")
+    # 5. Legenda Compacta em uma única linha
+    st.markdown("""
+        <div class="legenda-compacta">
+            <b>Legenda:</b> 
+            <span style="color:#22c55e; font-size:16px;">●</span> Disponível &nbsp;&nbsp;
+            <span style="color:#f59e0b; font-size:16px;">●</span> Em Processo &nbsp;&nbsp;
+            <span style="color:#ef4444; font-size:16px;">●</span> Vendido &nbsp;&nbsp;
+            <span style="color:#cbd5e1; font-size:16px;">●</span> Sem Info
+        </div>
+    """, unsafe_allow_html=True)
 
+    # Ordena por bloco e andar
     if col_bloco:
         df = df.sort_values(by=[col_bloco, col_andar if col_andar else col_unidade])
     elif col_andar:
@@ -69,21 +91,20 @@ def renderizar_espelho_vendas():
 def _renderizar_grid_html(df, construtora, produto, marcadas, col_bloco, col_andar, col_unidade, col_preco):
     """Desenha os quadradinhos coloridos via HTML/CSS com rolagem."""
     
-    # Cabeçalho CSS dos cards + O Container com Barra de Rolagem
     st.markdown("""
         <style>
         /* A CAIXA MÁGICA COM ROLAGEM */
         .grid-container {
-            max-height: 450px; /* Altura máxima antes de aparecer a barra */
-            overflow-y: auto;  /* Habilita a rolagem vertical */
+            max-height: 550px; /* Aumentei um pouco para caber mais coisas na tela */
+            overflow-y: auto;
             padding: 15px;
             border: 1px solid #e2e8f0;
             border-radius: 8px;
             background-color: #f8fafc;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
         
-        /* O QUADRADINHO DA UNIDADE */
+        /* QUADRADINHO */
         .unidade-card {
             display: inline-block;
             width: 90px;
@@ -109,10 +130,12 @@ def _renderizar_grid_html(df, construtora, produto, marcadas, col_bloco, col_and
         .status-em_processo { background-color: #f59e0b; color: white; }
         .status-vendida { background-color: #ef4444; color: white; }
         .status-sem_info { background-color: #cbd5e1; color: #333; }
+        
+        /* Título do Bloco mais compacto */
+        h4 { margin-top: 10px !important; margin-bottom: 5px !important; font-size: 1.1rem !important; }
         </style>
     """, unsafe_allow_html=True)
 
-    # Agrupa por Bloco (ou Andar se não tiver bloco)
     agrupador = col_bloco if col_bloco else (col_andar if col_andar else None)
 
     if agrupador:
@@ -150,8 +173,7 @@ def _renderizar_grid_html(df, construtora, produto, marcadas, col_bloco, col_and
                 
                 html_str += f'<div class="unidade-card {classe}" title="{tooltip}">{unidade}<br><span style="font-size:10px;">{preco_str}</span></div>'
             
-            # AQUI ESTÁ A MÁGICA: Colocando o HTML dentro da div com rolagem
             st.markdown(f'<div class="grid-container">{html_str}</div>', unsafe_allow_html=True)
-            st.markdown("---")
+            # Removi o st.markdown("---") entre os blocos para economizar espaço
     else:
         st.info("A planilha não tem coluna de Bloco ou Andar para agrupar.")
