@@ -28,6 +28,7 @@ from src.diretor_comercial import renderizar_diretor_comercial
 from src.diretor_vendas import renderizar_diretor_vendas
 from src.diretor_financeiro import renderizar_diretor_financeiro
 from src.diretor_rh import renderizar_diretor_rh
+from src.espelho_vendas import renderizar_espelho_vendas
 
 # === CONFIGURAÇÃO DA PÁGINA ===
 st.set_page_config(
@@ -227,6 +228,8 @@ with st.sidebar:
                 st.session_state.pagina = "Histórico"; st.rerun()
             if tem_perm("chat_ia") and st.button("💬 IA Imobiliária", key="btn_menu_ia", use_container_width=True):
                 st.session_state.pagina = "ChatIA"; st.rerun()
+            if tem_perm("crm") and st.button("🏢 Espelho de Vendas", key="btn_menu_espelho", use_container_width=True):
+                st.session_state.pagina = "EspelhoVendas"; st.rerun()
 
         # Gestão
         tem_alguma_gestao = any(tem_perm(p) for p in ["dashboard", "dashboard_vendas", "construtoras", "regras_fin", "regras_ent", "origens", "usuarios", "campanhas", "configuracoes", "war_room"])
@@ -354,6 +357,7 @@ else:
         elif pagina == "SuperAdmin": pagina_superadmin(USUARIOS)
         elif pagina == "Creditos": pagina_creditos()
         elif pagina == "Seguranca": renderizar_conta_seguranca(st.session_state.usuario_logado, USUARIOS)
+        elif pagina == "EspelhoVendas": renderizar_espelho_vendas()
         elif pagina == "LimpezaTeste":
             from src.superadmin import renderizar_limpeza_teste
             renderizar_limpeza_teste(USUARIOS)
