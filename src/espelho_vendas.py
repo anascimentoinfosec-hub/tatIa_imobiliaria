@@ -1,3 +1,8 @@
+import streamlit as st
+import pandas as pd
+from src.planilha_cache import carregar_planilha_cache, tem_planilha_cache
+from src.unidades_status_storage import carregar_todas_marcadas
+
 def renderizar_espelho_vendas():
     # === CSS PARA COMPACTAR O TOPO DA TELA ===
     st.markdown("""
@@ -34,7 +39,7 @@ def renderizar_espelho_vendas():
             st.warning("Sem produtos para esta construtora.")
             return
 
-    # 2. Carrega os dados
+    # 2. Carrega os dados para descobrir as colunas
     if not tem_planilha_cache(construtora, produto):
         st.warning(f"⚠️ Nenhuma planilha em cache para {construtora} - {produto}.")
         return
@@ -44,7 +49,6 @@ def renderizar_espelho_vendas():
         st.warning("Planilha vazia.")
         return
 
-    # 3. Inteligência de Detecção de Colunas
     col_bloco = next((c for c in ["BLOCO", "TORRE"] if c in df.columns), None)
     col_andar = next((c for c in ["PAVTO", "ANDAR"] if c in df.columns), None)
     col_unidade = next((c for c in ["UNIDADE", "APT"] if c in df.columns), None)
@@ -57,7 +61,7 @@ def renderizar_espelho_vendas():
         st.error("A planilha não tem uma coluna de Unidade/APT identificável.")
         return
 
-    # === SELETOR DE BLOCO E EMPREENDIMENTO ===
+    # === SELETOR DE BLOCO ===
     with col3:
         if col_bloco:
             blocos_disponiveis = ["Todos"] + sorted(df[col_bloco].dropna().astype(str).unique().tolist())
@@ -67,6 +71,7 @@ def renderizar_espelho_vendas():
         else:
             st.info("Planilha sem coluna de Bloco.")
 
+    # === NOVO: SELETOR DE EMPREENDIMENTO ===
     if col_empreendimento:
         colunas_filtro_emp = st.columns(3)
         with colunas_filtro_emp[0]:
@@ -75,10 +80,10 @@ def renderizar_espelho_vendas():
             if filtro_emp != "Todos":
                 df = df[df[col_empreendimento].astype(str) == filtro_emp]
 
-    # 4. Carrega os status das unidades do banco
+    # 3. Carrega os status das unidades do banco
     marcadas = carregar_todas_marcadas()
 
-    # 5. Legenda Compacta
+    # 4. Legenda Compacta
     st.markdown("""
         <div class="legenda-compacta">
             <b>Legenda:</b> 
@@ -99,3 +104,93 @@ def renderizar_espelho_vendas():
 
     # Renderiza o Grid
     _renderizar_grid_html(df, construtora, produto, marcadas, col_bloco, col_andar, col_unidade, col_preco)
+
+
+def _renderizar_grid_html(df, construtora, produto, marcadas, col_bloco, col_andar, col_unidade, col_preco):
+    """Desenha os quadradinhos coloridos via HTML/CSS com rolagem."""
+    
+    st.markdown("""
+        <style>
+        /* A CAIXA MÁGICA COM ROLAGEM */
+        .grid-container {
+            max-height: 550px;
+            overflow-y: auto;
+            padding: 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background-color: #f8fafc;
+            margin-bottom: 10px;
+        }
+        
+        /* QUADRADINHO */
+        .unidade-card {
+            display: inline-block;
+            width: 90px;
+            height: 60px;
+            margin: 5px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 12px;
+            color: white;
+            font-weight: bold;
+            padding-top: 10px;
+            box-sizing: border-box;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .unidade-card:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        /* CORES */
+        .status-disponivel { background-color: #22c55e; color: white; }
+        .status-em_processo { background-color: #f59e0b; color: white; }
+        .status-vendida { background-color: #ef4444; color: white; }
+        .status-sem_info { background-color: #cbd5e1; color: #333; }
+        
+        /* Título do Bloco mais compacto */
+        h4 { margin-top: 10px !important; margin-bottom: 5px !important; font-size: 1.1rem !important; }
+        </style>
+    """, unsafe_allow_html=True)
+
+    agrupador = col_bloco if col_bloco else (col_andar if col_andar else None)
+
+    if agrupador:
+        for grupo_nome in df[agrupador].dropna().unique():
+            st.markdown(f"#### 🏢 {agrupador}: {grupo_nome}")
+            df_grupo = df[df[agrupador] == grupo_nome]
+            
+            html_str = ""
+            for _, row in df_grupo.iterrows():
+                unidade = str(row[col_unidade])
+                chave = (str(construtora), str(produto), unidade)
+                
+                info = marcadas.get(chave)
+                status = info.get("status") if info else "disponivel"
+                
+                if status == "vendida":
+                    classe = "status-vendida"
+                    titulo = "Vendida"
+                elif status == "em_processo":
+                    classe = "status-em_processo"
+                    titulo = "Em Processo"
+                else:
+                    classe = "status-disponivel"
+                    titulo = "Disponível"
+                
+                preco_str = ""
+                if col_preco and pd.notna(row[col_preco]):
+                    try:
+                        val = float(row[col_preco])
+                        preco_str = f"R$ {val:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                    except:
+                        pass
+                
+                tooltip = f"{unidade} | {titulo} | {preco_str}"
+                
+                html_str += f'<div class="unidade-card {classe}" title="{tooltip}">{unidade}<br><span style="font-size:10px;">{preco_str}</span></div>'
+            
+            st.markdown(f'<div class="grid-container">{html_str}</div>', unsafe_allow_html=True)
+    else:
+        st.info("A planilha não tem coluna de Bloco ou Andar para agrupar.")
