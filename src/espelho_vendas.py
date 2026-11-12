@@ -39,7 +39,7 @@ def renderizar_espelho_vendas():
             st.warning("Sem produtos para esta construtora.")
             return
 
-    # 2. Carrega os dados para descobrir as colunas
+    # 2. Carrega os dados
     if not tem_planilha_cache(construtora, produto):
         st.warning(f"⚠️ Nenhuma planilha em cache para {construtora} - {produto}.")
         return
@@ -49,13 +49,20 @@ def renderizar_espelho_vendas():
         st.warning("Planilha vazia.")
         return
 
-    col_bloco = next((c for c in ["BLOCO", "TORRE"] if c in df.columns), None)
-    col_andar = next((c for c in ["PAVTO", "ANDAR"] if c in df.columns), None)
-    col_unidade = next((c for c in ["UNIDADE", "APT"] if c in df.columns), None)
-    col_preco = next((c for c in ["VALOR_DA_AVALIACAO", "VALOR_DO_IMOVEL", "PREÇO"] if c in df.columns), None)
+    # === RAIO-X PARA DEBUG (Vamos apagar depois) ===
+    with st.expander("🔍 Raio-X: Ver nomes exatos das colunas lidas pelo sistema"):
+        st.write(df.columns.tolist())
+
+    # 3. Inteligência de Detecção de Colunas (Agora ignorando maiúsculas/minúsculas e espaços)
+    colunas_upper = {str(c).strip().upper(): c for c in df.columns}
     
-    # NOVO: Detectar coluna de Empreendimento
-    col_empreendimento = next((c for c in ["EMPREENDIMENTO", "NOME_DO_PRODUTO", "PRODUTO"] if c in df.columns), None)
+    col_bloco = colunas_upper.get("BLOCO") or colunas_upper.get("TORRE")
+    col_andar = colunas_upper.get("PAVTO") or colunas_upper.get("ANDAR")
+    col_unidade = colunas_upper.get("UNIDADE") or colunas_upper.get("APT")
+    col_preco = colunas_upper.get("VALOR_DA_AVALIACAO") or colunas_upper.get("VALOR_DO_IMOVEL") or colunas_upper.get("PREÇO")
+    
+    # NOVO: Detecção flexível de Empreendimento
+    col_empreendimento = colunas_upper.get("EMPREENDIMENTO") or colunas_upper.get("NOME_DO_PRODUTO") or colunas_upper.get("PRODUTO")
 
     if not col_unidade:
         st.error("A planilha não tem uma coluna de Unidade/APT identificável.")
@@ -71,7 +78,7 @@ def renderizar_espelho_vendas():
         else:
             st.info("Planilha sem coluna de Bloco.")
 
-    # === NOVO: SELETOR DE EMPREENDIMENTO ===
+    # === SELETOR DE EMPREENDIMENTO ===
     if col_empreendimento:
         colunas_filtro_emp = st.columns(3)
         with colunas_filtro_emp[0]:
@@ -79,11 +86,14 @@ def renderizar_espelho_vendas():
             filtro_emp = st.selectbox("🏙️ Empreendimento", emps_disponiveis, key="esp_emp")
             if filtro_emp != "Todos":
                 df = df[df[col_empreendimento].astype(str) == filtro_emp]
+    else:
+        # Se não achou, mostra um aviso em vermelho para a gente saber!
+        st.error("⚠️ A coluna de EMPREENDIMENTO não foi encontrada. Veja o Raio-X acima para ver o nome exato que foi salvo.")
 
-    # 3. Carrega os status das unidades do banco
+    # 4. Carrega os status das unidades do banco
     marcadas = carregar_todas_marcadas()
 
-    # 4. Legenda Compacta
+    # 5. Legenda Compacta
     st.markdown("""
         <div class="legenda-compacta">
             <b>Legenda:</b> 
