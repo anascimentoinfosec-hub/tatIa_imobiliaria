@@ -33,6 +33,31 @@ def renderizar_diretor_rh():
 
     st.markdown("---")
 
+    # === ALERTAS DE CRECI ===
+    from datetime import datetime, date
+    hoje = date.today()
+    alertas_creci = []
+    
+    for login, info in usuarios.items():
+        validade_str = info.get("creci_validade")
+        if validade_str:
+            try:
+                val_date = datetime.fromisoformat(str(validade_str)).date()
+                dias_restantes = (val_date - hoje).days
+                
+                if dias_restantes < 0:
+                    alertas_creci.append(f"🔴 **{info['nome']}** - CRECI VENCIDO em {val_date.strftime('%d/%m/%Y')}")
+                elif dias_restantes <= 30:
+                    alertas_creci.append(f"🟡 **{info['nome']}** - CRECI vence em {dias_restantes} dias ({val_date.strftime('%d/%m/%Y')})")
+            except:
+                pass
+
+    if alertas_creci:
+        st.markdown("### ⚠️ Alertas de Regularidade (CRECI)")
+        for alerta in alertas_creci:
+            st.warning(alerta)
+        st.markdown("---")
+
     # === TABELA DE COLABORADORES ===
     st.subheader("📋 Quadro de Colaboradores")
     

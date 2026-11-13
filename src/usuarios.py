@@ -125,6 +125,9 @@ def pagina_gestao_usuarios(USUARIOS):
             login = st.text_input("Login", key="add_login")
             nome = st.text_input("Nome completo", key="add_nome")
             email = st.text_input("E-mail", key="add_email")
+            creci = st.text_input("CRECI (apenas números)", key="add_creci")
+            creci_val = st.date_input("Vencimento do CRECI", value=None, key="add_creci_val")
+
         with col2:
             senha = st.text_input("Senha", type="password", key="add_senha")
             
@@ -153,7 +156,8 @@ def pagina_gestao_usuarios(USUARIOS):
                 else:
                     USUARIOS[login] = {
                         "nome": nome, "hash": hash_senha(senha), "perfil": perfil,
-                        "ativo": ativo, "email": email, "permissoes": permissoes_novas
+                        "ativo": ativo, "email": email, "permissoes": permissoes_novas, "creci": creci,
+                        "creci_validade": creci_val.isoformat() if creci_val else None,
                     }
                     salvar_usuarios(USUARIOS)
                     st.session_state["msg_sucesso_usuario"] = f"Usuário '{login}' adicionado!"

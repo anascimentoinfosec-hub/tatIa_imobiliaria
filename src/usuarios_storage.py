@@ -7,7 +7,6 @@ from src.utils import hash_senha
 
 
 def carregar_usuarios():
-    """Retorna dict {login: {nome, email, hash, perfil, ativo, telefone, mfa_ativo, mfa_secret}}"""
     registros = listar("usuarios")
     usuarios = {}
     for r in registros:
@@ -24,14 +23,14 @@ def carregar_usuarios():
             "criado_em": r.get("criado_em", ""),
             "mfa_ativo": r.get("mfa_ativo", False),
             "mfa_secret": r.get("mfa_secret"),
+            "permissoes": r.get("permissoes", {}),
+            "creci": r.get("creci", ""),
+            "creci_validade": r.get("creci_validade"),
         }
     return usuarios
 
-
 def salvar_usuarios(usuarios_dict):
-    """Sincroniza o dict inteiro com o Supabase."""
     atuais = carregar_usuarios()
-
     for login, dados in usuarios_dict.items():
         payload = {
             "login": login,
@@ -43,13 +42,14 @@ def salvar_usuarios(usuarios_dict):
             "telefone": dados.get("telefone", ""),
             "mfa_ativo": bool(dados.get("mfa_ativo", False)),
             "mfa_secret": dados.get("mfa_secret"),
+            "permissoes": dados.get("permissoes", {}),
+            "creci": dados.get("creci", ""),
+            "creci_validade": dados.get("creci_validade"),
         }
-
         if login in atuais:
             atualizar("usuarios", "login", login, payload)
         else:
             inserir("usuarios", payload)
-
 
 def criar_usuario(login, nome, senha, perfil="corretor", email="", ativo=True, telefone=""):
     existente = buscar_por("usuarios", "login", login)
