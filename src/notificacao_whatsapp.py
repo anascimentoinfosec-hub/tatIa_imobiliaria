@@ -39,6 +39,7 @@ def enviar_alerta_novo_lead(nome_cliente, renda, origem, telefone):
 
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=10)
+        print("DEBUG ZAPI:", response.status_code, response.text)
         if response.status_code in [200, 201]:
             return "sucesso"
         else:
