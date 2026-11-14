@@ -24,7 +24,7 @@ def enviar_alerta_novo_lead(nome_cliente, renda, origem, telefone):
 🎯 *Origem:* {origem}
 📱 *Telefone:* {telefone}"""
 
-    url = f"https://api.omni.z-api.io/v1/channels/{channel_id}/messages"
+    url = f"https://api.omni.z-api.io/hermitage/v1/channels/{channel_id}/messages"
     
     payload = {
         "phone": telefone_gerente,
