@@ -28,8 +28,7 @@ def enviar_alerta_novo_lead(nome_cliente, renda, origem, telefone):
     
     payload = {
         "phone": telefone_gerente,
-        "type": "text",
-        "text": {"body": mensagem}
+        "message": mensagem
     }
 
     headers = {
