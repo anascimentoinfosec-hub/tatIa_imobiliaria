@@ -1,15 +1,21 @@
 import streamlit as st
 import requests
+from src.configuracoes_storage import obter_configuracao
 
 def enviar_alerta_novo_lead(nome_cliente, renda, origem, telefone):
-    """Envia uma mensagem no WhatsApp e retorna 'sucesso' ou a mensagem de erro."""
+    """Envia uma mensagem no WhatsApp via Omni Z-API."""
     try:
-        instance_id = st.secrets["ZAPI_INSTANCE_ID"]
-        token = st.secrets["ZAPI_TOKEN"]
-        client_token = st.secrets["ZAPI_CLIENT_TOKEN"]
-        telefone_gerente = st.secrets["WHATSAPP_GERENTE"]
+        # Credenciais da Z-API continuam no secrets (são fixas e seguras)
+        secret_key = st.secrets["ZAPI_SECRET_KEY"]
+        channel_id = st.secrets["ZAPI_CHANNEL_ID"]
     except KeyError as e:
         return f"Chave faltando no secrets: {str(e)}"
+    
+    # O número do gerente agora vem do BANCO DE DADOS (editável na tela)
+    telefone_gerente = obter_configuracao("whatsapp_gerente", "")
+    
+    if not telefone_gerente:
+        return "Número do gerente não configurado no painel de Configurações."
 
     mensagem = f"""🚀 *NOVO LEAD RECEBIDO!*
 
@@ -18,21 +24,22 @@ def enviar_alerta_novo_lead(nome_cliente, renda, origem, telefone):
 🎯 *Origem:* {origem}
 📱 *Telefone:* {telefone}"""
 
-    url = f"https://api.z-api.io/instances/{instance_id}/token/{token}/send-text"
+    url = f"https://api.omni.z-api.io/v1/channels/{channel_id}/messages"
     
     payload = {
         "phone": telefone_gerente,
-        "message": mensagem
+        "type": "text",
+        "text": {"body": mensagem}
     }
 
     headers = {
         "Content-Type": "application/json",
-        "Client-Token": client_token
+        "Authorization": f"Bearer {secret_key}"
     }
 
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=10)
-        if response.status_code == 200:
+        if response.status_code in [200, 201]:
             return "sucesso"
         else:
             return f"Status {response.status_code}: {response.text}"
