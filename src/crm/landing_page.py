@@ -117,6 +117,15 @@ def renderizar_landing_page(campanha_id=None):
                     from src.crm.roleta import distribuir_lead
                     distribuir_lead(novo_lead_id)
                     
+                    # 3. NOVO: Envia o alerta para a gerente no WhatsApp
+                    from src.notificacao_whatsapp import enviar_alerta_novo_lead
+                    enviar_alerta_novo_lead(
+                        nome_cliente=st.session_state.dados_lead["nome"],
+                        renda=st.session_state.dados_lead["renda"],
+                        origem=st.session_state.dados_lead["origem"],
+                        telefone=st.session_state.dados_lead["telefone"]
+                    )
+                    
                 st.session_state["lead_salvo"] = True
                 st.rerun()
 
