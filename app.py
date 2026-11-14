@@ -285,6 +285,19 @@ with st.sidebar:
                 st.session_state.pagina = "Creditos"; st.rerun()
             if st.button("🔄 Resetar Base", key="btn_admin_reset", use_container_width=True):
                 st.session_state.pagina = "LimpezaTeste"; st.rerun()
+            if st.button("📱 Testar WhatsApp (Admin)", key="btn_test_zapi", use_container_width=True):
+                from src.notificacao_whatsapp import enviar_alerta_novo_lead
+                with st.spinner("Enviando mensagem de teste..."):
+                    resultado = enviar_alerta_novo_lead(
+                        nome_cliente="Teste do Sistema",
+                        renda=10000.0,
+                        origem="Painel Admin",
+                        telefone="21967775321"
+                    )
+                    if resultado == "sucesso":
+                        st.success("✅ Mensagem enviada! Verifique o celular.")
+                    else:
+                        st.error(f"❌ Erro da Z-API: {resultado}")
             if st.button("🔄 Zerar Roleta (Admin)", key="btn_zerar_roleta", use_container_width=True):
                 from src.crm.roleta import zerar_roleta
                 if zerar_roleta():
