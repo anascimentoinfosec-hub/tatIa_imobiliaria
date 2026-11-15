@@ -102,6 +102,24 @@ def distribuir_lead(lead_id):
             client.table("crm_leads").update({"corretor": corretor}).eq("id", lead_id).execute()
             agora_iso = datetime.now(timezone.utc).isoformat()
             client.table("roleta_fila").update({"ultimo_lead_recebido": agora_iso}).eq("corretor", corretor).execute()
+            
+            # NOVO: Busca os dados do lead para mandar na mensagem
+            lead_data = client.table("crm_leads").select("nome, renda, origem, telefone").eq("id", lead_id).execute().data
+            if lead_data:
+                lead = lead_data[0]
+                from src.notificacao_whatsapp import enviar_alerta_novo_lead
+                # O try/except garante que a roleta não trava se o WhatsApp falhar
+                try:
+                    enviar_alerta_novo_lead(
+                        nome_cliente=lead.get("nome", "Não informado"),
+                        renda=lead.get("renda", 0.0) or 0.0,
+                        origem=lead.get("origem", "Desconhecida"),
+                        telefone=lead.get("telefone", ""),
+                        corretor=corretor
+                    )
+                except Exception as e:
+                    print(f"Erro ao enviar WhatsApp: {e}")
+            
             return corretor
         except Exception:
             return None

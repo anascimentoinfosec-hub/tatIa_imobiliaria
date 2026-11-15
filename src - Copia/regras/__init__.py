@@ -1,0 +1,1 @@
+# Pacote de regras de negócio (cálculos puros, sem Streamlit)

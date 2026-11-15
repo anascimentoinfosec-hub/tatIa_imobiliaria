@@ -1,47 +1,52 @@
-import streamlit as st
 import requests
+import streamlit as st
 from src.configuracoes_storage import obter_configuracao
 
-def enviar_alerta_novo_lead(nome_cliente, renda, origem, telefone):
-    """Envia uma mensagem no WhatsApp via Omni Z-API."""
+def enviar_alerta_novo_lead(nome_cliente, renda, origem, telefone="", corretor=""):
+    """
+    Envia um alerta de novo lead para o WhatsApp do gerente via Evolution API.
+    Retorna 'sucesso' ou a mensagem de erro.
+    """
+    # 1. Busca o número do gerente no banco (já configurado na tela de Configurações)
+    numero_gerente = obter_configuracao("whatsapp_gerente", "")
+    if not numero_gerente:
+        return "Número do gerente não configurado no sistema."
+
+    # 2. Puxa as credenciais do secrets.toml
     try:
-        # Credenciais da Z-API continuam no secrets (são fixas e seguras)
-        secret_key = st.secrets["ZAPI_SECRET_KEY"]
-        channel_id = st.secrets["ZAPI_CHANNEL_ID"]
-    except KeyError as e:
-        return f"Chave faltando no secrets: {str(e)}"
-    
-    # O número do gerente agora vem do BANCO DE DADOS (editável na tela)
-    telefone_gerente = obter_configuracao("whatsapp_gerente", "")
-    
-    if not telefone_gerente:
-        return "Número do gerente não configurado no painel de Configurações."
+        EVOLUTION_URL = st.secrets["evolution"]["url"]
+        EVOLUTION_APIKEY = st.secrets["evolution"]["apikey"]
+        EVOLUTION_INSTANCE = st.secrets["evolution"]["instance"]
+    except KeyError:
+        return "Credenciais da Evolution API não encontradas no secrets.toml."
 
-    mensagem = f"""🚀 *NOVO LEAD RECEBIDO!*
+    # 3. Monta a mensagem
+    mensagem = f"🚨 *NOVO LEAD RECEBIDO!*\n\n"
+    mensagem += f"👤 *Cliente:* {nome_cliente}\n"
+    mensagem += f"💰 *Renda:* R$ {renda:,.2f}\n"
+    mensagem += f"🎯 *Origem:* {origem}\n"
+    if telefone:
+        mensagem += f"📞 *Telefone:* {telefone}\n"
+    if corretor:
+        mensagem += f"🏃 *Corretor:* {corretor}\n"
+    mensagem += "\n_Acesse o CRM para mais detalhes._"
 
-👤 *Nome:* {nome_cliente}
-💰 *Renda:* R$ {renda:,.2f}
-🎯 *Origem:* {origem}
-📱 *Telefone:* {telefone}"""
-
-    url = f"https://api.omni.z-api.io/hermitage/v1/channels/{channel_id}"
-    
-    payload = {
-        "phone": telefone_gerente,
-        "message": mensagem
-    }
-
+    # 4. Dispara para a Evolution API
+    url = f"{EVOLUTION_URL}/message/sendText/{EVOLUTION_INSTANCE}"
     headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {secret_key}"
+        "apikey": EVOLUTION_APIKEY,
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "number": numero_gerente,
+        "text": mensagem
     }
 
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=10)
-        print("DEBUG ZAPI:", response.status_code, response.text)
         if response.status_code in [200, 201]:
             return "sucesso"
         else:
-            return f"Status {response.status_code}: {response.text}"
+            return f"Erro API ({response.status_code}): {response.text}"
     except Exception as e:
-        return f"Falha na conexão: {str(e)}"
+        return f"Erro de conexão: {str(e)}"

@@ -1,0 +1,44 @@
+import streamlit as st
+
+from src.construtoras_storage import carregar_cidades
+from src.construtoras_listar import renderizar_aba_listar
+from src.construtoras_adicionar import renderizar_aba_adicionar
+from src.construtoras_produtos import renderizar_aba_produtos
+from src.construtoras_cidades import renderizar_aba_cidades
+
+
+def pagina_gestao_construtoras(CONSTRUTORAS):
+    from src.mensagens import exibir_mensagem_pendente
+    exibir_mensagem_pendente()  # ← mostra as mensagens pendentes AQUI
+
+    st.title("🏗️ Gestão de Construtoras e Produtos")
+
+     # === FILTRO DE HANDOFF ===
+         #Mostra apenas as construtoras que o comercial já ativou 
+    
+    construtoras_ativas = {k: v for k, v in CONSTRUTORAS.items() if v.get("status_parceria", "ativa") == "ativa"}
+    
+    cidades = carregar_cidades()
+    tabs = st.tabs(["📋 Listar", "➕ Adicionar Construtora", "📦 Gerenciar Produtos", "📍 Gerenciar Cidades"])
+    
+    # ... (nas chamadas das abas, troque o CONSTRUTORAS por construtoras_ativas, se necessário)
+
+    cidades = carregar_cidades()
+    tabs = st.tabs([
+        "📋 Listar",
+        "➕ Adicionar Construtora",
+        "📦 Gerenciar Produtos",
+        "📍 Gerenciar Cidades",
+    ])
+
+    with tabs[0]:
+        renderizar_aba_listar(construtoras_ativas)
+
+    with tabs[1]:
+        renderizar_aba_adicionar(construtoras_ativas, cidades)
+
+    with tabs[2]:
+        renderizar_aba_produtos(cidades)
+
+    with tabs[3]:
+        renderizar_aba_cidades()
