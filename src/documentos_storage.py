@@ -3,6 +3,7 @@ from src.db import get_client
 from datetime import datetime
 import uuid
 import secrets
+import random # NOVO
 
 BUCKET = "documentos-clientes"
 
@@ -22,7 +23,6 @@ def upload_documento(arquivo, cliente_nome, tipo_doc="doc"):
         )
         return path
     except Exception as e:
-        # Agora ele lança o erro para o Simulador capturar
         raise Exception(str(e))
 
 def gerar_link_temporario(path, expira_em_segundos=3600):
@@ -36,20 +36,24 @@ def gerar_link_temporario(path, expira_em_segundos=3600):
         st.warning(f"⚠️ Erro ao gerar link de download: {str(e)}")
         return None
 
-def criar_token_consentimento(cliente_nome):
+def criar_token_consentimento(cliente_nome, telefone_cliente=""):
     client = get_client()
     try:
         token = secrets.token_urlsafe(16)
+        codigo_otp = str(random.randint(100000, 999999))
+        
         client.table("consentimentos_lgpd").insert({
             "id": secrets.token_hex(8),
             "cliente_nome": cliente_nome,
             "token": token,
-            "status": "pendente"
+            "status": "pendente",
+            "codigo_otp": codigo_otp,
+            "telefone_cliente": telefone_cliente
         }).execute()
-        return token
+        return token, codigo_otp
     except Exception as e:
         print(f"Erro ao criar token: {e}")
-        return None
+        return None, None
 
 def verificar_consentimento(token):
     client = get_client()
@@ -60,6 +64,17 @@ def verificar_consentimento(token):
     except Exception:
         pass
     return "nao_encontrado"
+
+def validar_otp_consentimento(token, codigo_digitado):
+    client = get_client()
+    try:
+        res = client.table("consentimentos_lgpd").select("codigo_otp").eq("token", token).execute()
+        if res.data:
+            if res.data[0].get("codigo_otp") == str(codigo_digitado):
+                return True
+        return False
+    except Exception:
+        return False
 
 def autorizar_consentimento(token):
     client = get_client()

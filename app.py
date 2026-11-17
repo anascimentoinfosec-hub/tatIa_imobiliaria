@@ -122,7 +122,7 @@ if st.query_params.get("lead") == "true":
 
 if st.query_params.get("consentimento"):
     token = st.query_params.get("consentimento")
-    from src.documentos_storage import verificar_consentimento, autorizar_consentimento
+    from src.documentos_storage import verificar_consentimento, autorizar_consentimento, validar_otp_consentimento
     
     st.markdown("<h1 style='text-align: center;'>🔒 Termo de Consentimento (LGPD)</h1>", unsafe_allow_html=True)
     st.markdown("---")
@@ -131,15 +131,19 @@ if st.query_params.get("consentimento"):
     if status_atual == "autorizado":
         st.success("✅ Você já autorizou o uso dos seus documentos. Obrigado!")
     elif status_atual == "pendente":
-        st.info("Para que a imobiliária possa analisar sua proposta de crédito, precisamos da sua autorização para armazenar documentos como RG, CPF e comprovantes de renda.")
-        st.markdown("Seus dados serão armazenados em ambiente seguro e utilizados **exclusivamente** para a análise de crédito junto à construtora/banco, conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018).")
+        st.info("Para a sua segurança, enviamos um código de 6 dígitos para o seu WhatsApp. Por favor, insira-o abaixo para liberar a autorização.")
         
-        if st.button("✅ Eu autorizo o uso dos meus documentos", type="primary", use_container_width=True):
-            if autorizar_consentimento(token):
-                st.success("🎉 Autorização registrada com sucesso! Você já pode fechar esta página.")
-                st.balloons()
+        codigo_input = st.text_input("Digite o código recebido:", max_chars=6, key="input_otp_cliente")
+        
+        if st.button("✅ Validar Código e Autorizar", type="primary", use_container_width=True):
+            if validar_otp_consentimento(token, codigo_input):
+                if autorizar_consentimento(token):
+                    st.success("🎉 Autorização registrada com sucesso! Você já pode fechar esta página.")
+                    st.balloons()
+                else:
+                    st.error("Erro ao registrar autorização. Tente novamente.")
             else:
-                st.error("Erro ao registrar autorização. Tente novamente.")
+                st.error("❌ Código inválido. Verifique o WhatsApp e tente novamente.")
     else:
         st.error("❌ Link inválido ou expirado.")
     st.stop()
