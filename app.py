@@ -302,6 +302,37 @@ with st.sidebar:
                         st.success("✅ Mensagem enviada! Verifique o celular.")
                     else:
                         st.error(f"❌ Erro da Z-API: {resultado}")
+            if st.button("🔒 Testar OTP LGPD (Admin)", key="btn_test_otp", use_container_width=True):
+                from src.documentos_storage import criar_token_consentimento
+                from src.notificacao_whatsapp import enviar_otp_lgpd
+                from src.configuracoes_storage import obter_configuracao
+                
+                telefone_teste = obter_configuracao("whatsapp_teste", "")
+                
+                if not telefone_teste:
+                    st.error("⚠️ Vá em Configurações > WhatsApp e salve um número no campo 'WhatsApp para Testes' primeiro.")
+                else:
+                    nome_teste = "Cliente Teste OTP"
+                    
+                    with st.spinner("Gerando token e enviando OTP..."):
+                        token, otp = criar_token_consentimento(nome_teste, telefone_teste)
+                        if token:
+                            resultado = enviar_otp_lgpd(telefone_teste, otp)
+                            
+                            if resultado == "sucesso":
+                                try:
+                                    base_url = st.secrets.get("APP_BASE_URL", "https://simulador-credito.streamlit.app")
+                                except:
+                                    base_url = "https://simulador-credito.streamlit.app"
+                                
+                                link = f"{base_url}/?consentimento={token}"
+                                st.success(f"✅ OTP enviado para {telefone_teste}!")
+                                st.info(f"👉 **Link de Teste:** [Clique aqui para validar]({link})\n\n*(O código enviado foi: {otp})*")
+                            else:
+                                st.error(f"❌ Erro ao enviar OTP: {resultado}")
+                        else:
+                            st.error("❌ Erro ao criar token no banco de dados.")
+            
             if st.button("🔄 Zerar Roleta (Admin)", key="btn_zerar_roleta", use_container_width=True):
                 from src.crm.roleta import zerar_roleta
                 if zerar_roleta():
