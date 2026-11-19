@@ -43,6 +43,23 @@ def renderizar_configuracoes():
                     st.session_state["msg_sucesso_config"] = "✅ Número do gerente atualizado!"
                     st.rerun()
 
+        # NOVO: WhatsApp de Testes (Admin)
+        st.markdown("---")
+        st.markdown("### 🧪 WhatsApp para Testes (Admin)")
+        st.caption("Número que receberá mensagens de teste do sistema (OTP, simulações, etc).")
+        
+        whatsapp_teste = obter_configuracao("whatsapp_teste", "")
+        novo_whatsapp_teste = st.text_input("WhatsApp de Teste", value=whatsapp_teste, max_chars=15, key="config_wpp_teste")
+        
+        if st.button("💾 Salvar WhatsApp de Teste", type="primary", key="btn_salvar_wpp_teste"):
+            num_limpo = re.sub(r'\D', '', novo_whatsapp_teste)
+            if len(num_limpo) < 10:
+                st.error("❌ Número inválido.")
+            else:
+                if salvar_configuracao("whatsapp_teste", num_limpo):
+                    st.session_state["msg_sucesso_config"] = "✅ Número de teste atualizado!"
+                    st.rerun()
+
     with tab2:
         st.markdown("### 📺 Personalizar War Room (TV)")
         
