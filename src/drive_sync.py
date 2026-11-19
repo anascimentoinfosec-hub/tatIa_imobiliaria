@@ -22,15 +22,13 @@ def listar_planilhas_drive():
     results = service.files().list(q=query, fields="files(id, name, mimeType, md5Checksum, modifiedTime)").execute()
     return results.get('files', [])
 
-def baixar_e_ler_planilha(file_id, mime_type):
-    """Baixa o arquivo e converte para DataFrame"""
+def baixar_planilha_bruta(file_id, mime_type):
+    """Baixa o arquivo e retorna o DataFrame CRU (sem cabeçalho definido)."""
     service = get_drive_service()
     
     if mime_type == 'application/vnd.google-apps.spreadsheet':
-        # Se for planilha do Google Sheets, exporta como xlsx
         request = service.files().export_media(fileId=file_id, mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     else:
-        # Se for Excel normal
         request = service.files().get_media(fileId=file_id)
         
     fh = io.BytesIO()
@@ -40,8 +38,9 @@ def baixar_e_ler_planilha(file_id, mime_type):
         status, done = downloader.next_chunk()
         
     fh.seek(0)
-    df = pd.read_excel(fh)
-    return df
+    # O segredo está no header=None e nrows=15 para pegar só o topo
+    df_bruto = pd.read_excel(fh, header=None, nrows=15)
+    return df_bruto
 
 def verificar_hash_arquivo(file_hash):
     """Verifica no Supabase se esse arquivo já foi processado"""
