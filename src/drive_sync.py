@@ -1,0 +1,68 @@
+import streamlit as st
+import pandas as pd
+import hashlib
+import io
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload
+
+def get_drive_service():
+    """Autentica usando as credenciais do secrets.toml"""
+    creds_dict = dict(st.secrets["gcp_service_account"])
+    creds = service_account.Credentials.from_service_account_info(creds_dict)
+    return build('drive', 'v3', credentials=creds)
+
+def listar_planilhas_drive():
+    """Lista arquivos Excel na pasta configurada"""
+    service = get_drive_service()
+    folder_id = st.secrets["google_drive"]["folder_id"]
+    
+    query = f"'{folder_id}' in parents and (mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='application/vnd.google-apps.spreadsheet') and trashed=false"
+    
+    results = service.files().list(q=query, fields="files(id, name, mimeType, md5Checksum, modifiedTime)").execute()
+    return results.get('files', [])
+
+def baixar_e_ler_planilha(file_id, mime_type):
+    """Baixa o arquivo e converte para DataFrame"""
+    service = get_drive_service()
+    
+    if mime_type == 'application/vnd.google-apps.spreadsheet':
+        # Se for planilha do Google Sheets, exporta como xlsx
+        request = service.files().export_media(fileId=file_id, mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    else:
+        # Se for Excel normal
+        request = service.files().get_media(fileId=file_id)
+        
+    fh = io.BytesIO()
+    downloader = MediaIoBaseDownload(fh, request)
+    done = False
+    while done is False:
+        status, done = downloader.next_chunk()
+        
+    fh.seek(0)
+    df = pd.read_excel(fh)
+    return df
+
+def verificar_hash_arquivo(file_hash):
+    """Verifica no Supabase se esse arquivo já foi processado"""
+    from src.db import get_client
+    client = get_client()
+    try:
+        # Supondo que você criará essa tabela no Supabase
+        res = client.table("historico_importacoes").select("id").eq("hash_arquivo", file_hash).execute()
+        return len(res.data) > 0
+    except Exception:
+        return False
+
+def registrar_importacao(file_hash, nome_arquivo, status):
+    """Salva o histórico para evitar duplicidade"""
+    from src.db import get_client
+    client = get_client()
+    try:
+        client.table("historico_importacoes").insert({
+            "hash_arquivo": file_hash,
+            "nome_arquivo": nome_arquivo,
+            "status": status
+        }).execute()
+    except Exception as e:
+        print(f"Erro ao registrar: {e}")

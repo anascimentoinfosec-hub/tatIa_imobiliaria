@@ -250,6 +250,8 @@ with st.sidebar:
                 st.session_state.pagina = "DashboardVendas"; st.rerun()
             if tem_perm("construtoras") and st.button("🏗️ Construtoras", key="btn_menu_construtoras", use_container_width=True):
                 st.session_state.pagina = "Construtoras"; st.rerun()
+            if tem_perm("configuracoes") and st.button("📂 Sincronização Google Drive", key="btn_menu_drive", use_container_width=True):
+                st.session_state.pagina = "DriveSync"; st.rerun()
             if tem_perm("regras_fin") and st.button("🏦 Regras Financiamento", key="btn_menu_regras_fin", use_container_width=True):
                 st.session_state.pagina = "Regras"; st.rerun()
             if tem_perm("regras_ent") and st.button("📋 Regras de Entrada", key="btn_menu_regras_ent", use_container_width=True):
@@ -409,4 +411,7 @@ else:
         elif pagina == "LimpezaTeste":
             from src.superadmin import renderizar_limpeza_teste
             renderizar_limpeza_teste(USUARIOS)
+        elif pagina == "DriveSync":
+            from src.drive_gerenciar import renderizar_drive_sync
+            renderizar_drive_sync()
         else: pagina_simulador(CONSTRUTORAS, USUARIOS)
