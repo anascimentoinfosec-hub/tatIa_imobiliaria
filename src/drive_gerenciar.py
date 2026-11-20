@@ -9,10 +9,10 @@ from src.drive_sync import listar_planilhas_drive, baixar_planilha_bruta, verifi
 def renderizar_drive_sync():
     st.title("📂 Sincronização Google Drive")
     
-    # Exibe a mensagem de sucesso se existir
+    # Exibe a mensagem de sucesso se ela existir na memória
     if "msg_sucesso_drive" in st.session_state:
         st.success(st.session_state["msg_sucesso_drive"])
-        st.info("👉 **Próximo passo:** O produto já está disponível no Simulador.")
+        st.info("👉 **Próximo passo:** O produto já está disponível no Simulador e na Gestão de Construtoras.")
         del st.session_state["msg_sucesso_drive"]
 
     st.markdown("Monitore a pasta de planilhas das construtoras e importe os dados.")
@@ -57,7 +57,7 @@ def renderizar_drive_sync():
                     
                     linha_cabecalho = st.number_input(
                         "Em qual linha do Excel estão os títulos das colunas?", 
-                        min_value=1, max_value=20, value=6, 
+                        min_value=1, max_value=30, value=6, 
                         key=f"header_{arq['id']}"
                     )
                     
@@ -77,27 +77,25 @@ def renderizar_drive_sync():
                                     status, done = downloader.next_chunk()
                                 fh.seek(0)
                                 
-                                # Pula até a linha do cabeçalho escolhida
-                                # 1. Lê o arquivo cru para achar a linha do cabeçalho
-                                fh.seek(0)
+                                # 1. Lê o arquivo cru (sem cabeçalho)
                                 df_cru = pd.read_excel(fh, header=None)
                                 
-                                # 2. A linha escolhida pelo gerente no input (ex: 6) vira o índice 5 no Pandas
-                                indice_cabecalho = linha_cabecalho - 1
+                                # 2. Usa o número EXATO que o gerente digitou na tela
+                                idx_cabecalho = int(linha_cabecalho) 
                                 
-                                # 3. Pega os nomes das colunas daquela linha específica
-                                nomes_colunas = df_cru.iloc[indice_cabecalho].tolist()
+                                # 3. Pega os nomes das colunas daquela linha
+                                nomes_colunas = df_cru.iloc[idx_cabecalho].tolist()
                                 
                                 # 4. Pega os dados que vêm DEPOIS da linha do cabeçalho
-                                df_dados = df_cru.iloc[indice_cabecalho + 1:].copy()
+                                df_dados = df_cru.iloc[idx_cabecalho + 1:].copy()
                                 
-                                # 5. Resolve o problema de colunas duplicadas (O NOVO PULO DO GATO)
+                                # 5. Limpa os nomes das colunas (remove 'nan' e duplicados)
                                 nomes_limpos = []
                                 contador = {}
                                 for col in nomes_colunas:
                                     col_str = str(col).strip()
-                                    if col_str == "nan" or not col_str:
-                                        col_str = "COLUNA_VAZIA"
+                                    if col_str.lower() == "nan" or col_str == "":
+                                        continue
                                     
                                     if col_str in contador:
                                         contador[col_str] += 1
@@ -106,12 +104,14 @@ def renderizar_drive_sync():
                                         contador[col_str] = 1
                                         nomes_limpos.append(col_str)
                                 
-                                # 6. Renomeia as colunas com os nomes únicos
+                                # 6. Filtra o DataFrame para as colunas válidas
+                                df_dados = df_dados.iloc[:, :len(nomes_limpos)]
                                 df_dados.columns = nomes_limpos
                                 
-                                # 7. Limpa as linhas que ficaram totalmente vazias e reseta o índice
+                                # 7. Remove linhas vazias e formata
                                 df_final = df_dados.dropna(how='all').reset_index(drop=True)
                                 
+                                # 8. Salva na memória para a próxima etapa
                                 st.session_state[f"df_final_{arq['id']}"] = df_final
                                 st.rerun()
                                 
@@ -156,12 +156,7 @@ def renderizar_drive_sync():
                                         
                                         try:
                                             # 1. SALVA NO FORMATO QUE O SIMULADOR ENTENDE (Cache)
-                                            # 1. Preenche valores nulos na coluna UNIDADE (e outras de texto) com string vazia
-                                            df_limpo = df_final.fillna("") 
-
-                                            # 2. Trata os NaNs numéricos específicos (como preço e área) para virar None (nulo no JSON)
-                                            # Se você tiver colunas numéricas que devem virar None no JSON, o replace abaixo resolve.
-                                            df_limpo = df_limpo.replace({float('nan'): None})
+                                            df_limpo = df_final.replace({float('nan'): None})
                                             sucesso_cache = salvar_planilha_cache(nome_construtora, df_limpo, nome_produto)
                                             
                                             if not sucesso_cache:
@@ -181,7 +176,7 @@ def renderizar_drive_sync():
                                             
                                             dados_atuais[nome_construtora]["produtos"][nome_produto] = {
                                                 "cidade": cidade,
-                                                "skiprows": linha_cabecalho - 1,
+                                                "skiprows": linha_cabecalho, # Salva o número exato
                                                 "mapeamento": {str(i): col for i, col in enumerate(colunas_excel)},
                                                 "colunas_ordem": colunas_excel,
                                                 "colunas_para_converter": []
@@ -191,18 +186,17 @@ def renderizar_drive_sync():
                                             
                                             registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "novo")
                                             
-                                           # Salva a mensagem na memória e limpa a tela
+                                            # Salva a mensagem e limpa a tela
                                             st.session_state["msg_sucesso_drive"] = f"✅ Produto '{nome_produto}' da '{nome_construtora}' sincronizado com sucesso!"
-    
-                                           # Limpa os campos e as variáveis de arquivo para a tela voltar ao início
+                                            
                                             del st.session_state[key_const]
                                             del st.session_state[key_prod]
                                             del st.session_state[key_cid]
                                             del st.session_state[f"df_final_{arq['id']}"]
                                             del st.session_state[f"df_bruto_{arq['id']}"]
                                             if "arquivos_drive" in st.session_state:
-                                                del st.session_state["arquivos_drive"] # Isso limpa a lista de arquivos da tela
-        
+                                                del st.session_state["arquivos_drive"]
+                                                
                                             st.rerun()
                                             
                                         except Exception as e:
