@@ -116,15 +116,11 @@ def renderizar_drive_sync():
                                         client = get_client()
                                         
                                         try:
-                                            # Como o banco usa o nome da construtora direto (texto), 
-                                            # nós apenas salvamos o produto associado a esse nome.
-                                            
-                                            # Aqui vamos salvar na tabela de cache de planilhas (ajuste o nome se precisar)
+                                            # Como o seu banco não tem coluna 'cidade' nessa tabela, 
+                                            # vamos salvar apenas o que ele conhece.
                                             client.table("planilhas_cache").insert({
                                                 "construtora": nome_construtora,
-                                                "produto": nome_produto,
-                                                "cidade": cidade,
-                                                # "atualizado_em": datetime.now().isoformat() # se tiver essa coluna
+                                                "produto": nome_produto
                                             }).execute()
                                             
                                             # Registra o hash para não duplicar
