@@ -118,8 +118,9 @@ def renderizar_drive_sync():
                                         try:
                                             novo_id = str(uuid.uuid4())
                                             
-                                            # Converte a planilha (DataFrame) para JSON para salvar na coluna 'dados'
-                                            dados_json = df_final.to_dict(orient="records")
+                                            # Substitui os NaN por vazio e converte para JSON#
+                                            df_limpo = df_final.replace({float('nan'): None}) 
+                                            dados_json = df_limpo.to_dict(orient="records")
                                             
                                             client.table("planilhas_cache").insert({
                                                 "id": novo_id,
