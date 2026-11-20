@@ -365,12 +365,22 @@ with st.sidebar:
                     st.success("Roleta zerada com sucesso! Todos fora do ponto.")
                     st.rerun()
 
-        # --- NOVO: BOTÃO DA BIA ---
+        # --- NOVO: BOTÃO DA BIA NA SIDEBAR ---
         st.markdown("---")
         st.markdown("### 🤖 Assistente Virtual")
-        if st.button("💬 Falar com a BIA", key="btn_bia_sidebar", use_container_width=True, type="primary"):
-            st.session_state["mostrar_bia_chat"] = not st.session_state.get("mostrar_bia_chat", False)
-            st.rerun()
+        
+        # Usa um checkbox para abrir/fechar, assim não precisa de st.rerun()
+        mostrar_bia_sidebar = st.checkbox("💬 Falar com a BIA", key="toggle_bia_sidebar")
+        
+        if mostrar_bia_sidebar:
+            from src.bia_operacional import pagina_bia_operacional
+            with st.container():
+                st.markdown("#### 🤖 BIA")
+                # Renderiza a BIA dentro da própria barra lateral
+                pagina_bia_operacional(
+                    usuario_logado=st.session_state.usuario_logado, 
+                    USUARIOS=USUARIOS
+                )
 
         # --- 4. BOTÃO SAIR (Sempre no final) ---
         st.markdown("---")
@@ -415,21 +425,6 @@ else:
         st.session_state.pagina = "Simulador"
         st.rerun()
 
-    # === NOVO: LÓGICA DO CHAT FLUTUANTE DA BIA ===
-        if st.session_state.get("mostrar_bia_chat", False):
-            from src.bia_operacional import pagina_bia_operacional
-            with st.container():
-                st.markdown("### 🤖 BIA - Assistente Imobiliária")
-                # Aqui chamamos a tela da BIA passando os dados do usuário
-                pagina_bia_operacional(
-                    usuario_logado=st.session_state.usuario_logado, 
-                    USUARIOS=USUARIOS
-                )
-                if st.button("❌ Fechar BIA", key="btn_fechar_bia"):
-                    st.session_state["mostrar_bia_chat"] = False
-                    st.rerun()
-            st.markdown("---")
-        # ==============================================
     
     else:
         # Renderiza a página correta
