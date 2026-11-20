@@ -116,28 +116,28 @@ def renderizar_drive_sync():
                                         client = get_client()
                                         
                                         try:
-                                            res_c = client.table("construtoras").select("id").eq("nome", nome_construtora).execute()
-                                            if res_c.data:
-                                                const_id = res_c.data[0]["id"]
-                                            else:
-                                                res_new = client.table("construtoras").insert({"nome": nome_construtora}).execute()
-                                                const_id = res_new.data[0]["id"]
+                                            # Como o banco usa o nome da construtora direto (texto), 
+                                            # nós apenas salvamos o produto associado a esse nome.
                                             
-                                            client.table("produtos").insert({
-                                                "construtora_id": const_id,
-                                                "nome": nome_produto,
-                                                "cidade": cidade
+                                            # Aqui vamos salvar na tabela de cache de planilhas (ajuste o nome se precisar)
+                                            client.table("planilhas_cache").insert({
+                                                "construtora": nome_construtora,
+                                                "produto": nome_produto,
+                                                "cidade": cidade,
+                                                # "atualizado_em": datetime.now().isoformat() # se tiver essa coluna
                                             }).execute()
                                             
+                                            # Registra o hash para não duplicar
                                             registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "novo")
                                             
-                                            st.success(f"✅ Construtora '{nome_construtora}' e Produto '{nome_produto}' criados!")
+                                            st.success(f"✅ Produto '{nome_produto}' da construtora '{nome_construtora}' criado com sucesso!")
                                             st.balloons()
                                             
+                                            # Limpa os campos após salvar
                                             del st.session_state[key_const]
                                             del st.session_state[key_prod]
                                             del st.session_state[key_cid]
-                                            del st.session_state[f"df_final_{arq['id']}"] # Limpa a tabela processada
+                                            del st.session_state[f"df_final_{arq['id']}"]
                                             st.rerun()
                                         except Exception as e:
                                             st.error(f"Erro ao salvar no banco: {e}")
