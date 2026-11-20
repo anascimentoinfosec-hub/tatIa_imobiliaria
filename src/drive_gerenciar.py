@@ -89,11 +89,26 @@ def renderizar_drive_sync():
                                 if not (tem_construtora and tem_produto):
                                     st.info("🤖 A BIA não encontrou o nome da Construtora/Produto na planilha. Por favor, me ajude a identificar:")
                                     
-                                    nome_construtora = st.text_input("🏗️ Nome da Construtora:", key=f"const_{arq['id']}")
-                                    nome_produto = st.text_input("📦 Nome do Produto (Ex: Super Califórnia):", key=f"prod_{arq['id']}")
-                                    cidade = st.text_input("📍 Cidade (Opcional):", key=f"cid_{arq['id']}")
+                                    # Criamos chaves únicas no session_state para não limpar ao digitar
+                                    key_const = f"const_{arq['id']}"
+                                    key_prod = f"prod_{arq['id']}"
+                                    key_cid = f"cid_{arq['id']}"
+
+                                    # Inicializa no session_state se não existir
+                                    if key_const not in st.session_state: st.session_state[key_const] = ""
+                                    if key_prod not in st.session_state: st.session_state[key_prod] = ""
+                                    if key_cid not in st.session_state: st.session_state[key_cid] = ""
+
+                                    # Os inputs agora atualizam o session_state automaticamente
+                                    st.text_input("🏗️ Nome da Construtora:", key=key_const)
+                                    st.text_input("📦 Nome do Produto (Ex: Super Califórnia):", key=key_prod)
+                                    st.text_input("📍 Cidade (Opcional):", key=key_cid)
                                     
                                     if st.button("💾 Salvar e Criar Produto", key=f"salvar_{arq['id']}"):
+                                        nome_construtora = st.session_state[key_const]
+                                        nome_produto = st.session_state[key_prod]
+                                        cidade = st.session_state[key_cid]
+
                                         if not nome_construtora or not nome_produto:
                                             st.warning("⚠️ Preencha o nome da Construtora e do Produto para continuar.")
                                         else:
@@ -102,40 +117,33 @@ def renderizar_drive_sync():
                                                 from src.db import get_client
                                                 client = get_client()
                                                 
-                                                # 1. Verifica se a construtora já existe
-                                                res_c = client.table("construtoras").select("id").eq("nome", nome_construtora).execute()
-                                                if res_c.data:
-                                                    const_id = res_c.data[0]["id"]
-                                                else:
-                                                    # Cria a construtora (Ajuste os campos conforme seu banco)
-                                                    res_new = client.table("construtoras").insert({"nome": nome_construtora}).execute()
-                                                    const_id = res_new.data[0]["id"]
-                                                
-                                                # 2. Salva o produto vinculado à construtora
-                                                # (Aqui você pode expandir para salvar os imóveis da df_final na tabela de produtos)
-                                                client.table("produtos").insert({
-                                                    "construtora_id": const_id,
-                                                    "nome": nome_produto,
-                                                    "cidade": cidade
-                                                }).execute()
-                                                
-                                                # 3. Registra o hash para não duplicar
-                                                registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "novo")
-                                                
-                                                st.success(f"✅ Construtora '{nome_construtora}' e Produto '{nome_produto}' criados com sucesso!")
-                                                st.balloons()
-                                else:
-                                    # Se a BIA achou, segue o fluxo normal de atualizar/criar
-                                    st.info("✅ A BIA identificou as colunas! O que deseja fazer?")
-                                    col1, col2 = st.columns(2)
-                                    with col1:
-                                        if st.button("🔄 Atualizar Produto Existente", key=f"up_{arq['id']}"):
-                                            registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "atualizado")
-                                            st.success("Produto atualizado no sistema!")
-                                    with col2:
-                                        if st.button("🆕 Criar Novo Produto", key=f"new_{arq['id']}"):
-                                            registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "novo")
-                                            st.success("Novo produto criado no sistema!")
-                                    
-                            except Exception as e:
-                                st.error(f"Erro ao processar: {e}")
+                                                try:
+                                                    # 1. Verifica se a construtora já existe
+                                                    res_c = client.table("construtoras").select("id").eq("nome", nome_construtora).execute()
+                                                    if res_c.data:
+                                                        const_id = res_c.data[0]["id"]
+                                                    else:
+                                                        # Cria a construtora (Ajuste os campos conforme seu banco)
+                                                        res_new = client.table("construtoras").insert({"nome": nome_construtora}).execute()
+                                                        const_id = res_new.data[0]["id"]
+                                                    
+                                                    # 2. Salva o produto vinculado à construtora
+                                                    client.table("produtos").insert({
+                                                        "construtora_id": const_id,
+                                                        "nome": nome_produto,
+                                                        "cidade": cidade
+                                                    }).execute()
+                                                    
+                                                    # 3. Registra o hash para não duplicar
+                                                    registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "novo")
+                                                    
+                                                    st.success(f"✅ Construtora '{nome_construtora}' e Produto '{nome_produto}' criados com sucesso!")
+                                                    st.balloons()
+                                                    
+                                                    # Limpa os campos após salvar
+                                                    del st.session_state[key_const]
+                                                    del st.session_state[key_prod]
+                                                    del st.session_state[key_cid]
+                                                    st.rerun()
+                                                except Exception as e:
+                                                    st.error(f"Erro ao salvar no banco: {e}")
