@@ -78,13 +78,55 @@ def renderizar_drive_sync():
                                 st.success("✅ Planilha estruturada com sucesso!")
                                 st.dataframe(df_final.head(10))
                                 
-                                # === A BIA PORTEIRA (Agora com as colunas certas) ===
+                                # === A BIA PORTEIRA (Agora com interação) ===
+                                st.markdown("### 🧠 Verificação da BIA")
+                                
                                 colunas = [str(c).upper() for c in df_final.columns]
                                 tem_construtora = any("CONSTRUTORA" in c or "INCORPORAÇÃO" in c for c in colunas)
                                 tem_produto = any("PRODUTO" in c or "EMPREENDIMENTO" in c or "TABELA" in c for c in colunas)
                                 
-                                if tem_construtora and tem_produto:
-                                    st.info("A BIA identificou as colunas. O que deseja fazer?")
+                                # Se a BIA não achar as colunas, ela pergunta!
+                                if not (tem_construtora and tem_produto):
+                                    st.info("🤖 A BIA não encontrou o nome da Construtora/Produto na planilha. Por favor, me ajude a identificar:")
+                                    
+                                    nome_construtora = st.text_input("🏗️ Nome da Construtora:", key=f"const_{arq['id']}")
+                                    nome_produto = st.text_input("📦 Nome do Produto (Ex: Super Califórnia):", key=f"prod_{arq['id']}")
+                                    cidade = st.text_input("📍 Cidade (Opcional):", key=f"cid_{arq['id']}")
+                                    
+                                    if st.button("💾 Salvar e Criar Produto", key=f"salvar_{arq['id']}"):
+                                        if not nome_construtora or not nome_produto:
+                                            st.warning("⚠️ Preencha o nome da Construtora e do Produto para continuar.")
+                                        else:
+                                            with st.spinner("Salvando construtora e importando imóveis..."):
+                                                # Aqui entra a lógica de salvar no Supabase
+                                                from src.db import get_client
+                                                client = get_client()
+                                                
+                                                # 1. Verifica se a construtora já existe
+                                                res_c = client.table("construtoras").select("id").eq("nome", nome_construtora).execute()
+                                                if res_c.data:
+                                                    const_id = res_c.data[0]["id"]
+                                                else:
+                                                    # Cria a construtora (Ajuste os campos conforme seu banco)
+                                                    res_new = client.table("construtoras").insert({"nome": nome_construtora}).execute()
+                                                    const_id = res_new.data[0]["id"]
+                                                
+                                                # 2. Salva o produto vinculado à construtora
+                                                # (Aqui você pode expandir para salvar os imóveis da df_final na tabela de produtos)
+                                                client.table("produtos").insert({
+                                                    "construtora_id": const_id,
+                                                    "nome": nome_produto,
+                                                    "cidade": cidade
+                                                }).execute()
+                                                
+                                                # 3. Registra o hash para não duplicar
+                                                registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "novo")
+                                                
+                                                st.success(f"✅ Construtora '{nome_construtora}' e Produto '{nome_produto}' criados com sucesso!")
+                                                st.balloons()
+                                else:
+                                    # Se a BIA achou, segue o fluxo normal de atualizar/criar
+                                    st.info("✅ A BIA identificou as colunas! O que deseja fazer?")
                                     col1, col2 = st.columns(2)
                                     with col1:
                                         if st.button("🔄 Atualizar Produto Existente", key=f"up_{arq['id']}"):
@@ -94,8 +136,6 @@ def renderizar_drive_sync():
                                         if st.button("🆕 Criar Novo Produto", key=f"new_{arq['id']}"):
                                             registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "novo")
                                             st.success("Novo produto criado no sistema!")
-                                else:
-                                    st.warning("A BIA não encontrou as colunas de Construtora/Produto. Você pode mapear manualmente depois.")
                                     
                             except Exception as e:
                                 st.error(f"Erro ao processar: {e}")
