@@ -13,9 +13,18 @@ def get_drive_service():
     return build('drive', 'v3', credentials=creds)
 
 def listar_planilhas_drive():
-    """Lista arquivos Excel na pasta configurada"""
+    """Lista arquivos Excel na pasta configurada (lê do banco ou do secrets)"""
+    from src.configuracoes_storage import obter_configuracao
+    
+    # Tenta pegar o ID do banco de dados. Se não achar, usa o do secrets.toml como fallback.
+    folder_id = obter_configuracao("drive_folder_id", "")
+    if not folder_id:
+        folder_id = st.secrets.get("google_drive", {}).get("folder_id", "")
+        
+    if not folder_id:
+        raise Exception("Pasta do Google Drive não configurada.")
+
     service = get_drive_service()
-    folder_id = st.secrets["google_drive"]["folder_id"]
     
     query = f"'{folder_id}' in parents and (mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='application/vnd.google-apps.spreadsheet') and trashed=false"
     

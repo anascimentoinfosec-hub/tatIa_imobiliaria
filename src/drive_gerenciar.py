@@ -8,6 +8,34 @@ from src.drive_sync import listar_planilhas_drive, baixar_planilha_bruta, verifi
 
 def renderizar_drive_sync():
     st.title("📂 Sincronização Google Drive")
+
+    # === CONFIGURAÇÃO DA PASTA DO DRIVE ===
+    from src.configuracoes_storage import obter_configuracao, salvar_configuracao
+    
+    with st.expander("⚙️ Configurar Pasta do Google Drive", expanded=False):
+        st.caption("Cole o link da pasta do Google Drive onde estão as planilhas.")
+        
+        link_atual = obter_configuracao("drive_folder_link", "")
+        novo_link = st.text_input("Link da Pasta do Drive:", value=link_atual, placeholder="https://drive.google.com/drive/folders/...")
+        
+        if st.button("💾 Salvar Pasta do Drive"):
+            if "drive.google.com" in novo_link:
+                # Extrai o ID da pasta do link (o código entre a última '/' e o '?')
+                try:
+                    if "/folders/" in novo_link:
+                        folder_id = novo_link.split("/folders/")[1].split("?")[0]
+                    else:
+                        folder_id = novo_link # Se o cara colar só o ID
+                        
+                    salvar_configuracao("drive_folder_id", folder_id)
+                    st.success(f"✅ Pasta configurada com sucesso! ID: {folder_id}")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Link inválido. Erro: {e}")
+            else:
+                st.error("❌ Por favor, cole um link válido do Google Drive.")
+
+    st.markdown("---")
     
     # Exibe a mensagem de sucesso se ela existir na memória
     if "msg_sucesso_drive" in st.session_state:
