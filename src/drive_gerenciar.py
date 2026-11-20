@@ -138,7 +138,7 @@ def renderizar_drive_sync():
                             dados_banco = carregar_construtoras()
                             construtoras_existentes = list(dados_banco.keys())
                             
-                            # A MÁGICA DA PREVENÇÃO DE DUPLICIDADE AQUI
+                            # A MÁGICA DA PREVENÇÃO DE DUPLICIDADE
                             opcoes_construtora = ["➕ Criar Nova Construtora"] + construtoras_existentes
                             
                             construtora_selecionada = st.selectbox(
@@ -147,7 +147,7 @@ def renderizar_drive_sync():
                                 key=f"sel_const_{arq['id']}"
                             )
                             
-                            # Se ele escolheu criar nova, mostra o campo de texto
+                            # Se ele escolher criar nova, mostra o campo de texto
                             if construtora_selecionada == "➕ Criar Nova Construtora":
                                 nome_construtora = st.text_input("Digite o nome da Nova Construtora:", key=f"new_const_{arq['id']}")
                             else:
@@ -172,7 +172,7 @@ def renderizar_drive_sync():
                                         from src.planilha_cache import salvar_planilha_cache
                                         
                                         try:
-                                            # 1. SALVA NO FORMATO QUE O SIMULADOR ENTENDE (Cache)
+                                            # 1. SALVA NO CACHE
                                             df_limpo = df_final.replace({float('nan'): None})
                                             sucesso_cache = salvar_planilha_cache(nome_construtora, df_limpo, nome_produto)
                                             
@@ -180,7 +180,7 @@ def renderizar_drive_sync():
                                                 st.error("Erro ao salvar a planilha no cache do Simulador.")
                                                 st.stop()
 
-                                            # 2. SALVA NA GESTÃO DE CONSTRUTORAS (Configuração)
+                                            # 2. SALVA NA GESTÃO DE CONSTRUTORAS
                                             dados_atuais = carregar_construtoras()
                                             
                                             if nome_construtora not in dados_atuais:
@@ -193,7 +193,7 @@ def renderizar_drive_sync():
                                             
                                             dados_atuais[nome_construtora]["produtos"][nome_produto] = {
                                                 "cidade": cidade,
-                                                "skiprows": linha_cabecalho, # Salva o número exato
+                                                "skiprows": linha_cabecalho,
                                                 "mapeamento": {str(i): col for i, col in enumerate(colunas_excel)},
                                                 "colunas_ordem": colunas_excel,
                                                 "colunas_para_converter": []
@@ -203,10 +203,8 @@ def renderizar_drive_sync():
                                             
                                             registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "novo")
                                             
-                                            # Salva a mensagem e limpa a tela
                                             st.session_state["msg_sucesso_drive"] = f"✅ Produto '{nome_produto}' da '{nome_construtora}' sincronizado com sucesso!"
                                             
-                                            del st.session_state[key_const]
                                             del st.session_state[key_prod]
                                             del st.session_state[key_cid]
                                             del st.session_state[f"df_final_{arq['id']}"]
@@ -229,3 +227,4 @@ def renderizar_drive_sync():
                                 if st.button("🆕 Criar Novo Produto", key=f"new_{arq['id']}"):
                                     registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "novo")
                                     st.success("Novo produto criado no sistema!")
+                        
