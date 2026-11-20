@@ -82,7 +82,7 @@ def renderizar_drive_sync():
                                 fh.seek(0)
                                 df_cru = pd.read_excel(fh, header=None)
                                 
-                                # 2. A linha escolhida pelo gerente no input (ex: 6) vira o índice 5 no Pandas (base 0)
+                                # 2. A linha escolhida pelo gerente no input (ex: 6) vira o índice 5 no Pandas
                                 indice_cabecalho = linha_cabecalho - 1
                                 
                                 # 3. Pega os nomes das colunas daquela linha específica
@@ -91,10 +91,25 @@ def renderizar_drive_sync():
                                 # 4. Pega os dados que vêm DEPOIS da linha do cabeçalho
                                 df_dados = df_cru.iloc[indice_cabecalho + 1:].copy()
                                 
-                                # 5. Renomeia as colunas do DataFrame de dados com os nomes corretos
-                                df_dados.columns = nomes_colunas
+                                # 5. Resolve o problema de colunas duplicadas (O NOVO PULO DO GATO)
+                                nomes_limpos = []
+                                contador = {}
+                                for col in nomes_colunas:
+                                    col_str = str(col).strip()
+                                    if col_str == "nan" or not col_str:
+                                        col_str = "COLUNA_VAZIA"
+                                    
+                                    if col_str in contador:
+                                        contador[col_str] += 1
+                                        nomes_limpos.append(f"{col_str}_{contador[col_str]}")
+                                    else:
+                                        contador[col_str] = 1
+                                        nomes_limpos.append(col_str)
                                 
-                                # 6. Limpa as linhas que ficaram totalmente vazias e reseta o índice
+                                # 6. Renomeia as colunas com os nomes únicos
+                                df_dados.columns = nomes_limpos
+                                
+                                # 7. Limpa as linhas que ficaram totalmente vazias e reseta o índice
                                 df_final = df_dados.dropna(how='all').reset_index(drop=True)
                                 
                                 st.session_state[f"df_final_{arq['id']}"] = df_final
