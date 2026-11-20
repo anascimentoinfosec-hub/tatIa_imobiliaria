@@ -8,6 +8,13 @@ from src.drive_sync import listar_planilhas_drive, baixar_planilha_bruta, verifi
 
 def renderizar_drive_sync():
     st.title("📂 Sincronização Google Drive")
+    
+    # Exibe a mensagem de sucesso se existir
+    if "msg_sucesso_drive" in st.session_state:
+        st.success(st.session_state["msg_sucesso_drive"])
+        st.info("👉 **Próximo passo:** O produto já está disponível no Simulador.")
+        del st.session_state["msg_sucesso_drive"]
+
     st.markdown("Monitore a pasta de planilhas das construtoras e importe os dados.")
     
     if st.button("🔄 Buscar Planilhas no Drive"):
@@ -117,7 +124,12 @@ def renderizar_drive_sync():
                                         
                                         try:
                                             # 1. SALVA NO FORMATO QUE O SIMULADOR ENTENDE (Cache)
-                                            df_limpo = df_final.replace({float('nan'): None})
+                                            # 1. Preenche valores nulos na coluna UNIDADE (e outras de texto) com string vazia
+                                            df_limpo = df_final.fillna("") 
+
+                                            # 2. Trata os NaNs numéricos específicos (como preço e área) para virar None (nulo no JSON)
+                                            # Se você tiver colunas numéricas que devem virar None no JSON, o replace abaixo resolve.
+                                            df_limpo = df_limpo.replace({float('nan'): None})
                                             sucesso_cache = salvar_planilha_cache(nome_construtora, df_limpo, nome_produto)
                                             
                                             if not sucesso_cache:
@@ -147,15 +159,18 @@ def renderizar_drive_sync():
                                             
                                             registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "novo")
                                             
-                                            st.success(f"✅ Produto '{nome_produto}' da '{nome_construtora}' importado com sucesso!")
-                                            st.info("👉 **Próximo passo:** O produto já está disponível no **Simulador** e na **Gestão de Construtoras**.")
-                                            st.balloons()
-                                            
-                                            # Limpa os campos
+                                           # Salva a mensagem na memória e limpa a tela
+                                            st.session_state["msg_sucesso_drive"] = f"✅ Produto '{nome_produto}' da '{nome_construtora}' sincronizado com sucesso!"
+    
+                                           # Limpa os campos e as variáveis de arquivo para a tela voltar ao início
                                             del st.session_state[key_const]
                                             del st.session_state[key_prod]
                                             del st.session_state[key_cid]
                                             del st.session_state[f"df_final_{arq['id']}"]
+                                            del st.session_state[f"df_bruto_{arq['id']}"]
+                                            if "arquivos_drive" in st.session_state:
+                                                del st.session_state["arquivos_drive"] # Isso limpa a lista de arquivos da tela
+        
                                             st.rerun()
                                             
                                         except Exception as e:
