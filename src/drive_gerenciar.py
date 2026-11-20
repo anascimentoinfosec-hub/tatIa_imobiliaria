@@ -134,16 +134,33 @@ def renderizar_drive_sync():
                         if not (tem_construtora and tem_produto):
                             st.info("🤖 A BIA não encontrou a Construtora/Produto na planilha. Me ajude a identificar:")
                             
-                            key_const = f"const_{arq['id']}"
+                            from src.construtoras_storage import carregar_construtoras
+                            dados_banco = carregar_construtoras()
+                            construtoras_existentes = list(dados_banco.keys())
+                            
+                            # A MÁGICA DA PREVENÇÃO DE DUPLICIDADE AQUI
+                            opcoes_construtora = ["➕ Criar Nova Construtora"] + construtoras_existentes
+                            
+                            construtora_selecionada = st.selectbox(
+                                "🏗️ Selecione a Construtora:", 
+                                opcoes_construtora, 
+                                key=f"sel_const_{arq['id']}"
+                            )
+                            
+                            # Se ele escolheu criar nova, mostra o campo de texto
+                            if construtora_selecionada == "➕ Criar Nova Construtora":
+                                nome_construtora = st.text_input("Digite o nome da Nova Construtora:", key=f"new_const_{arq['id']}")
+                            else:
+                                nome_construtora = construtora_selecionada
+                                st.caption(f"✅ Usando construtora existente: **{nome_construtora}**")
+                            
                             key_prod = f"prod_{arq['id']}"
                             key_cid = f"cid_{arq['id']}"
 
-                            st.text_input("🏗️ Nome da Construtora:", key=key_const)
                             st.text_input("📦 Nome do Produto:", key=key_prod)
                             st.text_input("📍 Cidade (Opcional):", key=key_cid)
                             
                             if st.button("💾 Salvar e Criar Produto", key=f"salvar_{arq['id']}"):
-                                nome_construtora = st.session_state.get(key_const, "")
                                 nome_produto = st.session_state.get(key_prod, "")
                                 cidade = st.session_state.get(key_cid, "")
 
