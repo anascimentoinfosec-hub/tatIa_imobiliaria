@@ -38,24 +38,25 @@ def renderizar_drive_sync():
                             st.error(f"Erro ao ler arquivo: {e}")
                 
                 # Se o arquivo foi lido, mostra o preview e a interação
+                # Se o arquivo foi lido, mostra o preview e a interação
                 if f"df_bruto_{arq['id']}" in st.session_state:
                     df_bruto = st.session_state[f"df_bruto_{arq['id']}"]
                     
                     st.markdown("#### 🧠 Verificação da BIA (Preview dos Dados)")
-                    st.write("Veja como a planilha foi lida. Identifique a linha onde estão os **títulos das colunas** (ex: Bloco, Unidade, Preço):")
+                    st.write("Veja como a planilha foi lida. Identifique a linha onde estão os **títulos das colunas**:")
                     
                     st.dataframe(df_bruto, use_container_width=True)
                     
                     linha_cabecalho = st.number_input(
                         "Em qual linha do Excel estão os títulos das colunas?", 
-                        min_value=1, max_value=20, value=1, 
-                        help="Coloque o número da linha onde estão os títulos (ex: BLOCO, UNIDADE).",
+                        min_value=1, max_value=20, value=6, 
                         key=f"header_{arq['id']}"
                     )
                     
                     if st.button("✅ Confirmar Cabeçalho e Processar", key=f"proc_{arq['id']}"):
                         with st.spinner("Processando dados reais..."):
                             try:
+                                # ... (código de download do arquivo igual ao anterior) ...
                                 service = get_drive_service()
                                 if arq['mimeType'] == 'application/vnd.google-apps.spreadsheet':
                                     request = service.files().export_media(fileId=arq['id'], mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -69,82 +70,74 @@ def renderizar_drive_sync():
                                     status, done = downloader.next_chunk()
                                 fh.seek(0)
                                 
-                                # O PULO DO GATO: Pula até a linha do cabeçalho escolhida
                                 df_final = pd.read_excel(fh, skiprows=linha_cabecalho - 1)
                                 
-                                st.success("✅ Planilha estruturada com sucesso!")
-                                st.dataframe(df_final.head(10))
+                                # SALVA NA MEMÓRIA PARA NÃO ZERAR A TELA
+                                st.session_state[f"df_final_{arq['id']}"] = df_final
+                                st.rerun() # Recarrega a tela para mostrar a próxima etapa
                                 
-                                # === A BIA PORTEIRA ===
-                                st.markdown("### 🧠 Verificação da BIA")
-                                
-                                colunas = [str(c).upper() for c in df_final.columns]
-                                tem_construtora = any("CONSTRUTORA" in c or "INCORPORAÇÃO" in c for c in colunas)
-                                tem_produto = any("PRODUTO" in c or "EMPREENDIMENTO" in c or "TABELA" in c for c in colunas)
-                                
-                                if not (tem_construtora and tem_produto):
-                                    st.info("🤖 A BIA não encontrou o nome da Construtora/Produto na planilha. Por favor, me ajude a identificar:")
-                                    
-                                    key_const = f"const_{arq['id']}"
-                                    key_prod = f"prod_{arq['id']}"
-                                    key_cid = f"cid_{arq['id']}"
-
-                                    st.text_input("🏗️ Nome da Construtora:", key=key_const)
-                                    st.text_input("📦 Nome do Produto (Ex: Super Califórnia):", key=key_prod)
-                                    st.text_input("📍 Cidade (Opcional):", key=key_cid)
-                                    
-                                    if st.button("💾 Salvar e Criar Produto", key=f"salvar_{arq['id']}"):
-                                        nome_construtora = st.session_state.get(key_const, "")
-                                        nome_produto = st.session_state.get(key_prod, "")
-                                        cidade = st.session_state.get(key_cid, "")
-
-                                        if not nome_construtora or not nome_produto:
-                                            st.warning("⚠️ Preencha o nome da Construtora e do Produto para continuar.")
-                                        else:
-                                            with st.spinner("Salvando construtora e importando imóveis..."):
-                                                from src.db import get_client
-                                                client = get_client()
-                                                
-                                                try:
-                                                    # 1. Verifica se a construtora já existe
-                                                    res_c = client.table("construtoras").select("id").eq("nome", nome_construtora).execute()
-                                                    if res_c.data:
-                                                        const_id = res_c.data[0]["id"]
-                                                    else:
-                                                        res_new = client.table("construtoras").insert({"nome": nome_construtora}).execute()
-                                                        const_id = res_new.data[0]["id"]
-                                                    
-                                                    # 2. Salva o produto vinculado
-                                                    client.table("produtos").insert({
-                                                        "construtora_id": const_id,
-                                                        "nome": nome_produto,
-                                                        "cidade": cidade
-                                                    }).execute()
-                                                    
-                                                    # 3. Registra o hash
-                                                    registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "novo")
-                                                    
-                                                    st.success(f"✅ Construtora '{nome_construtora}' e Produto '{nome_produto}' criados com sucesso!")
-                                                    st.balloons()
-                                                    
-                                                    # Limpa os campos após salvar
-                                                    del st.session_state[key_const]
-                                                    del st.session_state[key_prod]
-                                                    del st.session_state[key_cid]
-                                                    st.rerun()
-                                                except Exception as e:
-                                                    st.error(f"Erro ao salvar no banco: {e}")
-                                else:
-                                    st.info("✅ A BIA identificou as colunas! O que deseja fazer?")
-                                    col1, col2 = st.columns(2)
-                                    with col1:
-                                        if st.button("🔄 Atualizar Produto Existente", key=f"up_{arq['id']}"):
-                                            registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "atualizado")
-                                            st.success("Produto atualizado no sistema!")
-                                    with col2:
-                                        if st.button("🆕 Criar Novo Produto", key=f"new_{arq['id']}"):
-                                            registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "novo")
-                                            st.success("Novo produto criado no sistema!")
-                                            
                             except Exception as e:
                                 st.error(f"Erro ao processar: {e}")
+
+                    # === MOSTRA A ETAPA DA BIA SE A PLANILHA JÁ FOI PROCESSADA ===
+                    if f"df_final_{arq['id']}" in st.session_state:
+                        df_final = st.session_state[f"df_final_{arq['id']}"]
+                        
+                        st.success("✅ Planilha estruturada com sucesso!")
+                        st.dataframe(df_final.head(5))
+                        
+                        st.markdown("### 🧠 Verificação da BIA")
+                        
+                        colunas = [str(c).upper() for c in df_final.columns]
+                        tem_construtora = any("CONSTRUTORA" in c or "INCORPORAÇÃO" in c for c in colunas)
+                        tem_produto = any("PRODUTO" in c or "EMPREENDIMENTO" in c or "TABELA" in c for c in colunas)
+                        
+                        if not (tem_construtora and tem_produto):
+                            st.info("🤖 A BIA não encontrou a Construtora/Produto na planilha. Me ajude a identificar:")
+                            
+                            key_const = f"const_{arq['id']}"
+                            key_prod = f"prod_{arq['id']}"
+                            key_cid = f"cid_{arq['id']}"
+
+                            st.text_input("🏗️ Nome da Construtora:", key=key_const)
+                            st.text_input("📦 Nome do Produto:", key=key_prod)
+                            st.text_input("📍 Cidade (Opcional):", key=key_cid)
+                            
+                            if st.button("💾 Salvar e Criar Produto", key=f"salvar_{arq['id']}"):
+                                nome_construtora = st.session_state.get(key_const, "")
+                                nome_produto = st.session_state.get(key_prod, "")
+                                cidade = st.session_state.get(key_cid, "")
+
+                                if not nome_construtora or not nome_produto:
+                                    st.warning("⚠️ Preencha o nome da Construtora e do Produto.")
+                                else:
+                                    with st.spinner("Salvando no banco..."):
+                                        from src.db import get_client
+                                        client = get_client()
+                                        
+                                        try:
+                                            res_c = client.table("construtoras").select("id").eq("nome", nome_construtora).execute()
+                                            if res_c.data:
+                                                const_id = res_c.data[0]["id"]
+                                            else:
+                                                res_new = client.table("construtoras").insert({"nome": nome_construtora}).execute()
+                                                const_id = res_new.data[0]["id"]
+                                            
+                                            client.table("produtos").insert({
+                                                "construtora_id": const_id,
+                                                "nome": nome_produto,
+                                                "cidade": cidade
+                                            }).execute()
+                                            
+                                            registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "novo")
+                                            
+                                            st.success(f"✅ Construtora '{nome_construtora}' e Produto '{nome_produto}' criados!")
+                                            st.balloons()
+                                            
+                                            del st.session_state[key_const]
+                                            del st.session_state[key_prod]
+                                            del st.session_state[key_cid]
+                                            del st.session_state[f"df_final_{arq['id']}"] # Limpa a tabela processada
+                                            st.rerun()
+                                        except Exception as e:
+                                            st.error(f"Erro ao salvar no banco: {e}")
