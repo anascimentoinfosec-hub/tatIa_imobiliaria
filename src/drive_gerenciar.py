@@ -8,41 +8,47 @@ from src.drive_sync import listar_planilhas_drive, baixar_planilha_bruta, verifi
 
 def renderizar_drive_sync():
     st.title("📂 Sincronização Google Drive")
-
-    # === CONFIGURAÇÃO DA PASTA DO DRIVE ===
-    from src.configuracoes_storage import obter_configuracao, salvar_configuracao
     
-    with st.expander("⚙️ Configurar Pasta do Google Drive", expanded=False):
-        st.caption("Cole o link da pasta do Google Drive onde estão as planilhas.")
-        
-        link_atual = obter_configuracao("drive_folder_link", "")
-        novo_link = st.text_input("Link da Pasta do Drive:", value=link_atual, placeholder="https://drive.google.com/drive/folders/...")
-        
-        if st.button("💾 Salvar Pasta do Drive"):
-            if "drive.google.com" in novo_link:
-                # Extrai o ID da pasta do link (o código entre a última '/' e o '?')
-                try:
-                    if "/folders/" in novo_link:
-                        folder_id = novo_link.split("/folders/")[1].split("?")[0]
-                    else:
-                        folder_id = novo_link # Se o cara colar só o ID
-                        
-                    salvar_configuracao("drive_folder_id", folder_id)
-                    st.success(f"✅ Pasta configurada com sucesso! ID: {folder_id}")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"❌ Link inválido. Erro: {e}")
-            else:
-                st.error("❌ Por favor, cole um link válido do Google Drive.")
+    # === VERIFICA O PERFIL DO USUÁRIO ===
+    from src.auth import carregar_usuarios
+    usuario_logado = st.session_state.get("usuario_logado")
+    USUARIOS = carregar_usuarios()
+    perfil = USUARIOS.get(usuario_logado, {}).get("perfil", "corretor")
 
-    st.markdown("---")
-    
     # Exibe a mensagem de sucesso se ela existir na memória
     if "msg_sucesso_drive" in st.session_state:
         st.success(st.session_state["msg_sucesso_drive"])
         st.info("👉 **Próximo passo:** O produto já está disponível no Simulador e na Gestão de Construtoras.")
         del st.session_state["msg_sucesso_drive"]
 
+    # === CONFIGURAÇÃO DA PASTA DO DRIVE (SÓ SUPERADMIN VÊ) ===
+    if perfil == "superadmin":
+        from src.configuracoes_storage import obter_configuracao, salvar_configuracao
+        
+        with st.expander("⚙️ Configurar Pasta do Google Drive (Acesso Restrito)", expanded=False):
+            st.caption("Cole o link da pasta do Google Drive onde estão as planilhas.")
+            
+            link_atual = obter_configuracao("drive_folder_link", "")
+            novo_link = st.text_input("Link da Pasta do Drive:", value=link_atual, placeholder="https://drive.google.com/drive/folders/...")
+            
+            if st.button("💾 Salvar Pasta do Drive"):
+                if "drive.google.com" in novo_link:
+                    try:
+                        if "/folders/" in novo_link:
+                            folder_id = novo_link.split("/folders/")[1].split("?")[0]
+                        else:
+                            folder_id = novo_link 
+                            
+                        salvar_configuracao("drive_folder_id", folder_id)
+                        salvar_configuracao("drive_folder_link", novo_link)
+                        st.success(f"✅ Pasta configurada com sucesso!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Link inválido. Erro: {e}")
+                else:
+                    st.error("❌ Por favor, cole um link válido do Google Drive.")
+
+    st.markdown("---")
     st.markdown("Monitore a pasta de planilhas das construtoras e importe os dados.")
     
     if st.button("🔄 Buscar Planilhas no Drive"):
@@ -105,19 +111,19 @@ def renderizar_drive_sync():
                                     status, done = downloader.next_chunk()
                                 fh.seek(0)
                                 
-                                # 1. Lê o arquivo cru (sem cabeçalho)
+                                # Lê o arquivo cru
                                 df_cru = pd.read_excel(fh, header=None)
                                 
-                                # 2. Usa o número EXATO que o gerente digitou na tela
+                                # Usa o número EXATO que o gerente digitou na tela
                                 idx_cabecalho = int(linha_cabecalho) 
                                 
-                                # 3. Pega os nomes das colunas daquela linha
+                                # Pega os nomes das colunas daquela linha
                                 nomes_colunas = df_cru.iloc[idx_cabecalho].tolist()
                                 
-                                # 4. Pega os dados que vêm DEPOIS da linha do cabeçalho
+                                # Pega os dados que vêm DEPOIS da linha do cabeçalho
                                 df_dados = df_cru.iloc[idx_cabecalho + 1:].copy()
                                 
-                                # 5. Limpa os nomes das colunas (remove 'nan' e duplicados)
+                                # Limpa os nomes das colunas (remove 'nan' e duplicados)
                                 nomes_limpos = []
                                 contador = {}
                                 for col in nomes_colunas:
@@ -132,14 +138,14 @@ def renderizar_drive_sync():
                                         contador[col_str] = 1
                                         nomes_limpos.append(col_str)
                                 
-                                # 6. Filtra o DataFrame para as colunas válidas
+                                # Filtra o DataFrame para as colunas válidas
                                 df_dados = df_dados.iloc[:, :len(nomes_limpos)]
                                 df_dados.columns = nomes_limpos
                                 
-                                # 7. Remove linhas vazias e formata
+                                # Remove linhas vazias e formata
                                 df_final = df_dados.dropna(how='all').reset_index(drop=True)
                                 
-                                # 8. Salva na memória para a próxima etapa
+                                # Salva na memória para a próxima etapa
                                 st.session_state[f"df_final_{arq['id']}"] = df_final
                                 st.rerun()
                                 
@@ -166,7 +172,6 @@ def renderizar_drive_sync():
                             dados_banco = carregar_construtoras()
                             construtoras_existentes = list(dados_banco.keys())
                             
-                            # A MÁGICA DA PREVENÇÃO DE DUPLICIDADE
                             opcoes_construtora = ["➕ Criar Nova Construtora"] + construtoras_existentes
                             
                             construtora_selecionada = st.selectbox(
@@ -175,7 +180,6 @@ def renderizar_drive_sync():
                                 key=f"sel_const_{arq['id']}"
                             )
                             
-                            # Se ele escolher criar nova, mostra o campo de texto
                             if construtora_selecionada == "➕ Criar Nova Construtora":
                                 nome_construtora = st.text_input("Digite o nome da Nova Construtora:", key=f"new_const_{arq['id']}")
                             else:
@@ -200,7 +204,6 @@ def renderizar_drive_sync():
                                         from src.planilha_cache import salvar_planilha_cache
                                         
                                         try:
-                                            # 1. SALVA NO CACHE
                                             df_limpo = df_final.replace({float('nan'): None})
                                             sucesso_cache = salvar_planilha_cache(nome_construtora, df_limpo, nome_produto)
                                             
@@ -208,7 +211,6 @@ def renderizar_drive_sync():
                                                 st.error("Erro ao salvar a planilha no cache do Simulador.")
                                                 st.stop()
 
-                                            # 2. SALVA NA GESTÃO DE CONSTRUTORAS
                                             dados_atuais = carregar_construtoras()
                                             
                                             if nome_construtora not in dados_atuais:
@@ -228,7 +230,6 @@ def renderizar_drive_sync():
                                             }
                                             
                                             salvar_construtoras(dados_atuais)
-                                            
                                             registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "novo")
                                             
                                             st.session_state["msg_sucesso_drive"] = f"✅ Produto '{nome_produto}' da '{nome_construtora}' sincronizado com sucesso!"
@@ -255,4 +256,3 @@ def renderizar_drive_sync():
                                 if st.button("🆕 Criar Novo Produto", key=f"new_{arq['id']}"):
                                     registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "novo")
                                     st.success("Novo produto criado no sistema!")
-                        

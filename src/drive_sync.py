@@ -13,10 +13,19 @@ def get_drive_service():
     return build('drive', 'v3', credentials=creds)
 
 def listar_planilhas_drive():
-    """Lista arquivos Excel na pasta configurada (lê do banco ou do secrets)"""
+    """Lista arquivos Excel na pasta configurada (Protegido para Superadmin)"""
     from src.configuracoes_storage import obter_configuracao
+    from src.auth import carregar_usuarios
     
-    # Tenta pegar o ID do banco de dados. Se não achar, usa o do secrets.toml como fallback.
+    # 1. BLINDAGEM DE SEGURANÇA
+    usuario_logado = st.session_state.get("usuario_logado")
+    USUARIOS = carregar_usuarios()
+    perfil = USUARIOS.get(usuario_logado, {}).get("perfil", "corretor")
+    
+    if perfil != "superadmin":
+        raise Exception("Acesso negado. Apenas o Superadmin pode sincronizar o Google Drive.")
+    
+    # 2. Busca o ID da pasta (banco de dados ou fallback para o secrets)
     folder_id = obter_configuracao("drive_folder_id", "")
     if not folder_id:
         folder_id = st.secrets.get("google_drive", {}).get("folder_id", "")
@@ -47,7 +56,6 @@ def baixar_planilha_bruta(file_id, mime_type):
         status, done = downloader.next_chunk()
         
     fh.seek(0)
-    # O segredo está no header=None e nrows=15 para pegar só o topo
     df_bruto = pd.read_excel(fh, header=None, nrows=15)
     return df_bruto
 
@@ -56,7 +64,6 @@ def verificar_hash_arquivo(file_hash):
     from src.db import get_client
     client = get_client()
     try:
-        # Supondo que você criará essa tabela no Supabase
         res = client.table("historico_importacoes").select("id").eq("hash_arquivo", file_hash).execute()
         return len(res.data) > 0
     except Exception:
