@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import io
+import uuid
+import json
 from googleapiclient.http import MediaIoBaseDownload
 from src.drive_sync import listar_planilhas_drive, baixar_planilha_bruta, verificar_hash_arquivo, registrar_importacao, get_drive_service
 
@@ -38,7 +40,6 @@ def renderizar_drive_sync():
                             st.error(f"Erro ao ler arquivo: {e}")
                 
                 # Se o arquivo foi lido, mostra o preview e a interação
-                # Se o arquivo foi lido, mostra o preview e a interação
                 if f"df_bruto_{arq['id']}" in st.session_state:
                     df_bruto = st.session_state[f"df_bruto_{arq['id']}"]
                     
@@ -56,7 +57,6 @@ def renderizar_drive_sync():
                     if st.button("✅ Confirmar Cabeçalho e Processar", key=f"proc_{arq['id']}"):
                         with st.spinner("Processando dados reais..."):
                             try:
-                                # ... (código de download do arquivo igual ao anterior) ...
                                 service = get_drive_service()
                                 if arq['mimeType'] == 'application/vnd.google-apps.spreadsheet':
                                     request = service.files().export_media(fileId=arq['id'], mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -70,9 +70,10 @@ def renderizar_drive_sync():
                                     status, done = downloader.next_chunk()
                                 fh.seek(0)
                                 
+                                # O PULO DO GATO: Pula até a linha do cabeçalho escolhida
                                 df_final = pd.read_excel(fh, skiprows=linha_cabecalho - 1)
                                 
-                                # SALVA NA MEMÓRIA PARA NÃO ZERAR A TELA
+                                # SALVA NA MEMÓRIA PARA NÃO ZERAR A TELA AO DIGITAR
                                 st.session_state[f"df_final_{arq['id']}"] = df_final
                                 st.rerun() # Recarrega a tela para mostrar a próxima etapa
                                 
@@ -101,12 +102,11 @@ def renderizar_drive_sync():
 
                             st.text_input("🏗️ Nome da Construtora:", key=key_const)
                             st.text_input("📦 Nome do Produto:", key=key_prod)
-                            st.text_input("📍 Cidade (Opcional):", key=key_cid)
+                            st.text_input("📍 Cidade (Opcional - não salva no banco ainda):", key=key_cid, disabled=True)
                             
                             if st.button("💾 Salvar e Criar Produto", key=f"salvar_{arq['id']}"):
                                 nome_construtora = st.session_state.get(key_const, "")
                                 nome_produto = st.session_state.get(key_prod, "")
-                                cidade = st.session_state.get(key_cid, "")
 
                                 if not nome_construtora or not nome_produto:
                                     st.warning("⚠️ Preencha o nome da Construtora e do Produto.")
@@ -116,14 +116,18 @@ def renderizar_drive_sync():
                                         client = get_client()
                                         
                                         try:
-                                            # Como o seu banco não tem coluna 'cidade' nessa tabela, 
-                                            # vamos salvar apenas o que ele conhece.
+                                            novo_id = str(uuid.uuid4())
+                                            
+                                            # Converte a planilha (DataFrame) para JSON para salvar na coluna 'dados'
+                                            dados_json = df_final.to_dict(orient="records")
+                                            
                                             client.table("planilhas_cache").insert({
+                                                "id": novo_id,
                                                 "construtora": nome_construtora,
-                                                "produto": nome_produto
+                                                "produto": nome_produto,
+                                                "dados": dados_json # Preenche o campo obrigatório JSONB
                                             }).execute()
                                             
-                                            # Registra o hash para não duplicar
                                             registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "novo")
                                             
                                             st.success(f"✅ Produto '{nome_produto}' da construtora '{nome_construtora}' criado com sucesso!")
@@ -132,8 +136,18 @@ def renderizar_drive_sync():
                                             # Limpa os campos após salvar
                                             del st.session_state[key_const]
                                             del st.session_state[key_prod]
-                                            del st.session_state[key_cid]
                                             del st.session_state[f"df_final_{arq['id']}"]
                                             st.rerun()
                                         except Exception as e:
                                             st.error(f"Erro ao salvar no banco: {e}")
+                        else:
+                            st.info("✅ A BIA identificou as colunas! O que deseja fazer?")
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                if st.button("🔄 Atualizar Produto Existente", key=f"up_{arq['id']}"):
+                                    registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "atualizado")
+                                    st.success("Produto atualizado no sistema!")
+                            with col2:
+                                if st.button("🆕 Criar Novo Produto", key=f"new_{arq['id']}"):
+                                    registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "novo")
+                                    st.success("Novo produto criado no sistema!")
