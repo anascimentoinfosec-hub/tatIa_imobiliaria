@@ -108,6 +108,30 @@ st.markdown("""
         border: 1px solid #cbd5e1 !important;
         cursor: not-allowed !important;
     }
+
+    /* Estilo do Botão Flutuante da BIA */
+    .bia-float-btn {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 60px;
+        height: 60px;
+        background-color: #e91e63; /* Cor da BIA */
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 30px;
+        color: white;
+        cursor: pointer;
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
+        z-index: 9999;
+        transition: 0.3s;
+    }
+    .bia-float-btn:hover {
+        transform: scale(1.1);
+        background-color: #c2185b;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -341,6 +365,13 @@ with st.sidebar:
                     st.success("Roleta zerada com sucesso! Todos fora do ponto.")
                     st.rerun()
 
+        # --- NOVO: BOTÃO DA BIA ---
+        st.markdown("---")
+        st.markdown("### 🤖 Assistente Virtual")
+        if st.button("💬 Falar com a BIA", key="btn_bia_sidebar", use_container_width=True, type="primary"):
+            st.session_state["mostrar_bia_chat"] = not st.session_state.get("mostrar_bia_chat", False)
+            st.rerun()
+
         # --- 4. BOTÃO SAIR (Sempre no final) ---
         st.markdown("---")
         if st.button("🚪 Sair do Sistema", key="btn_sair_sistema", use_container_width=True):
@@ -383,6 +414,23 @@ else:
         st.error("🔒 Você não tem permissão para acessar esta página.")
         st.session_state.pagina = "Simulador"
         st.rerun()
+
+    # === NOVO: LÓGICA DO CHAT FLUTUANTE DA BIA ===
+        if st.session_state.get("mostrar_bia_chat", False):
+            from src.bia_operacional import pagina_bia_operacional
+            with st.container():
+                st.markdown("### 🤖 BIA - Assistente Imobiliária")
+                # Aqui chamamos a tela da BIA passando os dados do usuário
+                pagina_bia_operacional(
+                    usuario_logado=st.session_state.usuario_logado, 
+                    USUARIOS=USUARIOS
+                )
+                if st.button("❌ Fechar BIA", key="btn_fechar_bia"):
+                    st.session_state["mostrar_bia_chat"] = False
+                    st.rerun()
+            st.markdown("---")
+        # ==============================================
+    
     else:
         # Renderiza a página correta
         if pagina == "Simulador": pagina_simulador(CONSTRUTORAS, USUARIOS)
