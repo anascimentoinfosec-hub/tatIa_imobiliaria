@@ -70,12 +70,11 @@ def renderizar_drive_sync():
                                     status, done = downloader.next_chunk()
                                 fh.seek(0)
                                 
-                                # O PULO DO GATO: Pula até a linha do cabeçalho escolhida
+                                # Pula até a linha do cabeçalho escolhida
                                 df_final = pd.read_excel(fh, skiprows=linha_cabecalho - 1)
                                 
-                                # SALVA NA MEMÓRIA PARA NÃO ZERAR A TELA AO DIGITAR
                                 st.session_state[f"df_final_{arq['id']}"] = df_final
-                                st.rerun() # Recarrega a tela para mostrar a próxima etapa
+                                st.rerun()
                                 
                             except Exception as e:
                                 st.error(f"Erro ao processar: {e}")
@@ -102,43 +101,67 @@ def renderizar_drive_sync():
 
                             st.text_input("🏗️ Nome da Construtora:", key=key_const)
                             st.text_input("📦 Nome do Produto:", key=key_prod)
-                            st.text_input("📍 Cidade (Opcional - não salva no banco ainda):", key=key_cid, disabled=True)
+                            st.text_input("📍 Cidade (Opcional):", key=key_cid)
                             
                             if st.button("💾 Salvar e Criar Produto", key=f"salvar_{arq['id']}"):
                                 nome_construtora = st.session_state.get(key_const, "")
                                 nome_produto = st.session_state.get(key_prod, "")
+                                cidade = st.session_state.get(key_cid, "")
 
                                 if not nome_construtora or not nome_produto:
                                     st.warning("⚠️ Preencha o nome da Construtora e do Produto.")
                                 else:
                                     with st.spinner("Salvando no banco..."):
                                         from src.db import get_client
+                                        from src.construtoras_storage import carregar_construtoras, salvar_construtoras
                                         client = get_client()
                                         
                                         try:
-                                            novo_id = str(uuid.uuid4())
-                                            
-                                            # Substitui os NaN por vazio e converte para JSON#
+                                            # 1. Prepara o JSON para o cache
                                             df_limpo = df_final.replace({float('nan'): None}) 
                                             dados_json = df_limpo.to_dict(orient="records")
                                             
+                                            novo_id = str(uuid.uuid4())
                                             client.table("planilhas_cache").insert({
                                                 "id": novo_id,
                                                 "construtora": nome_construtora,
                                                 "produto": nome_produto,
-                                                "dados": dados_json # Preenche o campo obrigatório JSONB
+                                                "dados": dados_json
                                             }).execute()
+
+                                            # 2. Injeta na tabela principal de construtoras (formato que a tela de gestão lê)
+                                            dados_atuais = carregar_construtoras()
+                                            
+                                            if nome_construtora not in dados_atuais:
+                                                dados_atuais[nome_construtora] = {
+                                                    "tipo_desconto": "AVALIAÇÃO",
+                                                    "produtos": {}
+                                                }
+                                            
+                                            colunas_excel = [str(c) for c in df_final.columns]
+                                            
+                                            dados_atuais[nome_construtora]["produtos"][nome_produto] = {
+                                                "cidade": cidade,
+                                                "skiprows": linha_cabecalho - 1,
+                                                "mapeamento": {str(i): col for i, col in enumerate(colunas_excel)},
+                                                "colunas_ordem": colunas_excel,
+                                                "colunas_para_converter": []
+                                            }
+                                            
+                                            salvar_construtoras(dados_atuais)
                                             
                                             registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "novo")
                                             
-                                            st.success(f"✅ Produto '{nome_produto}' da construtora '{nome_construtora}' criado com sucesso!")
+                                            st.success(f"✅ Produto '{nome_produto}' da '{nome_construtora}' importado e disponível na Gestão de Construtoras!")
                                             st.balloons()
                                             
-                                            # Limpa os campos após salvar
+                                            # Limpa os campos
                                             del st.session_state[key_const]
                                             del st.session_state[key_prod]
+                                            del st.session_state[key_cid]
                                             del st.session_state[f"df_final_{arq['id']}"]
                                             st.rerun()
+                                            
                                         except Exception as e:
                                             st.error(f"Erro ao salvar no banco: {e}")
                         else:
