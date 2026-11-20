@@ -111,25 +111,20 @@ def renderizar_drive_sync():
                                 if not nome_construtora or not nome_produto:
                                     st.warning("⚠️ Preencha o nome da Construtora e do Produto.")
                                 else:
-                                    with st.spinner("Salvando no banco..."):
-                                        from src.db import get_client
+                                    with st.spinner("Salvando no banco e preparando o Simulador..."):
                                         from src.construtoras_storage import carregar_construtoras, salvar_construtoras
-                                        client = get_client()
+                                        from src.planilha_cache import salvar_planilha_cache
                                         
                                         try:
-                                            # 1. Prepara o JSON para o cache
-                                            df_limpo = df_final.replace({float('nan'): None}) 
-                                            dados_json = df_limpo.to_dict(orient="records")
+                                            # 1. SALVA NO FORMATO QUE O SIMULADOR ENTENDE (Cache)
+                                            df_limpo = df_final.replace({float('nan'): None})
+                                            sucesso_cache = salvar_planilha_cache(nome_construtora, df_limpo, nome_produto)
                                             
-                                            novo_id = str(uuid.uuid4())
-                                            client.table("planilhas_cache").insert({
-                                                "id": novo_id,
-                                                "construtora": nome_construtora,
-                                                "produto": nome_produto,
-                                                "dados": dados_json
-                                            }).execute()
+                                            if not sucesso_cache:
+                                                st.error("Erro ao salvar a planilha no cache do Simulador.")
+                                                st.stop()
 
-                                            # 2. Injeta na tabela principal de construtoras (formato que a tela de gestão lê)
+                                            # 2. SALVA NA GESTÃO DE CONSTRUTORAS (Configuração)
                                             dados_atuais = carregar_construtoras()
                                             
                                             if nome_construtora not in dados_atuais:
@@ -152,7 +147,8 @@ def renderizar_drive_sync():
                                             
                                             registrar_importacao(arq.get("md5Checksum", ""), arq['name'], "novo")
                                             
-                                            st.success(f"✅ Produto '{nome_produto}' da '{nome_construtora}' importado e disponível na Gestão de Construtoras!")
+                                            st.success(f"✅ Produto '{nome_produto}' da '{nome_construtora}' importado com sucesso!")
+                                            st.info("👉 **Próximo passo:** O produto já está disponível no **Simulador** e na **Gestão de Construtoras**.")
                                             st.balloons()
                                             
                                             # Limpa os campos
