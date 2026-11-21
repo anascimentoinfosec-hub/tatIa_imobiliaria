@@ -124,10 +124,11 @@ def renderizar_sidebar(USUARIOS, CONSTRUTORAS):
                 st.session_state.pagina = "WarRoom"; st.rerun()
 
         # Diretoria
-        tem_alguma_diretoria = any(tem_perm(p) for p in ["diretor_comercial", "diretor_vendas", "diretor_financeiro", "diretor_rh"])
-        if tem_alguma_diretoria:
-            st.markdown("---")
-            st.markdown("### 👔 Diretoria")
+        if perfil == "superadmin" or perfil == "diretor": # <-- VERIFICAÇÃO AQUI
+            tem_alguma_diretoria = any(tem_perm(p) for p in ["diretor_comercial", "diretor_vendas", "diretor_financeiro", "diretor_rh"])
+            if tem_alguma_diretoria:
+                st.markdown("---")
+                st.markdown("### 👔 Diretoria")               
             if tem_perm("diretor_comercial") and st.button("💼 Diretor Comercial", key="btn_dir_comercial", use_container_width=True):
                 st.session_state.pagina = "DiretorComercial"; st.rerun()
             if tem_perm("diretor_vendas") and st.button("📈 Diretor de Vendas", key="btn_dir_vendas", use_container_width=True):

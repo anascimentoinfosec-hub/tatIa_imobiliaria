@@ -19,18 +19,29 @@ def renderizar_pagina_atual(USUARIOS, CONSTRUTORAS):
     paginas_admin = ["SuperAdmin", "Creditos", "LimpezaTeste"]
     
     acesso_negado = False
+    
+    # Regra 1: Páginas de Gestão (já existente)
     if pagina in paginas_gestao and not any(tem_perm(p.lower()) for p in [pagina]):
         if not any(tem_perm(p) for p in ["dashboard", "dashboard_vendas", "construtoras", "regras_fin", "regras_ent", "origens", "usuarios", "campanhas", "configuracoes", "war_room"]):
             acesso_negado = True
 
+    # Regra 2: Páginas de Admin (já existente)
     if pagina in paginas_admin and perfil != "superadmin":
         acesso_negado = True
 
+    # Regra 3: Páginas de DIRETORIA (O NOVO BLOCO AQUI)
+    paginas_diretoria = ["DiretorComercial", "DiretorVendas", "DiretorFinanceiro", "DiretorRH"]
+    
+    if pagina in paginas_diretoria:
+        # Se o perfil não for superadmin e não for diretor, bloqueia
+        if perfil not in ["superadmin", "diretor"]:
+            acesso_negado = True
+
+    # Bloqueio efetivo
     if acesso_negado:
         st.error("🔒 Você não tem permissão para acessar esta página.")
         st.session_state.pagina = "Simulador"
         st.rerun()
-
     else:
         # Renderiza a página correta (Importações feitas aqui dentro para evitar importação circular)
         if pagina == "Simulador":
