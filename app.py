@@ -108,30 +108,6 @@ st.markdown("""
         border: 1px solid #cbd5e1 !important;
         cursor: not-allowed !important;
     }
-
-    /* Estilo do Botão Flutuante da BIA */
-    .bia-float-btn {
-        position: fixed;
-        bottom: 30px;
-        right: 30px;
-        width: 60px;
-        height: 60px;
-        background-color: #e91e63; /* Cor da BIA */
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 30px;
-        color: white;
-        cursor: pointer;
-        box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
-        z-index: 9999;
-        transition: 0.3s;
-    }
-    .bia-float-btn:hover {
-        transform: scale(1.1);
-        background-color: #c2185b;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -212,7 +188,6 @@ with st.sidebar:
             
             esta_na_roleta = verificar_se_esta_na_roleta(usuario)
             
-            # Mensagem visual clara
             if esta_na_roleta:
                 st.success("🟢 Você está na roleta. Pronto para receber leads!")
             else:
@@ -327,7 +302,7 @@ with st.sidebar:
                     if resultado == "sucesso":
                         st.success("✅ Mensagem enviada! Verifique o celular.")
                     else:
-                        st.error(f"❌ Erro da Z-API: {resultado}")
+                        st.error(f"❌ Erro: {resultado}")
             if st.button("🔒 Testar OTP LGPD (Admin)", key="btn_test_otp", use_container_width=True):
                 from src.documentos_storage import criar_token_consentimento
                 from src.notificacao_whatsapp import enviar_otp_lgpd
@@ -365,22 +340,12 @@ with st.sidebar:
                     st.success("Roleta zerada com sucesso! Todos fora do ponto.")
                     st.rerun()
 
-        # --- NOVO: BOTÃO DA BIA NA SIDEBAR ---
+        # --- NOVO: BOTÃO DA BIA ---
         st.markdown("---")
         st.markdown("### 🤖 Assistente Virtual")
-        
-        # Usa um checkbox para abrir/fechar, assim não precisa de st.rerun()
-        mostrar_bia_sidebar = st.checkbox("💬 Falar com a BIA", key="toggle_bia_sidebar")
-        
-        if mostrar_bia_sidebar:
-            from src.bia_operacional import pagina_bia_operacional
-            with st.container():
-                st.markdown("#### 🤖 BIA")
-                # Renderiza a BIA dentro da própria barra lateral
-                pagina_bia_operacional(
-                    usuario_logado=st.session_state.usuario_logado, 
-                    USUARIOS=USUARIOS
-                )
+        if st.button("💬 Falar com a BIA", key="btn_abrir_bia", use_container_width=True, type="primary"):
+            st.session_state["mostrar_bia_chat"] = True
+            st.rerun()
 
         # --- 4. BOTÃO SAIR (Sempre no final) ---
         st.markdown("---")
@@ -396,19 +361,41 @@ with st.sidebar:
             st.rerun()
 
 # =========================================================
-# ROTEAMENTO DE PÁGINAS
+# ROTEAMENTO DE PÁGINAS E LÓGICA DA BIA
 # =========================================================
 if st.session_state.get("usuario_logado") is None:
     pagina_login()
 else:
+    # 1. LÓGICA DO CHAT DA BIA (Resgate para a tela principal)
+    if st.session_state.get("mostrar_bia_chat", False):
+        st.markdown("## 🤖 BIA - Assistente Imobiliária")
+        st.markdown("---")
+        
+        # Colunas para centralizar a BIA
+        col_bia, _ = st.columns([3, 1]) 
+        with col_bia:
+            pagina_bia_operacional(
+                usuario_logado=st.session_state.usuario_logado, 
+                USUARIOS=USUARIOS
+            )
+        
+        if st.button("❌ Fechar BIA e Voltar", key="btn_fechar_bia", type="primary", use_container_width=True):
+            st.session_state["mostrar_bia_chat"] = False
+            st.rerun()
+            
+        st.markdown("---")
+        st.stop() # O SEGREDO! Impede de desenhar o resto da página enquanto a BIA está aberta
+
+    # 2. ROTEAMENTO NORMAL
     perfil = USUARIOS[st.session_state.usuario_logado]["perfil"]
+    
     if "pagina" not in st.session_state:
         st.session_state.pagina = "Simulador"
 
     pagina = st.session_state.get("pagina", "Simulador")
 
     # Verificação de Segurança (Rotas Protegidas)
-    paginas_gestao = ["Dashboard", "DashboardVendas", "Construtoras", "Regras", "RegrasEntrada", "Origens", "Usuários", "Campanhas", "Configuracoes", "WarRoom"]
+    paginas_gestao = ["Dashboard", "DashboardVendas", "Construtoras", "Regras", "RegrasEntrada", "Origens", "Usuários", "Campanhas", "Configuracoes", "WarRoom", "DriveSync"]
     paginas_admin = ["SuperAdmin", "Creditos", "LimpezaTeste"]
     
     acesso_negado = False
@@ -425,7 +412,6 @@ else:
         st.session_state.pagina = "Simulador"
         st.rerun()
 
-    
     else:
         # Renderiza a página correta
         if pagina == "Simulador": pagina_simulador(CONSTRUTORAS, USUARIOS)
