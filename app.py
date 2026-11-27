@@ -126,6 +126,10 @@ if st.query_params.get("consentimento"):
 # CARREGA DADOS BÁSICOS
 # =========================================================
 USUARIOS = carregar_usuarios()
+# Garante que o módulo padrão exista na sessão ao logar
+if "modulo_atual" not in st.session_state:
+    st.session_state.modulo_atual = "📊 Simulador"
+    
 CONSTRUTORAS = carregar_construtoras()
 
 # =========================================================
