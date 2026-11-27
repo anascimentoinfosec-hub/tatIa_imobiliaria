@@ -4,7 +4,8 @@ from src.construtoras_storage import carregar_construtoras
 
 # === CONFIGURAÇÃO DA PÁGINA ===
 st.set_page_config(
-    page_title="Simulador de Crédito",
+    page_title="Everest ERP Imobiliário",  # Nome novo aqui
+    page_icon="🏔️",                       # Favicon de montanha
     layout="wide",
     initial_sidebar_state="expanded",
 )

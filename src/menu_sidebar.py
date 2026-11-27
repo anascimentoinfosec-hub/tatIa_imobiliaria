@@ -10,7 +10,7 @@ from src.crm.roleta import bater_ponto, sair_do_ponto, puxar_lead_orfao, verific
 
 def renderizar_sidebar(USUARIOS, CONSTRUTORAS):
     with st.sidebar:
-        st.markdown("### 🏢 **Simulador de Crédito**")
+        st.markdown("### 🏔️ **Everest ERP**")
         st.markdown("---")
 
         if "usuario_logado" not in st.session_state:

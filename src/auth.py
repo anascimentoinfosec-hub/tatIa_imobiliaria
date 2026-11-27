@@ -325,24 +325,32 @@ def _renderizar_recuperacao_senha(USUARIOS):
 # =========================================================
 # PÁGINA DE LOGIN PRINCIPAL
 # =========================================================
+# =========================================================
+# PÁGINA DE LOGIN PRINCIPAL (ATUALIZADA COM A CARA DO EVEREST)
+# =========================================================
 def pagina_login():
+    # Se já estiver logado, não faz nada (proteção extra)
+    if st.session_state.get("usuario_logado"):
+        return
+
     st.markdown("""
     <style>
     .login-hero {
-        background: linear-gradient(135deg, #1a237e, #0d47a1, #1565c0);
+        background: linear-gradient(135deg, #0d2b3e, #1a73e8, #1565c0); /* Cores do Everest */
         padding: 40px 30px;
         border-radius: 16px;
         color: white;
         text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
         margin-bottom: 30px;
         text-align: center;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
     }
-    .login-hero h1 { font-size: 36px; margin: 0; }
-    .login-hero p { font-size: 18px; margin: 8px 0 0 0; opacity: 0.9; }
+    .login-hero h1 { font-size: 38px; margin: 0; font-weight: 800; }
+    .login-hero p { font-size: 18px; margin: 10px 0 0 0; opacity: 0.9; }
     </style>
     <div class="login-hero">
-        <h1>🏢 Simulador de Crédito Imobiliário</h1>
-        <p>Rio de Janeiro • Oásis II e outras construtoras</p>
+        <h1>🏔️ Everest ERP Imobiliário</h1>
+        <p>Gestão Imobiliária de Alta Performance • Rio de Janeiro</p>
     </div>
     """, unsafe_allow_html=True)
     
