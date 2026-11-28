@@ -328,6 +328,18 @@ def _renderizar_recuperacao_senha(USUARIOS):
 # =========================================================
 # PÁGINA DE LOGIN PRINCIPAL (ATUALIZADA COM A CARA DO EVEREST)
 # =========================================================
+import requests
+
+def obter_taxas_bcb():
+    """Busca a Selic e a TR atualizadas na API do Banco Central."""
+    try:
+        # Selic (Série 11) e TR (Série 226)
+        selic = requests.get("https://api.bcb.gov.br/dados/serie/bcdata.sgs.11/dados/ultimos/1?formato=json", timeout=2).json()[0]["valor"]
+        tr = requests.get("https://api.bcb.gov.br/dados/serie/bcdata.sgs.226/dados/ultimos/1?formato=json", timeout=2).json()[0]["valor"]
+        return f"{selic.replace('.', ',')}%", f"{tr.replace('.', ',')}% a.a."
+    except Exception:
+        return "10,50%", "1,50% a.a." # Fallback se a API cair
+
 def pagina_login():
     # Se já estiver logado, não faz nada (proteção extra)
     if st.session_state.get("usuario_logado"):
@@ -355,12 +367,16 @@ def pagina_login():
     """, unsafe_allow_html=True)
     
     st.markdown("### 📊 Mercado Imobiliário")
+    
+    # Puxa as taxas dinâmicas
+    selic_atual, tr_atual = obter_taxas_bcb()
+    
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Taxa Selic", "10,50%")
-        st.metric("TR", "1,50% a.a.")
+        st.metric("Taxa Selic", selic_atual)
+        st.metric("TR", tr_atual)
     with col2:
-        st.metric("Taxa SFH", "9,50% a.a.")
+        st.metric("Taxa SFH", "9,50% a.a.") # (Esse ainda não tem API pública fácil)
         st.metric("Entrada média", "20-30%")
     with col3:
         st.metric("Valor m² (RJ)", "R$ 12.800")
@@ -368,4 +384,31 @@ def pagina_login():
     
     st.markdown("---")
     st.markdown("### 🏗️ Empreendimento em Destaque")
-    st.success("*Oásis II*  \n📍 Barra da Tijuca - Rio de Janeiro  \n🏢 18 andares • 115 unidades • 2 e 3 quartos  \n💰 Preços a partir de R$ 384.950")
+    
+    # Puxa o último produto do banco de dados
+    from src.db import get_client
+    client = get_client()
+    try:
+        # Busca na tabela de construtoras, pegando o JSON de produtos
+        res = client.table("construtoras").select("nome, dados").order("atualizado_em", desc=True).limit(1).execute()
+        
+        if res.data:
+            construtora_nome = res.data[0]["nome"]
+            dados = res.data[0]["dados"]
+            produtos = dados.get("produtos", {})
+            
+            # Pega o primeiro produto que encontrar
+            if produtos:
+                nome_produto = list(produtos.keys())[0]
+                info = produtos[nome_produto]
+                cidade = info.get("cidade", "Cidade não definida")
+                
+                st.success(f"**{nome_produto}** (Construtora: {construtora_nome})\\n"
+                           f"📍 {cidade}\\n"
+                           f"✨ *Novo lançamento disponível!*")
+            else:
+                st.info("Nenhum empreendimento em destaque no momento.")
+        else:
+            st.info("Nenhum empreendimento em destaque no momento.")
+    except Exception as e:
+        st.caption(f"Oásis II • Barra da Tijuca (Exemplo padrão)")
