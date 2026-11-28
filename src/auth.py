@@ -403,8 +403,8 @@ def pagina_login():
                 info = produtos[nome_produto]
                 cidade = info.get("cidade", "Cidade não definida")
                 
-                st.success(f"**{nome_produto}** (Construtora: {construtora_nome})\\n"
-                           f"📍 {cidade}\\n"
+                st.success(f"**{nome_produto}** (Construtora: {construtora_nome})\n"
+                           f"📍 {cidade}\n"
                            f"✨ *Novo lançamento disponível!*")
             else:
                 st.info("Nenhum empreendimento em destaque no momento.")
